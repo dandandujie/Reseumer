@@ -1,6 +1,8 @@
 {
   "name": "reseumer",
   "version": "0.1.0",
+  "description": "Reseumer desktop and web resume editor",
+  "author": "liuchen",
   "private": true,
   "main": "electron/main.cjs",
   "scripts": {
@@ -9,7 +11,7 @@
     "desktop:prepare": "node scripts/prepare-electron-standalone.cjs",
     "desktop:build": "pnpm build && pnpm desktop:prepare && pnpm desktop:install-deps && electron-builder",
     "desktop:build:dir": "pnpm build && pnpm desktop:prepare && pnpm desktop:install-deps && electron-builder --dir",
-    "desktop:build:mac": "pnpm build && pnpm desktop:prepare && pnpm desktop:install-deps && electron-builder --mac",
+    "desktop:build:mac": "pnpm build && pnpm desktop:prepare && pnpm desktop:install-deps && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac",
     "desktop:build:win": "pnpm build && pnpm desktop:prepare && pnpm desktop:install-deps && electron-builder --win",
     "desktop:install-deps": "electron-builder install-app-deps",
     "build:export-css": "tsx scripts/build-export-css.ts",
