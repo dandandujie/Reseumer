@@ -40,6 +40,7 @@
     "@ai-sdk/openai": "^3.0.26",
     "@ai-sdk/react": "^3.0.80",
     "@auth/drizzle-adapter": "^1.11.1",
+    "@chenglou/pretext": "^0.0.5",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",

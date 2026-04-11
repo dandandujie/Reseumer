@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useTranslations } from 'next-intl';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useClassicPageEstimate } from '@/hooks/use-classic-page-estimate';
 import { useResumeStore } from '@/stores/resume-store';
+import type { Resume } from '@/types/resume';
 import {
   FileDown,
   FileText,
@@ -23,6 +25,7 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface ExportDialogProps {
@@ -50,12 +53,24 @@ const FORMAT_OPTIONS: {
 ];
 
 export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps) {
+  const locale = useLocale();
   const t = useTranslations('export');
-  const { currentResume, isDirty, save } = useResumeStore();
+  const { currentResume, sections, isDirty, save } = useResumeStore();
 
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('pdf');
   const [state, setState] = useState<ExportState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+
+  const liveResume = useMemo<Resume | null>(() => {
+    if (!currentResume) return null;
+    return { ...currentResume, sections };
+  }, [currentResume, sections]);
+
+  const { estimate } = useClassicPageEstimate(liveResume);
+  const showOnePageEstimate = selectedFormat === 'pdf-one-page' && !!estimate;
+  const hasOnePageRisk = !!estimate && (estimate.pageCount > 1 || estimate.overflowSections.length > 0);
+  const overflowPreview = estimate?.overflowSections.slice(0, 3).join(locale === 'zh' ? '、' : ', ') || '';
+  const estimatePageCount = estimate?.pageCount ?? 1;
 
   useEffect(() => {
     if (open) {
@@ -132,44 +147,76 @@ export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps
 
         <div className="px-6 py-5">
           {state === 'idle' && (
-            <TooltipProvider>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {FORMAT_OPTIONS.map((format) => {
-                  const Icon = format.icon;
-                  const isSelected = selectedFormat === format.value;
-                  const card = (
-                    <button
-                      key={format.value}
-                      onClick={() => setSelectedFormat(format.value)}
-                      className={`cursor-pointer flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-center transition-all duration-150 hover:border-brand hover:bg-brand-muted/50 dark:hover:border-brand dark:hover:bg-brand-muted/20 ${
-                        isSelected
-                          ? 'border-brand bg-brand-muted dark:border-brand dark:bg-brand-muted'
-                          : 'border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900'
-                      }`}
-                    >
-                      <Icon className={`h-6 w-6 ${isSelected ? 'text-brand' : 'text-zinc-500 dark:text-zinc-400'}`} />
-                      <span className={`text-sm font-medium ${isSelected ? 'text-brand dark:text-brand' : 'text-zinc-700 dark:text-zinc-300'}`}>
-                        {t(format.labelKey)}
-                      </span>
-                      <span className="text-xs text-zinc-400 dark:text-zinc-500">
-                        {t(format.descKey)}
-                      </span>
-                    </button>
-                  );
-                  if (format.tooltipKey) {
-                    return (
-                      <Tooltip key={format.value}>
-                        <TooltipTrigger asChild>{card}</TooltipTrigger>
-                        <TooltipContent side="bottom" sideOffset={6}>
-                          {t(format.tooltipKey)}
-                        </TooltipContent>
-                      </Tooltip>
+            <div className="space-y-4">
+              <TooltipProvider>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {FORMAT_OPTIONS.map((format) => {
+                    const Icon = format.icon;
+                    const isSelected = selectedFormat === format.value;
+                    const card = (
+                      <button
+                        key={format.value}
+                        onClick={() => setSelectedFormat(format.value)}
+                        className={`cursor-pointer flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-center transition-all duration-150 hover:border-brand hover:bg-brand-muted/50 dark:hover:border-brand dark:hover:bg-brand-muted/20 ${
+                          isSelected
+                            ? 'border-brand bg-brand-muted dark:border-brand dark:bg-brand-muted'
+                            : 'border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900'
+                        }`}
+                      >
+                        <Icon className={`h-6 w-6 ${isSelected ? 'text-brand' : 'text-zinc-500 dark:text-zinc-400'}`} />
+                        <span className={`text-sm font-medium ${isSelected ? 'text-brand dark:text-brand' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                          {t(format.labelKey)}
+                        </span>
+                        <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                          {t(format.descKey)}
+                        </span>
+                      </button>
                     );
-                  }
-                  return card;
-                })}
-              </div>
-            </TooltipProvider>
+                    if (format.tooltipKey) {
+                      return (
+                        <Tooltip key={format.value}>
+                          <TooltipTrigger asChild>{card}</TooltipTrigger>
+                          <TooltipContent side="bottom" sideOffset={6}>
+                            {t(format.tooltipKey)}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    }
+                    return card;
+                  })}
+                </div>
+              </TooltipProvider>
+
+              {showOnePageEstimate && (
+                <div
+                  className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm ${
+                    hasOnePageRisk
+                      ? 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100'
+                  }`}
+                >
+                  {hasOnePageRisk ? (
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  ) : (
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-medium">
+                      {hasOnePageRisk
+                        ? t('onePageEstimateWarning', { pageCount: estimatePageCount })
+                        : t('onePageEstimateOk')}
+                    </p>
+                    {hasOnePageRisk && (
+                      <p className="mt-1 text-xs leading-5 opacity-90">
+                        {t('onePageEstimateWarningDetail', {
+                          sections: overflowPreview || '...',
+                        })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {state === 'exporting' && (
