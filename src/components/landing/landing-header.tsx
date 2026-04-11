@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
-import Image from 'next/image';
 import { Link } from '@/i18n/routing';
 import { Menu, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LocaleSwitcher } from '@/components/layout/locale-switcher';
+import { BrandLogo } from '@/components/layout/brand-logo';
 import {
   Sheet,
   SheetContent,
@@ -62,13 +62,12 @@ export function LandingHeader() {
     >
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="JadeAI" width={120} height={36} priority />
+          <Link href="/" className="transition-opacity hover:opacity-80">
+            <BrandLogo priority textClassName="text-sm font-semibold tracking-[0.16em]" />
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
             {[
               { href: '#features', label: t('features') },
-              { href: '#templates', label: t('templates') },
             ].map((item) => (
               <a
                 key={item.href}
@@ -78,12 +77,6 @@ export function LandingHeader() {
                 {item.label}
               </a>
             ))}
-            <Link
-              href="/interview"
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-            >
-              {t('interview')}
-            </Link>
           </nav>
         </div>
 
@@ -121,12 +114,11 @@ export function LandingHeader() {
               <SheetTitle className="sr-only">Navigation</SheetTitle>
               <div className="flex h-full flex-col">
                 <div className="flex h-14 items-center border-b border-zinc-100 px-5 dark:border-zinc-900">
-                  <Image src="/logo.svg" alt="JadeAI" width={104} height={32} />
+                  <BrandLogo iconSize={24} textClassName="text-sm font-semibold tracking-[0.16em]" />
                 </div>
                 <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
                   {[
                     { href: '#features', label: t('features') },
-                    { href: '#templates', label: t('templates') },
                   ].map((item) => (
                     <a
                       key={item.href}
@@ -137,13 +129,6 @@ export function LandingHeader() {
                       {item.label}
                     </a>
                   ))}
-                  <Link
-                    href="/interview"
-                    onClick={() => setOpen(false)}
-                    className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-zinc-700 transition-colors hover:bg-brand-muted hover:text-brand dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-brand"
-                  >
-                    {t('interview')}
-                  </Link>
                 </nav>
                 <div className="border-t border-zinc-100 p-4 dark:border-zinc-900">
                   <a

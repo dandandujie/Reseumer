@@ -1,5 +1,5 @@
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
-import { BACKGROUND_TEMPLATES } from '@/lib/constants';
+import { DEFAULT_THEME_FONT_SIZE, resolveCssFontScale, resolveThemeFontStack } from '@/lib/theme-config';
 import type {
   PersonalInfoContent,
   SkillsContent,
@@ -114,17 +114,11 @@ export function buildQrCodesHtml(section: Section): string {
 
 // ─── Theme CSS for HTML export ────────────────────────────────
 
-const FONT_SIZE_SCALE: Record<string, { body: string; h1: string; h2: string; h3: string }> = {
-  small:  { body: '12px', h1: '22px', h2: '15px', h3: '13px' },
-  medium: { body: '14px', h1: '26px', h2: '17px', h3: '15px' },
-  large:  { body: '16px', h1: '30px', h2: '19px', h3: '17px' },
-};
-
 export const DEFAULT_THEME = {
   primaryColor: '#1a1a1a',
   accentColor: '#3b82f6',
   fontFamily: 'Inter',
-  fontSize: 'medium',
+  fontSize: DEFAULT_THEME_FONT_SIZE,
   lineSpacing: 1.5,
   margin: { top: 20, right: 20, bottom: 20, left: 20 },
   sectionSpacing: 16,
@@ -139,17 +133,19 @@ function isDark(hex: string): boolean {
   return 0.299 * r + 0.587 * g + 0.114 * b < 0.4;
 }
 
-export function buildExportThemeCSS(theme: typeof DEFAULT_THEME, template: string): string {
-  const fs = FONT_SIZE_SCALE[theme.fontSize] || FONT_SIZE_SCALE.medium;
+export function buildExportThemeCSS(theme: typeof DEFAULT_THEME): string {
+  const fs = resolveCssFontScale(theme.fontSize);
   const m = theme.margin;
   const sel = '.resume-export';
-  const needsPadding = !BACKGROUND_TEMPLATES.has(template);
   const primaryIsDark = isDark(theme.primaryColor);
   return `
     ${sel} > div {
-      font-family: ${theme.fontFamily}, 'Noto Sans SC', sans-serif !important;
+      font-family: ${resolveThemeFontStack(theme.fontFamily)} !important;
       line-height: ${theme.lineSpacing} !important;
-      ${needsPadding ? `padding-top: ${m.top}px !important; padding-right: ${m.right}px !important; padding-bottom: ${m.bottom}px !important; padding-left: ${m.left}px !important;` : ''}
+      padding-top: ${m.top}px !important;
+      padding-right: ${m.right}px !important;
+      padding-bottom: ${m.bottom}px !important;
+      padding-left: ${m.left}px !important;
       --base-body-size: ${fs.body};
       --base-h1-size: ${fs.h1};
       --base-h2-size: ${fs.h2};
@@ -160,7 +156,7 @@ export function buildExportThemeCSS(theme: typeof DEFAULT_THEME, template: strin
       --base-margin-right: ${m.right}px;
       --base-margin-bottom: ${m.bottom}px;
       --base-margin-left: ${m.left}px;
-      --needs-padding: ${needsPadding ? '1' : '0'};
+      --needs-padding: 1;
     }
     ${sel} p, ${sel} li, ${sel} span, ${sel} td, ${sel} a, ${sel} div {
       font-size: ${fs.body} !important;
@@ -178,7 +174,7 @@ export function buildExportThemeCSS(theme: typeof DEFAULT_THEME, template: strin
     ${sel} [class*="bg-teal-"], ${sel} [class*="bg-emerald-"] {
       background-color: ${theme.accentColor} !important;
     }
-    ${sel} [data-section] { ${needsPadding ? `margin-bottom: ${theme.sectionSpacing}px` : `padding-bottom: ${theme.sectionSpacing}px`} !important; }
+    ${sel} [data-section] { margin-bottom: ${theme.sectionSpacing}px !important; }
     ${primaryIsDark ? `
     ${sel} [style*="background"][style*="#"] h1:not([style*="color"]),
     ${sel} [style*="background"][style*="#"] h2:not([style*="color"]),

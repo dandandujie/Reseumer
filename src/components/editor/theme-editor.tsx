@@ -10,8 +10,6 @@ import {
   ChevronDown,
   ChevronRight,
   RotateCcw,
-  LayoutGrid,
-  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -31,11 +29,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  DEFAULT_THEME_FONT_SIZE,
+  MAX_THEME_FONT_SIZE,
+  MIN_THEME_FONT_SIZE,
+  resolveThemeFontSize,
+  resolveThemeFontStack,
+  THEME_FONT_OPTIONS,
+} from '@/lib/theme-config';
 import { useResumeStore } from '@/stores/resume-store';
-import { TEMPLATES } from '@/lib/constants';
-import { templateLabelsMap } from '@/lib/template-labels';
-import { TemplateThumbnail } from '@/components/dashboard/template-thumbnail';
-import { cn } from '@/lib/utils';
 import type { ThemeConfig } from '@/types/resume';
 
 // -- Preset Themes --
@@ -54,7 +56,7 @@ const PRESET_THEMES: PresetTheme[] = [
       primaryColor: '#1a1a1a',
       accentColor: '#3b82f6',
       fontFamily: 'Georgia',
-      fontSize: 'medium',
+      fontSize: 14,
       lineSpacing: 1.5,
       margin: { top: 24, right: 24, bottom: 24, left: 24 },
       sectionSpacing: 16,
@@ -67,7 +69,7 @@ const PRESET_THEMES: PresetTheme[] = [
       primaryColor: '#0f172a',
       accentColor: '#6366f1',
       fontFamily: 'Inter',
-      fontSize: 'medium',
+      fontSize: 14,
       lineSpacing: 1.6,
       margin: { top: 20, right: 20, bottom: 20, left: 20 },
       sectionSpacing: 14,
@@ -80,7 +82,7 @@ const PRESET_THEMES: PresetTheme[] = [
       primaryColor: '#27272a',
       accentColor: '#a1a1aa',
       fontFamily: 'Helvetica',
-      fontSize: 'small',
+      fontSize: 12,
       lineSpacing: 1.4,
       margin: { top: 28, right: 28, bottom: 28, left: 28 },
       sectionSpacing: 12,
@@ -93,7 +95,7 @@ const PRESET_THEMES: PresetTheme[] = [
       primaryColor: '#1c1917',
       accentColor: '#b45309',
       fontFamily: 'Palatino',
-      fontSize: 'medium',
+      fontSize: 14,
       lineSpacing: 1.6,
       margin: { top: 26, right: 26, bottom: 26, left: 26 },
       sectionSpacing: 18,
@@ -106,7 +108,7 @@ const PRESET_THEMES: PresetTheme[] = [
       primaryColor: '#020617',
       accentColor: '#e11d48',
       fontFamily: 'Arial',
-      fontSize: 'large',
+      fontSize: 16,
       lineSpacing: 1.5,
       margin: { top: 20, right: 20, bottom: 20, left: 20 },
       sectionSpacing: 16,
@@ -119,7 +121,7 @@ const PRESET_THEMES: PresetTheme[] = [
       primaryColor: '#134e4a',
       accentColor: '#0d9488',
       fontFamily: 'Verdana',
-      fontSize: 'medium',
+      fontSize: 14,
       lineSpacing: 1.5,
       margin: { top: 22, right: 22, bottom: 22, left: 22 },
       sectionSpacing: 14,
@@ -132,7 +134,7 @@ const PRESET_THEMES: PresetTheme[] = [
       primaryColor: '#0A1F44',
       accentColor: '#00C897',
       fontFamily: 'Inter',
-      fontSize: 'medium',
+      fontSize: 14,
       lineSpacing: 1.55,
       margin: { top: 22, right: 22, bottom: 22, left: 22 },
       sectionSpacing: 15,
@@ -144,30 +146,12 @@ const DEFAULT_THEME: ThemeConfig = {
   primaryColor: '#1a1a1a',
   accentColor: '#3b82f6',
   fontFamily: 'Inter',
-  fontSize: 'medium',
+  fontSize: DEFAULT_THEME_FONT_SIZE,
   lineSpacing: 1.5,
   margin: { top: 20, right: 20, bottom: 20, left: 20 },
   sectionSpacing: 16,
   avatarStyle: 'oneInch',
 };
-
-const FONT_OPTIONS = [
-  'Inter',
-  'Georgia',
-  'Helvetica',
-  'Arial',
-  'Palatino',
-  'Verdana',
-  'Times New Roman',
-  'Garamond',
-  'Courier New',
-];
-
-const FONT_SIZE_OPTIONS = [
-  { value: 'small', label: '' },
-  { value: 'medium', label: '' },
-  { value: 'large', label: '' },
-];
 
 // -- Color Picker Component --
 
@@ -261,13 +245,13 @@ interface ThemeEditorProps {
 
 export function ThemeEditor({ onClose }: ThemeEditorProps) {
   const t = useTranslations('themeEditor');
-  const tRoot = useTranslations();
   const { currentResume } = useResumeStore();
 
   const themeConfig: ThemeConfig = {
     ...DEFAULT_THEME,
     ...(currentResume?.themeConfig || {}),
   };
+  const fontSizeValue = resolveThemeFontSize(themeConfig.fontSize);
 
   const updateTheme = useCallback(
     (updates: Partial<ThemeConfig>) => {
@@ -296,20 +280,6 @@ export function ThemeEditor({ onClose }: ThemeEditorProps) {
     updateTheme(DEFAULT_THEME);
   }, [updateTheme]);
 
-  const handleTemplateSwitch = useCallback(
-    (tpl: string) => {
-      useResumeStore.getState().setTemplate(tpl);
-    },
-    []
-  );
-
-  // Build font size label dynamically
-  const fontSizeLabels: Record<string, string> = {
-    small: t('fontSize.small'),
-    medium: t('fontSize.medium'),
-    large: t('fontSize.large'),
-  };
-
   return (
     <div className="flex h-full w-72 shrink-0 flex-col border-l bg-white dark:bg-zinc-900 dark:border-zinc-800">
       {/* Header */}
@@ -331,50 +301,6 @@ export function ThemeEditor({ onClose }: ThemeEditorProps) {
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="px-4 py-3 space-y-1">
-          {/* Template Switcher */}
-          <ThemeSection icon={LayoutGrid} title={t('templateSection')} defaultOpen={false}>
-            <div className="grid max-h-[320px] grid-cols-3 gap-2 overflow-y-auto pr-1">
-              {TEMPLATES.map((tpl) => {
-                const isSelected = currentResume?.template === tpl;
-                return (
-                  <button
-                    key={tpl}
-                    type="button"
-                    className={cn(
-                      'group/tpl relative cursor-pointer overflow-hidden rounded-lg border-2 transition-all duration-200',
-                      isSelected
-                        ? 'border-brand shadow-sm shadow-brand/10'
-                        : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600'
-                    )}
-                    onClick={() => handleTemplateSwitch(tpl)}
-                  >
-                    <div className="relative bg-zinc-50 p-1 dark:bg-zinc-800/50">
-                      <TemplateThumbnail
-                        template={tpl}
-                        className="mx-auto h-[56px] w-[40px] shadow-sm ring-1 ring-zinc-200/50"
-                      />
-                      {isSelected && (
-                        <div className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-white shadow-sm">
-                          <Check className="h-2.5 w-2.5" />
-                        </div>
-                      )}
-                    </div>
-                    <div className={cn(
-                      'truncate px-1 py-0.5 text-center text-[10px] font-medium transition-colors',
-                      isSelected
-                        ? 'bg-brand-muted text-brand dark:bg-brand-muted dark:text-brand'
-                        : 'text-zinc-500 dark:text-zinc-400'
-                    )}>
-                      {tRoot(templateLabelsMap[tpl])}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </ThemeSection>
-
-          <Separator />
-
           {/* Preset Themes */}
           <ThemeSection icon={Sparkles} title={t('presets')}>
             <div className="grid grid-cols-3 gap-2">
@@ -434,9 +360,9 @@ export function ThemeEditor({ onClose }: ThemeEditorProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {FONT_OPTIONS.map((font) => (
-                    <SelectItem key={font} value={font}>
-                      <span style={{ fontFamily: font }}>{font}</span>
+                  {THEME_FONT_OPTIONS.map((font) => (
+                    <SelectItem key={font.value} value={font.value}>
+                      <span style={{ fontFamily: resolveThemeFontStack(font.value) }}>{font.label}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -445,23 +371,17 @@ export function ThemeEditor({ onClose }: ThemeEditorProps) {
 
             {/* Font Size */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-600 dark:text-zinc-400">{t('fontSizeLabel')}</Label>
-              <div className="grid grid-cols-3 gap-1">
-                {FONT_SIZE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => updateTheme({ fontSize: opt.value })}
-                    className={`cursor-pointer rounded-md border px-2 py-1 text-xs transition-all ${
-                      themeConfig.fontSize === opt.value
-                        ? 'border-zinc-900 bg-zinc-50 font-medium text-zinc-900 dark:border-zinc-400 dark:bg-zinc-800 dark:text-zinc-100'
-                        : 'border-zinc-200 text-zinc-500 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600'
-                    }`}
-                  >
-                    {fontSizeLabels[opt.value]}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-zinc-600 dark:text-zinc-400">{t('fontSizeLabel')}</Label>
+                <span className="text-xs text-zinc-400">{fontSizeValue}px</span>
               </div>
+              <Slider
+                value={[fontSizeValue]}
+                onValueChange={([v]) => updateTheme({ fontSize: v })}
+                min={MIN_THEME_FONT_SIZE}
+                max={MAX_THEME_FONT_SIZE}
+                step={0.5}
+              />
             </div>
 
             {/* Line Spacing */}

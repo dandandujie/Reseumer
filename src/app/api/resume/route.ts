@@ -28,12 +28,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, template, language, sections, themeConfig } = body;
+    const { title, language, sections, themeConfig } = body;
 
     const resume = await resumeRepository.create({
       userId: user.id,
       title: title || '未命名简历',
-      template: template || 'classic',
       language: language || 'zh',
       ...(themeConfig ? { themeConfig } : {}),
     });

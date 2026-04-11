@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import { BrandLogo } from '@/components/layout/brand-logo';
 import { Link } from '@/i18n/routing';
 
 export default function AuthLayout({
@@ -34,7 +34,7 @@ export default function AuthLayout({
       {/* Logo - top left */}
       <div className="absolute left-6 top-6 z-20">
         <Link href="/" className="transition-opacity hover:opacity-80">
-          <Image src="/logo.svg" alt="JadeAI" width={100} height={30} />
+          <BrandLogo iconSize={24} textClassName="text-sm font-semibold tracking-[0.16em]" />
         </Link>
       </div>
 

@@ -3,16 +3,13 @@
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/routing';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Copy, Trash2, MoreVertical, Share2, Pencil } from 'lucide-react';
+import { Copy, Trash2, MoreVertical, Pencil, FileText } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import { TemplateThumbnail } from './template-thumbnail';
-import { templateLabelsMap as templateLabelKeys } from '@/lib/template-labels';
 import type { Resume } from '@/types/resume';
 
 interface ResumeCardProps {
@@ -20,10 +17,9 @@ interface ResumeCardProps {
   onDelete: () => void;
   onDuplicate: () => void;
   onRename: (title: string) => void;
-  onShare?: () => void;
 }
 
-export function ResumeCard({ resume, onDelete, onDuplicate, onRename, onShare }: ResumeCardProps) {
+export function ResumeCard({ resume, onDelete, onDuplicate, onRename }: ResumeCardProps) {
   const t = useTranslations();
   const router = useRouter();
   const [isRenaming, setIsRenaming] = useState(false);
@@ -78,23 +74,15 @@ export function ResumeCard({ resume, onDelete, onDuplicate, onRename, onShare }:
       }
     });
   }, []);
-
-  const labelKey = templateLabelKeys[resume.template] || 'dashboard.templateClassic';
-  const templateLabel = t(labelKey);
-
   return (
     <div
       className={`group relative overflow-hidden rounded-xl border border-zinc-200 bg-white transition-all duration-200 dark:border-zinc-700/60 dark:bg-card ${isRenaming ? '' : 'cursor-pointer hover:shadow-lg hover:-translate-y-0.5'}`}
       onClick={() => { if (!renamingRef.current) router.push(`/editor/${resume.id}`); }}
     >
-      {/* Template preview thumbnail */}
-      <div className="relative border-b border-zinc-100 bg-zinc-50 p-2.5 dark:border-zinc-700/40 dark:bg-zinc-800/50">
-        <TemplateThumbnail
-          template={resume.template}
-          className="mx-auto h-[100px] w-[71px] shadow-sm ring-1 ring-zinc-200/60"
-        />
-        {/* Hover overlay with actions */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-all duration-200 group-hover:bg-black/5 dark:group-hover:bg-white/5" />
+      <div className="border-b border-zinc-100 bg-zinc-50 p-5 dark:border-zinc-700/40 dark:bg-zinc-800/50">
+        <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-zinc-200 bg-white text-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-600">
+          <FileText className="h-10 w-10" />
+        </div>
       </div>
 
       {/* Info section */}
@@ -120,17 +108,12 @@ export function ResumeCard({ resume, onDelete, onDuplicate, onRename, onShare }:
                 {resume.title}
               </h3>
             )}
-            <div className="mt-1.5 flex items-center gap-1.5">
-              <Badge variant="secondary" className="text-[11px] px-1.5 py-0">
-                {templateLabel}
-              </Badge>
-              <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                {resume.updatedAt
-                  ? t('dashboard.lastEdited', {
-                      date: new Date(resume.updatedAt).toLocaleDateString(),
-                    })
-                  : ''}
-              </span>
+            <div className="mt-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
+              {resume.updatedAt
+                ? t('dashboard.lastEdited', {
+                    date: new Date(resume.updatedAt).toLocaleDateString(),
+                  })
+                : ''}
             </div>
           </div>
           <DropdownMenu>
@@ -161,18 +144,6 @@ export function ResumeCard({ resume, onDelete, onDuplicate, onRename, onShare }:
                 <Copy className="mr-2 h-4 w-4" />
                 {t('common.duplicate')}
               </DropdownMenuItem>
-              {onShare && (
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onShare();
-                  }}
-                >
-                  <Share2 className="mr-2 h-4 w-4" />
-                  {t('share.title')}
-                </DropdownMenuItem>
-              )}
               <DropdownMenuItem
                 className="cursor-pointer text-red-600"
                 onClick={(e) => {

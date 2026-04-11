@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { Settings, Cpu, Paintbrush, PenTool, Eye, EyeOff, Sun, Moon, Monitor, ChevronsUpDown, Check, Loader2 } from 'lucide-react';
 import {
@@ -28,7 +27,6 @@ import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useUIStore } from '@/stores/ui-store';
 import { useSettingsStore, getAIHeaders, type AIProvider } from '@/stores/settings-store';
-import { useTourStore } from '@/stores/tour-store';
 import { usePathname, useRouter } from '@/i18n/routing';
 import { locales, localeNames } from '@/i18n/config';
 import { cn } from '@/lib/utils';
@@ -63,8 +61,6 @@ export function SettingsDialog() {
     hydrate,
     _hydrated,
   } = useSettingsStore();
-
-  const startTour = useTourStore((s) => s.startTour);
   const [showApiKey, setShowApiKey] = useState(false);
   const isOpen = activeModal === 'settings';
 
@@ -381,26 +377,6 @@ export function SettingsDialog() {
                 <span>0.3s</span>
                 <span>5.0s</span>
               </div>
-            </div>
-            <Separator />
-
-            {/* Restart Tour */}
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>{t('editorTab.restartTour')}</Label>
-                <p className="text-xs text-zinc-400">{t('editorTab.restartTourDescription')}</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="cursor-pointer"
-                onClick={() => {
-                  closeModal();
-                  setTimeout(() => startTour('editor', 5), 300);
-                }}
-              >
-                {t('editorTab.restartTour')}
-              </Button>
             </div>
           </TabsContent>
         </Tabs>

@@ -1,4 +1,4 @@
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { db } from '../index';
 import { resumes, resumeSections } from '../schema';
 
@@ -14,19 +14,20 @@ export const resumeRepository = {
     return { ...resume[0], sections };
   },
 
-  async create(data: { userId: string; title?: string; template?: string; language?: string }) {
+  async create(data: { userId: string; title?: string; language?: string; themeConfig?: unknown }) {
     const id = crypto.randomUUID();
     await db.insert(resumes).values({
       id,
       userId: data.userId,
       title: data.title || '未命名简历',
-      template: data.template || 'classic',
+      template: 'classic',
       language: data.language || 'zh',
+      ...(data.themeConfig ? { themeConfig: data.themeConfig } : {}),
     });
     return this.findById(id);
   },
 
-  async update(id: string, data: Partial<{ title: string; template: string; themeConfig: unknown; language: string }>) {
+  async update(id: string, data: Partial<{ title: string; themeConfig: unknown; language: string }>) {
     await db.update(resumes).set({ ...data, updatedAt: new Date() } as any).where(eq(resumes.id, id));
     return this.findById(id);
   },
@@ -44,7 +45,7 @@ export const resumeRepository = {
       id: newId,
       userId,
       title: titleOverride ?? `${original.title} (副本)`,
-      template: original.template,
+      template: 'classic',
       themeConfig: original.themeConfig,
       language: original.language,
     });
@@ -63,23 +64,6 @@ export const resumeRepository = {
 
     return this.findById(newId);
   },
-
-  // Share operations
-  async findByShareToken(token: string) {
-    const resume = await db.select().from(resumes).where(eq(resumes.shareToken, token)).limit(1);
-    if (!resume[0]) return null;
-    const sections = await db.select().from(resumeSections).where(eq(resumeSections.resumeId, resume[0].id)).orderBy(resumeSections.sortOrder);
-    return { ...resume[0], sections };
-  },
-
-  async incrementViewCount(id: string) {
-    await db.update(resumes).set({ viewCount: sql`${resumes.viewCount} + 1` } as any).where(eq(resumes.id, id));
-  },
-
-  async updateShareSettings(id: string, settings: { isPublic?: boolean; shareToken?: string | null; sharePassword?: string | null }) {
-    await db.update(resumes).set({ ...settings, updatedAt: new Date() } as any).where(eq(resumes.id, id));
-  },
-
   // Section operations
   async createSection(data: { id?: string; resumeId: string; type: string; title: string; sortOrder: number; visible?: boolean; content?: unknown }) {
     const id = data.id || crypto.randomUUID();

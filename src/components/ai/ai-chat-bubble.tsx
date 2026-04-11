@@ -202,7 +202,6 @@ export function AIChatBubble({ resumeId }: AIChatBubbleProps) {
           </div>
         )}
         <button
-          data-tour="ai-chat"
           className="relative flex h-14 w-14 cursor-grab items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-hover text-white shadow-lg transition-transform hover:scale-110 active:cursor-grabbing active:scale-95"
           onMouseDown={onBubbleMouseDown}
           onClick={onBubbleClick}

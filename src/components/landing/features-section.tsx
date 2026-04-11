@@ -4,28 +4,21 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Sparkles,
-  Layout,
   GripVertical,
   ArrowDownUp,
-  Share2,
   FileSearch,
   Languages,
   FileText,
   SpellCheck,
-  Mic,
   Upload,
   Download,
-  type LucideIcon,
 } from 'lucide-react';
 
 const FEATURES = [
   { key: 'aiChat', icon: Sparkles },
-  { key: 'templates', icon: Layout },
   { key: 'dragDrop', icon: GripVertical },
   { key: 'export', icon: ArrowDownUp },
-  { key: 'sharing', icon: Share2 },
   { key: 'jdMatch', icon: FileSearch },
-  { key: 'mockInterview', icon: Mic },
   { key: 'translate', icon: Languages },
   { key: 'coverLetter', icon: FileText },
   { key: 'grammarCheck', icon: SpellCheck },
@@ -59,37 +52,6 @@ function DemoAiChat() {
           <span className="h-2 w-2 rounded-full bg-zinc-400" style={{ animation: 'demo-typing-dot 1.4s infinite 0.4s' }} />
         </div>
       </div>
-    </div>
-  );
-}
-
-function DemoTemplates() {
-  return (
-    <div className="flex h-full items-center justify-center gap-4 p-6">
-      {[
-        { bg: 'linear-gradient(135deg, #1a1a2e, #0f3460)', label: 'Modern' },
-        { bg: 'linear-gradient(135deg, #7c3aed, #f97316)', label: 'Creative' },
-        { bg: '#2d3436', label: 'Executive' },
-      ].map((tpl, i) => (
-        <div
-          key={tpl.label}
-          className="relative w-28 rounded-lg border border-zinc-200 bg-white shadow-lg transition-transform dark:border-zinc-700 dark:bg-zinc-800"
-          style={{
-            animation: `demo-slide-up 0.4s ease-out ${i * 0.15}s both`,
-            transform: i === 1 ? 'scale(1.08)' : 'scale(0.95)',
-          }}
-        >
-          <div className="h-8 rounded-t-lg" style={{ background: tpl.bg }} />
-          <div className="space-y-1.5 p-2">
-            <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
-            <div className="h-1 w-full rounded-full bg-zinc-200 dark:bg-zinc-700" />
-            <div className="h-1 w-4/5 rounded-full bg-zinc-200 dark:bg-zinc-700" />
-            <div className="h-1 w-full rounded-full bg-zinc-200 dark:bg-zinc-700" />
-            <div className="h-1 w-3/5 rounded-full bg-zinc-200 dark:bg-zinc-700" />
-          </div>
-          <div className="px-2 pb-2 text-center text-[10px] font-medium text-zinc-500 dark:text-zinc-400">{tpl.label}</div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -176,43 +138,6 @@ function DemoExport() {
           </span>
           <span className="text-[10px] text-zinc-400">Import</span>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function DemoSharing() {
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-      {/* URL bar */}
-      <div
-        className="flex w-72 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
-        style={{ animation: 'demo-slide-up 0.4s ease-out both' }}
-      >
-        <Share2 className="h-4 w-4 shrink-0 text-zinc-400" />
-        <span className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-          jadeai.app/share/a3f8k2...
-        </span>
-        <span
-          className="ml-auto shrink-0 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-600 dark:bg-green-950 dark:text-green-400"
-          style={{ animation: 'demo-check-pop 0.5s ease-out 0.8s both' }}
-        >
-          Copied!
-        </span>
-      </div>
-      {/* Stats */}
-      <div
-        className="flex items-center gap-6 text-xs text-zinc-500 dark:text-zinc-400"
-        style={{ animation: 'demo-slide-up 0.4s ease-out 0.4s both' }}
-      >
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
-          128 views
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2 w-2 rounded-full bg-yellow-400" />
-          Password protected
-        </span>
       </div>
     </div>
   );
@@ -367,62 +292,11 @@ function DemoGrammarCheck() {
   );
 }
 
-function DemoMockInterview() {
-  return (
-    <div className="flex h-full flex-col justify-center gap-3 p-6">
-      {/* Interviewer card */}
-      <div
-        className="flex items-center gap-3 rounded-xl border border-brand-muted bg-brand-muted/50 p-3 dark:border-brand-muted dark:bg-brand-muted"
-        style={{ animation: 'demo-slide-up 0.4s ease-out both' }}
-      >
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-brand-hover text-sm font-bold text-white">
-          李
-        </div>
-        <div>
-          <div className="text-xs font-semibold">李雯 · HR总监</div>
-          <div className="text-[10px] text-zinc-400">温和友善，关注动机与匹配度</div>
-        </div>
-      </div>
-      {/* Interviewer question */}
-      <div style={{ animation: 'demo-slide-up 0.4s ease-out 0.5s both' }}>
-        <div className="max-w-[85%] rounded-r-2xl border-l-[3px] border-brand bg-white px-3 py-2 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-          能分享一下是什么契机让你决定从前端转向 AI 方向？
-        </div>
-      </div>
-      {/* User answer */}
-      <div className="flex justify-end" style={{ animation: 'demo-slide-up 0.4s ease-out 1s both' }}>
-        <div className="max-w-[70%] rounded-2xl rounded-tr-none bg-gradient-to-br from-zinc-900 to-zinc-800 px-3 py-2 text-xs text-white">
-          看到 AI 在提效方面的巨大潜力...
-        </div>
-      </div>
-      {/* Wave thinking */}
-      <div className="flex items-center gap-2" style={{ animation: 'demo-slide-up 0.4s ease-out 1.5s both' }}>
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-brand-hover text-[10px] font-bold text-white">
-          李
-        </div>
-        <div className="flex items-end gap-[2px]">
-          {[0, 0.15, 0.3, 0.45, 0.6].map((d, i) => (
-            <span
-              key={i}
-              className="inline-block w-[2.5px] rounded-sm bg-brand"
-              style={{ height: '10px', animation: `thinkingWave 1.2s ease-in-out ${d}s infinite`, opacity: i % 2 === 0 ? 1 : 0.5 }}
-            />
-          ))}
-          <span className="ml-1 text-[10px] text-zinc-400">思考中...</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 const DEMO_MAP: Record<string, React.FC> = {
   aiChat: DemoAiChat,
-  templates: DemoTemplates,
   dragDrop: DemoDragDrop,
   export: DemoExport,
-  sharing: DemoSharing,
   jdMatch: DemoJdMatch,
-  mockInterview: DemoMockInterview,
   translate: DemoTranslate,
   coverLetter: DemoCoverLetter,
   grammarCheck: DemoGrammarCheck,

@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "JadeAI",
+    "appName": "resumer",
     "save": "保存",
     "cancel": "取消",
     "delete": "删除",
@@ -27,7 +27,7 @@
     "nav": "工作台",
     "title": "我的简历",
     "createResume": "新建简历",
-    "createResumeDescription": "从空白模板开始创建新简历",
+    "createResumeDescription": "从空白简历开始创建",
     "resumeCount": "共 {count} 份简历",
     "lastEdited": "最后编辑于 {date}",
     "deleteConfirm": "确定要删除「{title}」吗？此操作不可恢复。",
@@ -50,7 +50,6 @@
     "templateCreative": "创意",
     "templateAts": "ATS",
     "aiGenerate": "AI 生成",
-    "linkedinPhoto": "领英照",
     "importJson": "导入 JSON",
     "templateAcademic": "学术",
     "templateElegant": "优雅",
@@ -96,7 +95,7 @@
     "templateRibbon": "缎带",
     "templateMosaic": "马赛克",
     "upload": {
-      "fromTemplate": "从模板创建",
+      "fromTemplate": "空白简历",
       "fromFile": "上传文件",
       "dropzone": "拖拽简历文件到此处",
       "acceptedTypes": "PDF、PNG、JPG、WebP（最大 10MB）",
@@ -118,7 +117,7 @@
       "export": "导出",
       "template": "切换模板",
       "settings": "设置",
-      "theme": "主题",
+      "theme": "样式",
       "autoSaved": "已自动保存",
       "saving": "保存中...",
       "unsaved": "未保存",
@@ -293,7 +292,7 @@
     }
   },
   "themeEditor": {
-    "title": "主题编辑",
+    "title": "样式编辑",
     "reset": "重置主题",
     "templateSection": "切换模板",
     "presets": "预设主题",
@@ -487,7 +486,7 @@
     "description": "导入之前导出的 JSON 文件，替换当前简历内容",
     "dashboardDescription": "导入之前导出的 JSON 文件，创建新简历",
     "selectFile": "点击选择或拖拽 .json 文件到此处",
-    "dragHint": "支持从 JadeAI 导出的 .json 文件",
+    "dragHint": "支持从 resumer 导出的 .json 文件",
     "importing": "导入中...",
     "success": "导入成功！",
     "error": "导入失败，请重试。",
@@ -684,7 +683,7 @@
     },
     "cta": {
       "title": "准备好打造你的最佳简历了吗？",
-      "subtitle": "已有数千名求职者通过 JadeAI 收获面试机会。无需注册，即刻开始。",
+      "subtitle": "已有数千名求职者通过 resumer 收获面试机会。无需注册，即刻开始。",
       "button": "立即创建简历"
     },
     "footer": {
@@ -708,55 +707,8 @@
         "terms": "服务条款",
         "cookies": "Cookie 政策"
       },
-      "copyright": "© {year} JadeAI. 保留所有权利。"
+      "copyright": "© {year} resumer. 保留所有权利。"
     }
-  },
-  "linkedinPhoto": {
-    "title": "AI 领英职业照",
-    "subtitle": "上传自拍，一键生成专业领英头像",
-    "apiKey": "Gemini API Key",
-    "apiKeyPlaceholder": "输入你的 Gemini API Key...",
-    "apiKeyHint": "API Key 保存在本地浏览器，不会上传到服务器。",
-    "showKey": "显示",
-    "hideKey": "隐藏",
-    "uploadTitle": "上传自拍照",
-    "uploadHint": "拖拽或点击上传，支持 JPG、PNG（最大 5MB）",
-    "uploadButton": "选择照片",
-    "changePhoto": "更换照片",
-    "orDivider": "或",
-    "takeSelfie": "拍摄自拍",
-    "capture": "拍照",
-    "retake": "重拍",
-    "useSelfie": "使用这张",
-    "cameraError": "无法访问摄像头，请检查权限设置",
-    "cameraLoading": "正在启动摄像头...",
-    "promptTitle": "生成提示词",
-    "promptDefault": "Transform this casual selfie into a polished, corporate-grade LinkedIn headshot.\n\nIdentity preservation: Maintain the subject's exact facial structure, skin tone, eye color, hair color and style, and all distinguishing features — the result must be unmistakably the same person.\n\nLighting: Simulate a three-point studio setup — soft key light at 45° camera-left, gentle fill light camera-right, and a subtle rim/hair light to separate the subject from the background. Avoid harsh shadows or blown-out highlights.\n\nBackground: Clean, slightly out-of-focus neutral gradient (light grey to soft blue-grey). No distracting elements.\n\nComposition: Tight head-and-shoulders crop, subject centered, eyes at upper-third line. Slight 10-15° body angle toward camera-left with face turned back toward camera for a natural editorial feel.\n\nAttire & grooming: Refine clothing to appear neat and professional. Smooth minor skin blemishes while preserving natural skin texture — do not over-retouch.\n\nTechnical quality: Ultra-sharp focus on the eyes, shallow depth of field (f/2.8 equivalent), no chromatic aberration, no noise. Output resolution should match or exceed the input image.\n\nMood: Confident, approachable, and trustworthy — appropriate for senior professional or executive branding.",
-    "promptExpand": "编辑提示词",
-    "promptCollapse": "收起",
-    "requirements": "额外要求",
-    "requirementsPlaceholder": "例如：穿深色西装、蓝色背景、微笑...",
-    "generate": "生成领英照",
-    "generating": "AI 正在生成中...",
-    "generatingHint": "通常需要 10-30 秒",
-    "resultTitle": "生成结果",
-    "resultPlaceholder": "生成的领英照将在此显示",
-    "resultPlaceholderHint": "上传自拍照并点击生成",
-    "download": "下载图片",
-    "regenerate": "重新生成",
-    "setAsAvatar": "设为简历头像",
-    "setAsAvatarSuccess": "已设为简历头像",
-    "setAsAvatarNoResume": "请先创建一份简历",
-    "selectResume": "选择简历",
-    "selectResumePlaceholder": "选择要设置头像的简历",
-    "noResumes": "暂无简历",
-    "imageSize": "生成尺寸",
-    "errorNoApiKey": "请先输入 Gemini API Key",
-    "errorNoImage": "请先上传一张自拍照",
-    "errorGenerate": "生成失败，请重试",
-    "errorInvalidKey": "API Key 无效，请检查后重试",
-    "errorSafety": "图片未通过内容安全审核，请更换照片重试",
-    "back": "返回工作台"
   },
   "publicView": {
     "title": "共享简历",
@@ -765,7 +717,7 @@
     "submit": "查看简历",
     "invalidPassword": "密码错误，请重试。",
     "notFound": "此简历不存在或已被删除。",
-    "viewOnJadeAI": "前往 JadeAI"
+    "viewOnJadeAI": "前往 resumer"
   },
   "interview": {
     "nav": "面试模拟",

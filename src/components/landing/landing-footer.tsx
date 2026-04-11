@@ -1,7 +1,7 @@
 import { useTranslations } from 'next-intl';
-import Image from 'next/image';
 import { Link } from '@/i18n/routing';
 import { Github } from 'lucide-react';
+import { BrandLogo } from '@/components/layout/brand-logo';
 
 export function LandingFooter() {
   const t = useTranslations('landing.footer');
@@ -12,7 +12,6 @@ export function LandingFooter() {
       titleKey: 'product.title' as const,
       links: [
         { key: 'product.features' as const, href: '#features' },
-        { key: 'product.templates' as const, href: '/templates' },
       ],
     },
     {
@@ -38,7 +37,7 @@ export function LandingFooter() {
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
             {/* Brand column */}
             <div className="sm:col-span-2 lg:col-span-1">
-              <Image src="/logo.svg" alt="JadeAI" width={100} height={30} />
+              <BrandLogo iconSize={24} textClassName="text-sm font-semibold tracking-[0.16em]" />
               <p className="mt-4 max-w-xs text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
                 AI-powered resume builder
               </p>

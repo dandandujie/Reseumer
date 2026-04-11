@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/routing';
-import { ArrowLeft, Undo2, Redo2, Download, Upload, Settings, Palette, Save, FileSearch, Languages, FileText, SpellCheck, Share2, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Undo2, Redo2, Download, Upload, Settings, Palette, Save, FileSearch, Languages, FileText, SpellCheck, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -101,7 +101,6 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
         {/* Desktop: show all secondary buttons */}
         <div className="hidden items-center gap-1 md:flex">
           <Button
-            data-tour="export"
             variant="ghost"
             size="sm"
             onClick={() => openModal('export')}
@@ -121,17 +120,6 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
             <Upload className="h-4 w-4" />
             <span className="ml-1 text-xs hidden sm:inline">{t('import')}</span>
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => openModal('share')}
-            className="cursor-pointer"
-            title={t('share')}
-          >
-            <Share2 className="h-4 w-4" />
-            <span className="ml-1 text-xs hidden sm:inline">{t('share')}</span>
-          </Button>
-          <Separator orientation="vertical" className="h-6" />
           <Button
             variant="ghost"
             size="sm"
@@ -201,10 +189,6 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
                 <Upload className="mr-2 h-4 w-4" />
                 {t('import')}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openModal('share')}>
-                <Share2 className="mr-2 h-4 w-4" />
-                {t('share')}
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => openModal('jd-analysis')}>
                 <FileSearch className="mr-2 h-4 w-4" />
                 {t('jdAnalysis')}
@@ -232,7 +216,6 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
         {/* Primary: theme toggle — always visible */}
         <Separator orientation="vertical" className="hidden h-6 sm:block" />
         <Button
-          data-tour="theme"
           variant={showThemeEditor ? 'secondary' : 'ghost'}
           size="icon"
           onClick={toggleThemeEditor}

@@ -10,8 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import { templateLabelsMap as templateLabelKeys } from '@/lib/template-labels';
 import type { Resume } from '@/types/resume';
 
 interface ResumeListItemProps {
@@ -75,10 +73,6 @@ export function ResumeListItem({ resume, onDelete, onDuplicate, onRename }: Resu
       }
     });
   }, []);
-
-  const labelKey = templateLabelKeys[resume.template] || 'dashboard.templateClassic';
-  const templateLabel = t(labelKey);
-
   return (
     <div
       className={`group flex items-center gap-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 transition-all duration-200 dark:border-zinc-700/60 dark:bg-card ${isRenaming ? '' : 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'}`}
@@ -106,12 +100,6 @@ export function ResumeListItem({ resume, onDelete, onDuplicate, onRename }: Resu
           </h3>
         )}
       </div>
-
-      {/* Template badge */}
-      <Badge variant="secondary" className="shrink-0 text-[11px] px-1.5 py-0">
-        {templateLabel}
-      </Badge>
-
       {/* Last edited */}
       <span className="hidden shrink-0 text-[12px] text-zinc-400 sm:inline dark:text-zinc-500">
         {resume.updatedAt

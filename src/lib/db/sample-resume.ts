@@ -12,7 +12,7 @@ export async function createSampleResume(userId: string) {
     id: resumeId,
     userId,
     title: '示例简历 - Sample Resume',
-    template: 'modern',
+    template: 'classic',
     language: 'zh',
   });
 
@@ -142,8 +142,8 @@ export async function createSampleResume(userId: string) {
         items: [
           {
             id: crypto.randomUUID(),
-            name: 'JadeAI 简历助手',
-            url: 'https://github.com/example/jadeai',
+            name: 'resumer 简历助手',
+            url: 'https://github.com/example/resumer',
             startDate: '2024-10',
             endDate: '2025-02',
             description: '基于 AI 的智能简历生成与优化工具，支持多模板、实时预览和 AI 对话式编辑。',

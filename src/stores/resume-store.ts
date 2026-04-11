@@ -18,7 +18,6 @@ interface ResumeStore {
   removeSection: (sectionId: string) => void;
   reorderSections: (sections: ResumeSection[]) => void;
   toggleSectionVisibility: (sectionId: string) => void;
-  setTemplate: (template: string) => void;
   setTitle: (title: string) => void;
   save: () => Promise<void>;
   _scheduleSave: () => void;
@@ -140,16 +139,6 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
     get()._scheduleSave();
   },
 
-  setTemplate: (template) => {
-    set((state) => ({
-      currentResume: state.currentResume
-        ? { ...state.currentResume, template }
-        : null,
-      isDirty: true,
-    }));
-    get()._scheduleSave();
-  },
-
   setTitle: (title) => {
     set((state) => ({
       currentResume: state.currentResume
@@ -178,7 +167,6 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
         },
         body: JSON.stringify({
           title: currentResume.title,
-          template: currentResume.template,
           themeConfig: currentResume.themeConfig,
           sections: sections.map((s, i) => ({
             id: s.id,

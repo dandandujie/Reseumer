@@ -96,7 +96,6 @@ export function ImportDialog({ open, onOpenChange, resumeId }: ImportDialogProps
       setResume({
         ...currentResume,
         title: data.title ?? currentResume.title,
-        template: data.template ?? currentResume.template,
         themeConfig: data.themeConfig ?? currentResume.themeConfig,
         sections: data.sections,
       });

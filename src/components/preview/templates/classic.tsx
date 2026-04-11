@@ -13,9 +13,15 @@ import type {
   CustomContent,
   GitHubContent,
 } from '@/types/resume';
-import { isSectionEmpty, md, degreeField } from '../utils';
+import { isSectionEmpty, md } from '../utils';
 import { AvatarImage } from '../avatar-image';
 import { QrCodesPreview } from '../qr-codes-preview';
+
+function getDateRange(startDate?: string, endDate?: string | null, presentLabel = 'Present') {
+  if (!startDate) return '';
+  const tail = endDate || presentLabel;
+  return tail ? `${startDate} - ${tail}` : startDate;
+}
 
 export function ClassicTemplate({ resume }: { resume: Resume }) {
   const personalInfo = resume.sections.find((s) => s.type === 'personal_info');
@@ -80,13 +86,19 @@ function SectionContent({ section, lang }: { section: any; lang?: string }) {
       <div className="space-y-3">
         {items.map((item: any) => (
           <div key={item.id}>
-            <div className="flex items-baseline justify-between">
-              <div>
-                <span className="font-semibold text-zinc-800 text-sm">{item.position}</span>
-                {item.company && <span className="text-sm text-zinc-600"> at {item.company}</span>}
-                {item.location && <span className="text-sm text-zinc-400"> , {item.location}</span>}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3">
+              <div className="min-w-0">
+                <span className="text-sm font-semibold text-zinc-800">{item.position}</span>
               </div>
-              <span className="text-xs text-zinc-400">{item.startDate} - {item.endDate || (item.current ? (lang === 'zh' ? '至今' : 'Present') : '')}</span>
+              <div className="min-w-0 text-center">
+                {item.company && <span className="text-sm font-semibold text-zinc-800">{item.company}</span>}
+                {item.location && <div className="text-xs text-zinc-400">{item.location}</div>}
+              </div>
+              <div className="min-w-0 text-right">
+                <span className="text-xs font-semibold text-zinc-500">
+                  {getDateRange(item.startDate, item.endDate, item.current ? (lang === 'zh' ? '至今' : 'Present') : '')}
+                </span>
+              </div>
             </div>
             {item.description && <p className="mt-1 text-sm text-zinc-600" dangerouslySetInnerHTML={{ __html: md(item.description) }} />}
             {item.technologies?.length > 0 && (
@@ -113,11 +125,14 @@ function SectionContent({ section, lang }: { section: any; lang?: string }) {
           <div key={item.id}>
             <div className="flex items-baseline justify-between">
               <div>
-                <span className="font-semibold text-zinc-800 text-sm">{degreeField(item.degree, item.field)}</span>
-                {item.institution && <span className="text-sm text-zinc-600"> - {item.institution}</span>}
+                <span className="text-sm font-semibold text-zinc-800">
+                  {[item.institution, item.field, item.degree].filter(Boolean).join(' - ')}
+                </span>
                 {item.location && <span className="text-sm text-zinc-400"> , {item.location}</span>}
               </div>
-              <span className="text-xs text-zinc-400">{item.startDate} - {item.endDate || (lang === 'zh' ? '至今' : 'Present')}</span>
+              <span className="text-xs font-semibold text-zinc-500">
+                {getDateRange(item.startDate, item.endDate, lang === 'zh' ? '至今' : 'Present')}
+              </span>
             </div>
             {item.gpa && <p className="text-sm text-zinc-500">GPA: {item.gpa}</p>}
             {item.highlights?.length > 0 && (
@@ -156,8 +171,8 @@ function SectionContent({ section, lang }: { section: any; lang?: string }) {
             <div className="flex items-baseline justify-between">
               <span className="font-semibold text-zinc-800 text-sm">{item.name}</span>
               {item.startDate && (
-                <span className="text-xs text-zinc-400">
-                  {item.startDate} - {item.endDate || (lang === 'zh' ? '至今' : 'Present')}
+                <span className="text-xs font-semibold text-zinc-500">
+                  {getDateRange(item.startDate, item.endDate, lang === 'zh' ? '至今' : 'Present')}
                 </span>
               )}
             </div>

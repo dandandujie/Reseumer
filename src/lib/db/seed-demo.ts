@@ -18,7 +18,7 @@ export async function seedDemoUser(db: any) {
     id: resumeId,
     userId,
     title: '示例简历 - 陈思远',
-    template: 'modern',
+    template: 'classic',
     language: 'zh',
   });
 
@@ -148,15 +148,15 @@ export async function seedDemoUser(db: any) {
         items: [
           {
             id: crypto.randomUUID(),
-            name: 'JadeAI 简历助手',
-            url: 'https://github.com/example/jadeai',
+            name: 'resumer 简历助手',
+            url: 'https://github.com/example/resumer',
             startDate: '2024-10',
             endDate: '2025-02',
-            description: '基于 AI 的智能简历生成与优化工具，支持多模板、实时预览和 AI 对话式编辑。',
+            description: '基于 AI 的智能简历生成与优化工具，支持实时预览和 AI 对话式编辑。',
             technologies: ['Next.js', 'React 19', 'Tailwind CSS', 'Vercel AI SDK'],
             highlights: [
               '使用 AI SDK 实现流式对话与简历内容自动填充',
-              '设计三套专业简历模板，支持实时预览与 PDF 导出',
+              '打通实时预览与 PDF 导出流程，缩短投递准备时间',
             ],
           },
         ],

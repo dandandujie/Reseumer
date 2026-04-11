@@ -1,9 +1,9 @@
 'use client';
 
-import Image from 'next/image';
 import { Settings, Menu } from 'lucide-react';
 import { LocaleSwitcher } from './locale-switcher';
 import { UserMenu } from './user-menu';
+import { BrandLogo } from './brand-logo';
 import { Link, usePathname } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -11,10 +11,8 @@ import { useUIStore } from '@/stores/ui-store';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
-const NAV_ITEMS: { href: string; i18nKey: string; match: string; tourId?: string }[] = [
+const NAV_ITEMS: { href: string; i18nKey: string; match: string }[] = [
   { href: '/dashboard', i18nKey: 'dashboard.nav', match: '/dashboard' },
-  { href: '/templates', i18nKey: 'templates.nav', match: '/templates', tourId: 'dash-templates' },
-  { href: '/interview', i18nKey: 'interview.nav', match: '/interview' },
 ];
 
 export function Header() {
@@ -26,8 +24,8 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-background/95 dark:supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
         <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="flex items-center gap-1">
-            <Image src="/logo.svg" alt="JadeAI" width={120} height={36} priority />
+          <Link href="/dashboard" className="transition-opacity hover:opacity-80">
+            <BrandLogo priority textClassName="text-sm font-semibold tracking-[0.16em]" />
           </Link>
           <nav className="hidden md:flex items-center gap-1">
             {NAV_ITEMS.map((item) => {
@@ -36,7 +34,6 @@ export function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  data-tour={item.tourId}
                   className={cn(
                     'relative rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                     isActive
@@ -81,7 +78,6 @@ export function Header() {
                       <Link
                         key={item.href}
                         href={item.href}
-                        data-tour={item.tourId}
                         className={cn(
                           'rounded-md px-3 py-2 text-sm font-medium transition-colors',
                           isActive

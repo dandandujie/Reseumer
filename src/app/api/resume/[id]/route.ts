@@ -50,13 +50,12 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, template, themeConfig, sections } = body;
+    const { title, themeConfig, sections } = body;
 
     // Update resume metadata
-    if (title || template || themeConfig) {
+    if (title || themeConfig) {
       await resumeRepository.update(id, {
         ...(title && { title }),
-        ...(template && { template }),
         ...(themeConfig && { themeConfig }),
       });
     }

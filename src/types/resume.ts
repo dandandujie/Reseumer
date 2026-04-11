@@ -169,12 +169,15 @@ export interface ThemeConfig {
   primaryColor: string;
   accentColor: string;
   fontFamily: string;
-  fontSize: string;
+  fontSize: ThemeFontSize;
   lineSpacing: number;
   margin: { top: number; right: number; bottom: number; left: number };
   sectionSpacing: number;
   avatarStyle?: 'circle' | 'oneInch';
 }
+
+export type LegacyFontSize = 'small' | 'medium' | 'large';
+export type ThemeFontSize = number | LegacyFontSize;
 
 export interface Resume {
   id: string;

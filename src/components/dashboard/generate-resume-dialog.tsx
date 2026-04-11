@@ -14,11 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LanguageSelect } from '@/components/ui/language-select';
-import { TEMPLATES } from '@/lib/constants';
-import { TemplateThumbnail } from './template-thumbnail';
-import { templateLabelsMap } from '@/lib/template-labels';
 import { getAIHeaders } from '@/stores/settings-store';
 
 interface GenerateResumeDialogProps {
@@ -31,7 +27,6 @@ type GenerateState = 'form' | 'generating' | 'success' | 'error';
 
 export function GenerateResumeDialog({ open, onOpenChange, onCreated }: GenerateResumeDialogProps) {
   const t = useTranslations('generateResume');
-  const tGlobal = useTranslations();
   const locale = useLocale();
   const router = useRouter();
 
@@ -40,7 +35,6 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
   const [skills, setSkills] = useState('');
   const [industry, setIndustry] = useState('');
   const [experience, setExperience] = useState('');
-  const [template, setTemplate] = useState('classic');
   const [language, setLanguage] = useState(locale);
   const [state, setState] = useState<GenerateState>('form');
   const [error, setError] = useState('');
@@ -68,7 +62,6 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
             : undefined,
           industry: industry.trim() || undefined,
           experience: experience.trim() || undefined,
-          template,
           language,
         }),
       });
@@ -109,7 +102,6 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
       setSkills('');
       setIndustry('');
       setExperience('');
-      setTemplate('classic');
       setLanguage(locale);
       setError('');
       setResult(null);
@@ -193,34 +185,11 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
                 />
               </div>
 
-              {/* Row 2: Language + Template */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    {t('language')}
-                  </label>
-                  <LanguageSelect value={language} onValueChange={setLanguage} />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    {t('template')}
-                  </label>
-                  <Select value={template} onValueChange={setTemplate}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-64">
-                      {TEMPLATES.map((tpl) => (
-                        <SelectItem key={tpl} value={tpl}>
-                          <span className="flex items-center gap-2">
-                            <TemplateThumbnail template={tpl} className="h-8 w-6 shrink-0 rounded-sm ring-1 ring-zinc-200/50" />
-                            {tGlobal(templateLabelsMap[tpl])}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  {t('language')}
+                </label>
+                <LanguageSelect value={language} onValueChange={setLanguage} />
               </div>
             </>
           )}

@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "JadeAI",
+    "appName": "resumer",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -27,7 +27,7 @@
     "nav": "Dashboard",
     "title": "My Resumes",
     "createResume": "New Resume",
-    "createResumeDescription": "Start from a blank template",
+    "createResumeDescription": "Start from a blank resume",
     "resumeCount": "{count} resumes",
     "lastEdited": "Last edited {date}",
     "deleteConfirm": "Are you sure you want to delete \"{title}\"? This action cannot be undone.",
@@ -50,7 +50,6 @@
     "templateCreative": "Creative",
     "templateAts": "ATS",
     "aiGenerate": "AI Generate",
-    "linkedinPhoto": "LinkedIn Photo",
     "importJson": "Import JSON",
     "templateAcademic": "Academic",
     "templateElegant": "Elegant",
@@ -96,7 +95,7 @@
     "templateRibbon": "Ribbon",
     "templateMosaic": "Mosaic",
     "upload": {
-      "fromTemplate": "From Template",
+      "fromTemplate": "Blank Resume",
       "fromFile": "Upload File",
       "dropzone": "Drag and drop your resume here",
       "acceptedTypes": "PDF, PNG, JPG, WebP (max 10MB)",
@@ -118,7 +117,7 @@
       "export": "Export",
       "template": "Switch Template",
       "settings": "Settings",
-      "theme": "Theme",
+      "theme": "Style",
       "autoSaved": "Auto-saved",
       "saving": "Saving...",
       "unsaved": "Unsaved",
@@ -293,7 +292,7 @@
     }
   },
   "themeEditor": {
-    "title": "Theme Editor",
+    "title": "Style Editor",
     "reset": "Reset Theme",
     "templateSection": "Template",
     "presets": "Presets",
@@ -487,7 +486,7 @@
     "description": "Import a previously exported JSON file to replace current content",
     "dashboardDescription": "Import a previously exported JSON file to create a new resume",
     "selectFile": "Click to select or drag a .json file here",
-    "dragHint": "Supports .json files exported from JadeAI",
+    "dragHint": "Supports .json files exported from resumer",
     "importing": "Importing...",
     "success": "Import successful!",
     "error": "Import failed. Please try again.",
@@ -684,7 +683,7 @@
     },
     "cta": {
       "title": "Ready to Build Your Best Resume?",
-      "subtitle": "Join thousands of job seekers who have landed interviews with JadeAI. No sign-up required.",
+      "subtitle": "Join thousands of job seekers who have landed interviews with resumer. No sign-up required.",
       "button": "Create Your Resume Now"
     },
     "footer": {
@@ -708,55 +707,8 @@
         "terms": "Terms of Service",
         "cookies": "Cookie Policy"
       },
-      "copyright": "© {year} JadeAI. All rights reserved."
+      "copyright": "© {year} resumer. All rights reserved."
     }
-  },
-  "linkedinPhoto": {
-    "title": "AI LinkedIn Photo",
-    "subtitle": "Upload a selfie, generate a professional LinkedIn headshot",
-    "apiKey": "Gemini API Key",
-    "apiKeyPlaceholder": "Enter your Gemini API Key...",
-    "apiKeyHint": "API Key is stored locally in your browser, never uploaded to any server.",
-    "showKey": "Show",
-    "hideKey": "Hide",
-    "uploadTitle": "Upload Selfie",
-    "uploadHint": "Drag & drop or click to upload. JPG, PNG (max 5MB)",
-    "uploadButton": "Choose Photo",
-    "changePhoto": "Change Photo",
-    "orDivider": "or",
-    "takeSelfie": "Take Selfie",
-    "capture": "Capture",
-    "retake": "Retake",
-    "useSelfie": "Use This",
-    "cameraError": "Cannot access camera. Please check permissions.",
-    "cameraLoading": "Starting camera...",
-    "promptTitle": "Generation Prompt",
-    "promptDefault": "Transform this casual selfie into a polished, corporate-grade LinkedIn headshot.\n\nIdentity preservation: Maintain the subject's exact facial structure, skin tone, eye color, hair color and style, and all distinguishing features — the result must be unmistakably the same person.\n\nLighting: Simulate a three-point studio setup — soft key light at 45° camera-left, gentle fill light camera-right, and a subtle rim/hair light to separate the subject from the background. Avoid harsh shadows or blown-out highlights.\n\nBackground: Clean, slightly out-of-focus neutral gradient (light grey to soft blue-grey). No distracting elements.\n\nComposition: Tight head-and-shoulders crop, subject centered, eyes at upper-third line. Slight 10-15° body angle toward camera-left with face turned back toward camera for a natural editorial feel.\n\nAttire & grooming: Refine clothing to appear neat and professional. Smooth minor skin blemishes while preserving natural skin texture — do not over-retouch.\n\nTechnical quality: Ultra-sharp focus on the eyes, shallow depth of field (f/2.8 equivalent), no chromatic aberration, no noise. Output resolution should match or exceed the input image.\n\nMood: Confident, approachable, and trustworthy — appropriate for senior professional or executive branding.",
-    "promptExpand": "Edit Prompt",
-    "promptCollapse": "Collapse",
-    "requirements": "Additional Requirements",
-    "requirementsPlaceholder": "e.g., dark suit, blue background, smiling...",
-    "generate": "Generate LinkedIn Photo",
-    "generating": "AI is generating...",
-    "generatingHint": "Usually takes 10-30 seconds",
-    "resultTitle": "Result",
-    "resultPlaceholder": "Your LinkedIn photo will appear here",
-    "resultPlaceholderHint": "Upload a selfie and click Generate",
-    "download": "Download Image",
-    "regenerate": "Regenerate",
-    "setAsAvatar": "Set as Resume Avatar",
-    "setAsAvatarSuccess": "Set as resume avatar",
-    "setAsAvatarNoResume": "Please create a resume first",
-    "selectResume": "Target Resume",
-    "selectResumePlaceholder": "Select a resume",
-    "noResumes": "No resumes",
-    "imageSize": "Output Size",
-    "errorNoApiKey": "Please enter your Gemini API Key first",
-    "errorNoImage": "Please upload a selfie first",
-    "errorGenerate": "Generation failed, please try again",
-    "errorInvalidKey": "Invalid API Key, please check and try again",
-    "errorSafety": "Image did not pass content safety review, please try a different photo",
-    "back": "Back to Dashboard"
   },
   "publicView": {
     "title": "Shared Resume",
@@ -765,7 +717,7 @@
     "submit": "View Resume",
     "invalidPassword": "Invalid password. Please try again.",
     "notFound": "This resume is not available or has been removed.",
-    "viewOnJadeAI": "View on JadeAI"
+    "viewOnJadeAI": "View on resumer"
   },
   "interview": {
     "nav": "Mock Interview",

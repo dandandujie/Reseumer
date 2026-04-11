@@ -31,16 +31,17 @@ export async function GET(
 
     const format = request.nextUrl.searchParams.get('format') || 'json';
     const title = resume.title || 'resume';
+    const exportResume = { ...resume, template: 'classic' as const };
     const now = new Date();
     const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
     const filename = `${title}-${ts}`;
 
     switch (format) {
       case 'json': {
-        return NextResponse.json(resume);
+        return NextResponse.json(exportResume);
       }
       case 'html': {
-        const html = await generateHtml(resume);
+        const html = await generateHtml(exportResume);
         return new NextResponse(html, {
           status: 200,
           headers: {
@@ -50,7 +51,7 @@ export async function GET(
         });
       }
       case 'txt': {
-        const text = generatePlainText(resume);
+        const text = generatePlainText(exportResume);
         return new NextResponse(text, {
           status: 200,
           headers: {
@@ -60,7 +61,7 @@ export async function GET(
         });
       }
       case 'docx': {
-        const docxBuffer = await generateDocxBuffer(resume);
+        const docxBuffer = await generateDocxBuffer(exportResume);
         return new NextResponse(new Uint8Array(docxBuffer), {
           status: 200,
           headers: {
@@ -71,7 +72,7 @@ export async function GET(
       }
       case 'pdf': {
         const fitOnePage = request.nextUrl.searchParams.get('fitOnePage') === 'true';
-        const pdfHtml = await generateHtml(resume, true);
+        const pdfHtml = await generateHtml(exportResume, true);
         const pdfBuffer = await generatePdf(pdfHtml, { fitOnePage });
         return new NextResponse(new Uint8Array(pdfBuffer), {
           status: 200,

@@ -11,6 +11,7 @@ import type {
   GitHubContent, QrCodesContent,
 } from '@/types/resume';
 import QRCode from 'qrcode';
+import { resolveDocxEastAsiaFont, resolveDocxFontScale } from '@/lib/theme-config';
 import { type ResumeWithSections, getPersonalInfo, visibleSections, DEFAULT_THEME, safe } from './utils';
 
 // ─── Template style configuration ───────────────────────────
@@ -131,12 +132,6 @@ interface DocxTheme {
   headerInSidebar: boolean;
 }
 
-const FONT_SIZES: Record<string, { body: number; h1: number; h2: number; h3: number }> = {
-  small:  { body: 20, h1: 36, h2: 24, h3: 22 },
-  medium: { body: 22, h1: 40, h2: 26, h3: 24 },
-  large:  { body: 24, h1: 44, h2: 30, h3: 26 },
-};
-
 function strip(hex: string) { return hex.replace('#', ''); }
 
 function isDark(hex: string) {
@@ -157,7 +152,7 @@ function resolveTheme(cfg: unknown, template?: string): DocxTheme {
   if (tc?.accent && !userCfg.accentColor) base.accentColor = tc.accent;
   const t = { ...base, ...userCfg } as typeof DEFAULT_THEME;
 
-  const fs = FONT_SIZES[t.fontSize] || FONT_SIZES.medium;
+  const fs = resolveDocxFontScale(t.fontSize);
   const primary = strip(t.primaryColor);
   const accent = strip(t.accentColor);
 
@@ -188,7 +183,7 @@ function resolveTheme(cfg: unknown, template?: string): DocxTheme {
     primary, accent, secondary, headerBg, headerText, headerLight,
     headingStyle, headerAlign: tc?.headerAlign ?? 'center', itemBorder,
     fontWest: t.fontFamily || 'Calibri',
-    fontEast: 'Microsoft YaHei',
+    fontEast: resolveDocxEastAsiaFont(t.fontFamily),
     bodySize: fs.body,
     h1Size: fs.h1,
     h2Size: fs.h2,
@@ -243,6 +238,13 @@ function bullet(text: string, theme: DocxTheme): Paragraph {
 }
 
 type DocxChild = Paragraph | Table;
+
+function buildDateRange(startDate?: string | null, endDate?: string | null, presentLabel = 'Present') {
+  const start = safe(startDate);
+  if (!start) return '';
+  const tail = safe(endDate) || presentLabel;
+  return tail ? `${start} - ${tail}` : start;
+}
 
 function noBorderCell(children: (Paragraph | Table)[], width?: number): TableCell {
   return new TableCell({
@@ -512,25 +514,36 @@ function buildSummary(c: SummaryContent, title: string, theme: DocxTheme): DocxC
 function buildWorkExperience(c: WorkExperienceContent, title: string, theme: DocxTheme): DocxChild[] {
   const res: DocxChild[] = [...sectionHeading(title, theme)];
   for (const item of c.items || []) {
-    const dateStr = item.current
-      ? `${safe(item.startDate)} - Present`
-      : `${safe(item.startDate)} - ${safe(item.endDate)}`;
+    const dateStr = buildDateRange(item.startDate, item.endDate, item.current ? 'Present' : '');
 
     const itemChildren: DocxChild[] = [];
 
-    itemChildren.push(twoColRow(
-      [run(safe(item.position), theme, { bold: true, size: theme.h3Size, color: theme.primary })],
-      [run(dateStr, theme, { color: '71717a', size: theme.bodySize - 2 })],
-    ));
+    itemChildren.push(new Table({
+      borders: TableBorders.NONE,
+      rows: [new TableRow({
+        children: [
+          noBorderCell([new Paragraph({
+            children: [run(safe(item.position), theme, { bold: true, size: theme.h3Size, color: theme.primary })],
+            alignment: AlignmentType.LEFT,
+          })], 35),
+          noBorderCell([new Paragraph({
+            children: [run(safe(item.company), theme, { bold: true, size: theme.h3Size, color: theme.primary })],
+            alignment: AlignmentType.CENTER,
+          })], 30),
+          noBorderCell([new Paragraph({
+            children: [run(dateStr, theme, { bold: true, color: '71717a', size: theme.bodySize - 2 })],
+            alignment: AlignmentType.RIGHT,
+          })], 35),
+        ],
+      })],
+      width: { size: 100, type: WidthType.PERCENTAGE },
+    }));
 
-    const companyParts = [safe(item.company)];
-    if (item.location) companyParts.push(item.location);
-    if (item.company) {
-      itemChildren.push(new Paragraph({
-        children: [run(companyParts.join(' · '), theme, { color: theme.accent })],
-        spacing: { after: 60 },
-      }));
-    }
+    if (item.location) itemChildren.push(new Paragraph({
+      children: [run(item.location, theme, { color: theme.accent })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 60 },
+    }));
 
     if (item.description) itemChildren.push(bodyPara(item.description, theme, { before: 40, after: 40 }));
 
@@ -554,21 +567,16 @@ function buildWorkExperience(c: WorkExperienceContent, title: string, theme: Doc
 function buildEducation(c: EducationContent, title: string, theme: DocxTheme): DocxChild[] {
   const res: DocxChild[] = [...sectionHeading(title, theme)];
   for (const item of c.items || []) {
-    const dateStr = `${safe(item.startDate)} - ${safe(item.endDate)}`;
+    const dateStr = buildDateRange(item.startDate, item.endDate);
     const itemChildren: DocxChild[] = [];
 
     itemChildren.push(new Paragraph({
-      children: [run(safe(item.institution), theme, { bold: true, size: theme.h3Size, color: theme.primary })],
+      children: [run([safe(item.institution), safe(item.field), safe(item.degree)].filter(Boolean).join(' - '), theme, { bold: true, size: theme.h3Size, color: theme.primary })],
       spacing: { after: 40 },
     }));
 
     itemChildren.push(new Paragraph({
-      children: [run(`${safe(item.degree)}${item.field ? ` - ${item.field}` : ''}`, theme)],
-      spacing: { after: 40 },
-    }));
-
-    itemChildren.push(new Paragraph({
-      children: [run(dateStr, theme, { color: '71717a', size: theme.bodySize - 2 })],
+      children: [run(dateStr, theme, { bold: true, color: '71717a', size: theme.bodySize - 2 })],
       spacing: { after: 40 },
     }));
 
@@ -607,14 +615,14 @@ function buildSkills(c: SkillsContent, title: string, theme: DocxTheme): DocxChi
 function buildProjects(c: ProjectsContent, title: string, theme: DocxTheme): DocxChild[] {
   const res: DocxChild[] = [...sectionHeading(title, theme)];
   for (const item of c.items || []) {
-    const dateStr = item.startDate ? `${item.startDate}${item.endDate ? ` - ${item.endDate}` : ''}` : '';
+    const dateStr = buildDateRange(item.startDate, item.endDate, '');
     const itemChildren: DocxChild[] = [];
 
     const nameRuns: TextRun[] = [run(safe(item.name), theme, { bold: true, size: theme.h3Size, color: theme.primary })];
     if (item.url) nameRuns.push(run(`  ${item.url}`, theme, { color: theme.accent, size: theme.bodySize - 2 }));
     itemChildren.push(twoColRow(
       nameRuns,
-      [run(dateStr, theme, { color: '71717a', size: theme.bodySize - 2 })],
+      [run(dateStr, theme, { bold: true, color: '71717a', size: theme.bodySize - 2 })],
     ));
 
     if (item.description) itemChildren.push(bodyPara(item.description, theme, { before: 40, after: 40 }));

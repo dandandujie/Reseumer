@@ -8,7 +8,6 @@ const intlMiddleware = createMiddleware(routing);
 const PUBLIC_PATHS = [
   '/',        // Landing page
   '/login',   // Login page
-  '/share',   // Public share links
 ];
 
 function isPublicPath(pathname: string): boolean {
@@ -50,5 +49,5 @@ export default async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/(zh|en)/:path*', '/share/:path*'],
+  matcher: ['/', '/(zh|en)/:path*'],
 };

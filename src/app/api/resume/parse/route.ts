@@ -40,7 +40,6 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const template = (formData.get('template') as string) || 'classic';
     const language = (formData.get('language') as string) || 'zh';
 
     if (!file) {
@@ -131,7 +130,6 @@ export async function POST(request: NextRequest) {
     const resume = await resumeRepository.create({
       userId: user.id,
       title: resumeData.personalInfo?.fullName || '未命名简历',
-      template,
       language,
     });
 

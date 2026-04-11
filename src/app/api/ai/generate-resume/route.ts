@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { jobTitle, yearsOfExperience, skills, industry, experience, template, language } = parsed.data;
+    const { jobTitle, yearsOfExperience, skills, industry, experience, language } = parsed.data;
     const lang = language || 'zh';
 
     const aiConfig = extractAIConfig(request);
@@ -119,7 +119,6 @@ Respond with JSON only.`,
     const newResume = await resumeRepository.create({
       userId: user.id,
       title: resumeTitle,
-      template: template || 'classic',
       language: lang,
     });
 
