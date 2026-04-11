@@ -1,152 +1,138 @@
 # Reseumer
 
-Desktop-first AI resume builder built with Next.js 16, React 19, and Electron.
+一个以桌面端为优先形态的 AI 简历应用，基于 Next.js 16、React 19 和 Electron 构建。
 
-This repository is no longer the original JadeAI product. It has been narrowed into a simpler resume workflow centered on one production-ready template and desktop delivery for macOS and Windows.
+原项目链接：<https://github.com/twwch/JadeAI>
 
-[中文文档](./README.zh-CN.md)
+## 当前能做什么
 
-## What It Does
+- 在仪表盘中管理多份简历。
+- 通过拖拽和实时预览编辑简历内容。
+- 只维护一个生产模板：`classic`。
+- 导出 PDF、单页 PDF、DOCX、HTML、TXT、JSON。
+- 将 JSON 导出再次导回应用。
+- 解析已有 PDF 或图片简历，生成可编辑数据。
+- 使用 AI 聊天改简历、生成简历、生成求职信、做语法检查、做 JD 匹配分析和翻译。
+- 既可以作为 Electron 桌面应用运行，也可以作为本地 / Web 版 Next.js 应用运行。
 
-- Manage multiple resumes from a dashboard.
-- Edit resumes with drag-and-drop sections and live preview.
-- Use a single maintained template: `classic`.
-- Export resumes as PDF, one-page PDF, DOCX, HTML, TXT, or JSON.
-- Import JSON exports back into the app.
-- Parse existing PDF or image resumes into editable data.
-- Use AI for chat editing, full resume generation, cover letters, grammar checks, JD match analysis, and translation.
-- Run as an Electron desktop app or as a local/web Next.js app.
+## 当前产品范围
 
-## What Was Removed From The Upstream Project
+### 简历编辑与工作流
 
-The current product intentionally does **not** include these old upstream features:
+- 支持创建、复制、重命名、删除、导入简历。
+- 支持模块拖拽排序和行内编辑。
+- 支持颜色、间距、页边距、字体、字号等样式设置。
+- 已加入中文字体预设：`宋体`、`微软雅黑`、`楷体`、`霞鹜文楷`。
+- 预览和导出都基于同一套 `classic` 模板。
 
-- template gallery / multi-template runtime
-- resume sharing and public share pages
-- mock interview flows and reports
-- LinkedIn photo generation
-- onboarding / product tour
+### AI 能力
 
-This README documents the current codebase only.
+- 根据岗位、经验和技能生成完整简历。
+- 编辑器内 AI 聊天助手，支持历史会话。
+- 上传 PDF / 图片后解析已有简历。
+- JD 匹配分析，并保存历史记录。
+- 语法与表达检查，并保存历史记录。
+- 求职信生成。
+- 简历翻译。
+- 在应用内配置 OpenAI、Anthropic、Gemini 或兼容 OpenAI 的接口。
 
-## Current Product Scope
+### 导出与数据
 
-### Editor and Resume Workflow
+- 导出格式：`pdf`、`pdf-one-page`、`docx`、`html`、`txt`、`json`。
+- 仪表盘和编辑器都支持 JSON 导入。
+- 默认使用 SQLite，也可切换 PostgreSQL。
+- 支持中英文界面。
 
-- Dashboard for creating, duplicating, renaming, deleting, and importing resumes.
-- Drag-and-drop section ordering with inline editing.
-- Theme controls for color, spacing, margins, fonts, and font size.
-- Chinese font presets, including `宋体`, `微软雅黑`, `楷体`, and `霞鹜文楷`.
-- Real-time preview based on the same `classic` template used by export.
+### 桌面端运行方式
 
-### AI Features
+- Electron 主进程在生产环境中启动打包后的 Next.js standalone 服务。
+- 桌面模式默认走本地 SQLite，并关闭登录认证。
+- 已配置 `electron-builder`，可打 macOS / Windows 包。
 
-- AI resume generation from role, experience, and skills.
-- In-editor AI chat assistant with persistent chat sessions.
-- Resume parsing from uploaded PDF/image files.
-- JD match analysis with saved history.
-- Grammar and writing quality checks with history.
-- Cover letter generation.
-- Resume translation workflow.
-- In-app AI provider settings for OpenAI, Anthropic, Gemini, or compatible endpoints.
+## 技术栈
 
-### Export and Data
-
-- Export formats: `pdf`, `pdf-one-page`, `docx`, `html`, `txt`, `json`.
-- JSON import on the dashboard and inside the editor.
-- SQLite by default, PostgreSQL optional.
-- Chinese and English UI.
-
-### Desktop Runtime
-
-- Electron main process boots a bundled Next.js standalone server in production.
-- Desktop mode defaults to local SQLite and disables auth unless you explicitly change the runtime.
-- macOS and Windows packaging is configured through `electron-builder`.
-
-## Tech Stack
-
-| Layer | Technology |
+| 层级 | 技术 |
 | --- | --- |
-| App shell | Electron 36 |
-| Web framework | Next.js 16 App Router |
-| UI | React 19, Tailwind CSS 4, shadcn/ui, Radix UI |
-| State | Zustand |
-| Drag and drop | `@dnd-kit` |
-| Database | Drizzle ORM with SQLite or PostgreSQL |
-| Auth | NextAuth v5 with optional Google OAuth |
+| 桌面壳 | Electron 36 |
+| Web 框架 | Next.js 16 App Router |
+| UI | React 19、Tailwind CSS 4、shadcn/ui、Radix UI |
+| 状态管理 | Zustand |
+| 拖拽 | `@dnd-kit` |
+| 数据库 | Drizzle ORM + SQLite / PostgreSQL |
+| 认证 | NextAuth v5，可选 Google OAuth |
 | AI | Vercel AI SDK |
-| Supported AI providers | OpenAI, Anthropic, Gemini, OpenAI-compatible APIs |
-| Export | Puppeteer Core, DOCX |
-| i18n | next-intl |
+| AI 提供方 | OpenAI、Anthropic、Gemini、兼容 OpenAI 的接口 |
+| 导出 | Puppeteer Core、DOCX |
+| 国际化 | next-intl |
 
-## Requirements
+## 环境要求
 
-- Node.js 20+ recommended
+- 推荐 Node.js 20+
 - pnpm 9+
-- Google Chrome or Chromium for local PDF export, or set `CHROME_PATH`
+- 本地导出 PDF 时需要 Google Chrome 或 Chromium，或者手动设置 `CHROME_PATH`
 
-## Quick Start
+## 快速开始
 
-### 1. Install dependencies
+### 1. 安装依赖
 
 ```bash
 pnpm install
 ```
 
-### 2. Create local environment file
+### 2. 复制环境变量文件
 
 ```bash
 cp .env.example .env.local
 ```
 
-For desktop development, the defaults are enough in most cases.
+如果只是跑桌面开发版，默认配置通常就够用。
 
-### 3. Start the desktop app
+### 3. 启动桌面应用
 
 ```bash
 pnpm desktop:dev
 ```
 
-This starts:
+这个命令会同时启动：
 
-- Next.js dev server on `http://127.0.0.1:3000`
-- Electron desktop shell pointing at that local renderer
+- `http://127.0.0.1:3000` 上的 Next.js 开发服务器
+- 指向该本地地址的 Electron 桌面壳
 
-### 4. Or run the web app only
+### 4. 或者只启动 Web 版
 
 ```bash
 pnpm dev
 ```
 
-Open `http://localhost:3000`.
+然后打开 `http://localhost:3000`。
 
-## Environment Variables
+## 环境变量说明
 
-The app does **not** require server-side AI keys at boot. AI credentials are configured in the app settings and sent through request headers when needed.
+应用启动时不要求预先在服务端写死 AI Key。AI 密钥、Base URL、模型都在应用设置页里配置，并在调用时通过请求头传递。
 
-| Variable | Required | Default | Notes |
+| 变量 | 是否必填 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `APP_NAME` | No | `Reseumer` | Display name used by the app/runtime |
-| `AUTH_ENABLED` | No | `false` | Enable Google sign-in for web mode |
-| `AUTH_SECRET` | If auth enabled | none | Required by NextAuth when auth is enabled |
-| `GOOGLE_CLIENT_ID` | If auth enabled | none | Google OAuth |
-| `GOOGLE_CLIENT_SECRET` | If auth enabled | none | Google OAuth |
-| `DB_TYPE` | No | `sqlite` | `sqlite` or `postgresql` |
-| `DATABASE_URL` | If PostgreSQL | none | PostgreSQL connection string |
-| `SQLITE_PATH` | No | `./data/reseumer.db` | SQLite file path in web/local mode |
-| `DEFAULT_LOCALE` | No | `zh` | `zh` or `en` |
-| `CHROME_PATH` | Optional | none | Explicit Chrome/Chromium path for PDF export |
+| `APP_NAME` | 否 | `Reseumer` | 应用显示名称 |
+| `AUTH_ENABLED` | 否 | `false` | Web 模式下是否启用 Google 登录 |
+| `AUTH_SECRET` | 启用认证时必填 | 无 | NextAuth 所需 |
+| `GOOGLE_CLIENT_ID` | 启用认证时必填 | 无 | Google OAuth |
+| `GOOGLE_CLIENT_SECRET` | 启用认证时必填 | 无 | Google OAuth |
+| `DB_TYPE` | 否 | `sqlite` | `sqlite` 或 `postgresql` |
+| `DATABASE_URL` | PostgreSQL 时必填 | 无 | PostgreSQL 连接串 |
+| `SQLITE_PATH` | 否 | `./data/reseumer.db` | Web / 本地模式的 SQLite 文件路径 |
+| `DEFAULT_LOCALE` | 否 | `zh` | `zh` 或 `en` |
+| `CHROME_PATH` | 可选 | 无 | 指定本地 Chrome / Chromium 路径，用于 PDF 导出 |
 
-### Desktop-specific behavior
+### 桌面端的默认行为
 
-When launched through Electron, the app currently forces these runtime defaults unless you override them:
+通过 Electron 启动时，当前会默认使用这些运行时配置，除非你主动覆盖：
 
 - `APP_NAME=Reseumer`
 - `AUTH_ENABLED=false`
 - `DB_TYPE=sqlite`
-- `SQLITE_PATH=<app data>/reseumer.db`
+- `SQLITE_PATH=<应用数据目录>/reseumer.db`
 
-## Useful Commands
+## 常用命令
 
 ```bash
 pnpm dev
@@ -162,58 +148,57 @@ pnpm db:migrate
 pnpm db:seed
 ```
 
-## Build Desktop Packages
+## 构建桌面应用
 
-### Package without installer metadata checks
+### 生成未封装目录产物
 
 ```bash
 pnpm desktop:build:dir
 ```
 
-Outputs unpacked app bundles into `release/`.
+产物会输出到 `release/`。
 
-### Package for macOS
+### 构建 macOS 包
 
 ```bash
 pnpm desktop:build:mac
 ```
 
-### Package for Windows
+### 构建 Windows 包
 
 ```bash
 pnpm desktop:build:win
 ```
 
-## Project Structure
+## 项目结构
 
 ```text
-electron/                  Electron main/preload
-scripts/                   desktop and build helpers
-src/app/                   Next.js routes and API endpoints
-src/components/dashboard/  resume list and creation flows
-src/components/editor/     editor, dialogs, AI tools, export UI
-src/components/preview/    on-screen resume preview
-src/lib/                   database, AI, export, config utilities
-drizzle/                   database migrations
-public/                    icons and static assets
+electron/                  Electron 主进程与 preload
+scripts/                   桌面端与构建辅助脚本
+src/app/                   Next.js 页面与 API 路由
+src/components/dashboard/  仪表盘与新建简历流程
+src/components/editor/     编辑器、AI 弹窗、导出界面
+src/components/preview/    简历预览
+src/lib/                   数据库、AI、导出、配置等工具
+drizzle/                   数据库迁移
+public/                    图标与静态资源
 ```
 
-## Notes And Limitations
+## 说明与限制
 
-- The runtime export template is intentionally fixed to `classic`.
-- Historical README screenshots and feature descriptions from JadeAI are no longer accurate.
-- Local/web PDF export needs Chrome or Chromium available unless you provide `CHROME_PATH`.
-- Some internal storage keys still include legacy names for migration compatibility.
+- 当前运行时只保留 `classic` 一个模板。
+- 本地 / Web 模式下的 PDF 导出依赖系统中的 Chrome 或 Chromium，除非显式设置 `CHROME_PATH`。
+- 某些本地存储键仍保留旧名字的兼容迁移逻辑，这是为了兼容旧数据，不代表当前品牌名。
 
-## Validation
+## 已验证流程
 
-The current desktop workflow has been exercised with:
+当前桌面工作流已经实际跑通过：
 
 - `pnpm install`
 - `pnpm type-check`
 - `pnpm desktop:dev`
 - `pnpm desktop:build:dir`
 
-## License
+## 许可证
 
-Apache-2.0. See [LICENSE](./LICENSE).
+Apache-2.0，见 [LICENSE](./LICENSE)。
