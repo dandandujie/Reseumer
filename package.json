@@ -1,5 +1,5 @@
 {
-  "name": "resumer",
+  "name": "reseumer",
   "version": "0.1.0",
   "private": true,
   "main": "electron/main.cjs",
@@ -94,8 +94,8 @@
     "typescript": "^5"
   },
   "build": {
-    "appId": "com.resumer.desktop",
-    "productName": "resumer",
+    "appId": "com.reseumer.desktop",
+    "productName": "Reseumer",
     "asar": false,
     "directories": {
       "output": "release",

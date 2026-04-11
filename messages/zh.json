@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "resumer",
+    "appName": "Reseumer",
     "save": "保存",
     "cancel": "取消",
     "delete": "删除",
@@ -486,7 +486,7 @@
     "description": "导入之前导出的 JSON 文件，替换当前简历内容",
     "dashboardDescription": "导入之前导出的 JSON 文件，创建新简历",
     "selectFile": "点击选择或拖拽 .json 文件到此处",
-    "dragHint": "支持从 resumer 导出的 .json 文件",
+    "dragHint": "支持从 Reseumer 导出的 .json 文件",
     "importing": "导入中...",
     "success": "导入成功！",
     "error": "导入失败，请重试。",
@@ -683,7 +683,7 @@
     },
     "cta": {
       "title": "准备好打造你的最佳简历了吗？",
-      "subtitle": "已有数千名求职者通过 resumer 收获面试机会。无需注册，即刻开始。",
+      "subtitle": "已有数千名求职者通过 Reseumer 收获面试机会。无需注册，即刻开始。",
       "button": "立即创建简历"
     },
     "footer": {
@@ -707,7 +707,7 @@
         "terms": "服务条款",
         "cookies": "Cookie 政策"
       },
-      "copyright": "© {year} resumer. 保留所有权利。"
+      "copyright": "© {year} Reseumer. 保留所有权利。"
     }
   },
   "publicView": {
@@ -717,7 +717,7 @@
     "submit": "查看简历",
     "invalidPassword": "密码错误，请重试。",
     "notFound": "此简历不存在或已被删除。",
-    "viewOnJadeAI": "前往 resumer"
+    "viewOnJadeAI": "前往 Reseumer"
   },
   "interview": {
     "nav": "面试模拟",

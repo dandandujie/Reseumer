@@ -148,8 +148,8 @@ export async function seedDemoUser(db: any) {
         items: [
           {
             id: crypto.randomUUID(),
-            name: 'resumer 简历助手',
-            url: 'https://github.com/example/resumer',
+            name: 'Reseumer 简历助手',
+            url: 'https://github.com/dandandujie/Reseumer',
             startDate: '2024-10',
             endDate: '2025-02',
             description: '基于 AI 的智能简历生成与优化工具，支持实时预览和 AI 对话式编辑。',

@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sheet';
 import { useRuntimeConfig } from '@/components/providers/runtime-config-provider';
 
-const GITHUB_REPO = 'twwch/JadeAI';
+const GITHUB_REPO = 'dandandujie/Reseumer';
 
 function useGitHubStars() {
   const [stars, setStars] = useState<number | null>(null);

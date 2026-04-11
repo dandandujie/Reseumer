@@ -7,9 +7,9 @@ const PNPM = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const SHARED_ENV = {
   ...process.env,
   NODE_ENV: 'development',
-  APP_NAME: process.env.APP_NAME || 'JadeAI',
+  APP_NAME: process.env.APP_NAME || 'Reseumer',
   AUTH_ENABLED: process.env.AUTH_ENABLED ?? 'false',
-  AUTH_SECRET: process.env.AUTH_SECRET || 'jadeai-desktop-secret',
+  AUTH_SECRET: process.env.AUTH_SECRET || 'reseumer-desktop-secret',
 };
 
 function waitForUrl(targetUrl, timeoutMs = 60_000) {

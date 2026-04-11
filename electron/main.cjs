@@ -13,11 +13,11 @@ let mainWindow = null;
 let bundledServerUrlPromise = null;
 
 function setDesktopEnv() {
-  process.env.APP_NAME = process.env.APP_NAME || 'resumer';
+  process.env.APP_NAME = process.env.APP_NAME || 'Reseumer';
   process.env.AUTH_ENABLED = process.env.AUTH_ENABLED ?? 'false';
-  process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'resumer-desktop-secret';
+  process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'reseumer-desktop-secret';
   process.env.DB_TYPE = process.env.DB_TYPE || 'sqlite';
-  process.env.SQLITE_PATH = process.env.SQLITE_PATH || path.join(app.getPath('userData'), 'jade.db');
+  process.env.SQLITE_PATH = process.env.SQLITE_PATH || path.join(app.getPath('userData'), 'reseumer.db');
   process.env.HOSTNAME = '127.0.0.1';
   process.env.NEXT_TELEMETRY_DISABLED = '1';
   process.env.ELECTRON = 'true';
@@ -217,7 +217,7 @@ app.whenReady().then(async () => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    dialog.showErrorBox('resumer desktop failed to start', message);
+    dialog.showErrorBox('Reseumer desktop failed to start', message);
     app.quit();
   }
 });

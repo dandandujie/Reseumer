@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 
 export type Brand = 'mint' | 'blue' | 'pink';
 
-const STORAGE_KEY = 'jadeai-brand';
+const STORAGE_KEY = 'reseumer-brand';
+const LEGACY_STORAGE_KEYS = ['jadeai-brand'];
 const VALID_BRANDS: Brand[] = ['mint', 'blue', 'pink'];
 
 // Migrate legacy values (pre-rename) to current ids.
@@ -31,15 +32,27 @@ function applyBrand(brand: Brand) {
   }
 }
 
+function getStoredBrand() {
+  if (typeof window === 'undefined') return null;
+  return (
+    localStorage.getItem(STORAGE_KEY) ??
+    LEGACY_STORAGE_KEYS.map((key) => localStorage.getItem(key)).find(Boolean) ??
+    null
+  );
+}
+
 export function BrandProvider({ children }: { children: ReactNode }) {
   const [brand, setBrandState] = useState<Brand>('mint');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const normalized = normalizeBrand(localStorage.getItem(STORAGE_KEY));
+    const normalized = normalizeBrand(getStoredBrand());
     if (normalized) {
-      // Persist migration so legacy 'boss' is rewritten to 'mint'.
+      // Persist migration so legacy keys and values are rewritten to canonical ids.
       localStorage.setItem(STORAGE_KEY, normalized);
+      for (const key of LEGACY_STORAGE_KEYS) {
+        localStorage.removeItem(key);
+      }
       // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical SSR hydration from localStorage
       setBrandState(normalized);
       applyBrand(normalized);

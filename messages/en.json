@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "resumer",
+    "appName": "Reseumer",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -486,7 +486,7 @@
     "description": "Import a previously exported JSON file to replace current content",
     "dashboardDescription": "Import a previously exported JSON file to create a new resume",
     "selectFile": "Click to select or drag a .json file here",
-    "dragHint": "Supports .json files exported from resumer",
+    "dragHint": "Supports .json files exported from Reseumer",
     "importing": "Importing...",
     "success": "Import successful!",
     "error": "Import failed. Please try again.",
@@ -683,7 +683,7 @@
     },
     "cta": {
       "title": "Ready to Build Your Best Resume?",
-      "subtitle": "Join thousands of job seekers who have landed interviews with resumer. No sign-up required.",
+      "subtitle": "Join thousands of job seekers who have landed interviews with Reseumer. No sign-up required.",
       "button": "Create Your Resume Now"
     },
     "footer": {
@@ -707,7 +707,7 @@
         "terms": "Terms of Service",
         "cookies": "Cookie Policy"
       },
-      "copyright": "© {year} resumer. All rights reserved."
+      "copyright": "© {year} Reseumer. All rights reserved."
     }
   },
   "publicView": {
@@ -717,7 +717,7 @@
     "submit": "View Resume",
     "invalidPassword": "Invalid password. Please try again.",
     "notFound": "This resume is not available or has been removed.",
-    "viewOnJadeAI": "View on resumer"
+    "viewOnJadeAI": "View on Reseumer"
   },
   "interview": {
     "nav": "Mock Interview",

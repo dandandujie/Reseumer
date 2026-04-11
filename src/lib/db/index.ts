@@ -14,7 +14,7 @@ if (config.db.type === 'postgresql') {
       'Please set DB_TYPE=postgresql and DATABASE_URL in your Vercel environment variables.',
     );
   }
-  adapter = new SQLiteAdapter(process.env.SQLITE_PATH || './data/jade.db');
+  adapter = new SQLiteAdapter(process.env.SQLITE_PATH || './data/reseumer.db');
 }
 
 // Initialize (migrate + seed) — must complete before first query.

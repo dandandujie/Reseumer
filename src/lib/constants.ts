@@ -1,4 +1,4 @@
-export const APP_NAME = 'resumer';
+export const APP_NAME = 'Reseumer';
 
 export const SECTION_TYPES = [
   'personal_info',

@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { LoginButton } from '@/components/auth/login-button';
 import { Separator } from '@/components/ui/separator';
+import { APP_NAME } from '@/lib/constants';
 
 export default function LoginPage() {
   const t = useTranslations('auth');
@@ -13,7 +14,7 @@ export default function LoginPage() {
       <div className="mb-6">
         <Image
           src="/logo-icon.svg"
-          alt="resumer"
+          alt={APP_NAME}
           width={48}
           height={48}
           className="drop-shadow-sm"
