@@ -8,6 +8,7 @@ const DEFAULT_DEV_URL = 'http://127.0.0.1:3000';
 const DEFAULT_PROD_PORT = 3232;
 const WINDOW_WIDTH = 1440;
 const WINDOW_HEIGHT = 960;
+const APP_USER_MODEL_ID = 'com.reseumer.desktop';
 
 let mainWindow = null;
 let bundledServerUrlPromise = null;
@@ -25,6 +26,14 @@ function setDesktopEnv() {
 
 function getPreloadPath() {
   return path.join(__dirname, 'preload.cjs');
+}
+
+function getWindowIconPath() {
+  const target = app.isPackaged
+    ? path.join(app.getAppPath(), '.next', 'standalone', 'public', 'icon-512.png')
+    : path.join(process.cwd(), 'public', 'icon-512.png');
+
+  return fs.existsSync(target) ? target : undefined;
 }
 
 function waitForUrl(targetUrl, timeoutMs = 60_000) {
@@ -152,6 +161,7 @@ async function createMainWindow() {
     show: false,
     backgroundColor: '#09090b',
     autoHideMenuBar: true,
+    icon: getWindowIconPath(),
     webPreferences: {
       preload: getPreloadPath(),
       contextIsolation: true,
@@ -207,6 +217,9 @@ function registerIpc() {
 app.whenReady().then(async () => {
   try {
     setDesktopEnv();
+    if (process.platform === 'win32') {
+      app.setAppUserModelId(APP_USER_MODEL_ID);
+    }
     registerIpc();
     await createMainWindow();
 

@@ -1,6 +1,6 @@
 {
   "name": "reseumer",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "Reseumer desktop and web resume editor",
   "author": "liuchen",
   "private": true,
@@ -105,7 +105,7 @@
       "output": "release",
       "buildResources": "build"
     },
-    "icon": "build/icon.png",
+    "icon": "icon.png",
     "files": [
       "electron/**/*",
       ".next/standalone/**/*",
@@ -113,14 +113,14 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
-      "icon": "build/icon.icns",
+      "icon": "icon.icns",
       "target": [
         "dmg",
         "zip"
       ]
     },
     "win": {
-      "icon": "build/icon.ico",
+      "icon": "icon.ico",
       "target": [
         "nsis",
         "zip"
