@@ -33,7 +33,7 @@ export function EditorPreviewPanel() {
   const isZh = locale === 'zh';
 
   return (
-    <div className="flex h-full min-w-0 flex-col bg-zinc-50 dark:bg-zinc-900">
+    <div className="flex h-full min-w-0 flex-col bg-background/80 dark:bg-zinc-900">
       {/* Header */}
       <div className="hidden shrink-0 items-center justify-between border-b bg-white px-4 py-2 md:flex dark:bg-background dark:border-zinc-800">
         <div className="min-w-0">

@@ -44,7 +44,7 @@ export function ClassicTemplate({ resume, interactive }: { resume: Resume; inter
   };
 
   return (
-    <div className="mx-auto max-w-[210mm] bg-white shadow-lg" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="mx-auto max-w-[210mm] bg-white shadow-lg">
       {/* Header */}
       <div className="mb-6 border-b-2 border-zinc-800 pb-4">
         <div {...(personalInfo ? getSectionProps(personalInfo.id) : {})}>

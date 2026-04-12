@@ -31,7 +31,7 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
   }
 
   return (
-    <div className="min-h-screen bg-zinc-100">
+    <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-2">
         <Button variant="ghost" size="sm" onClick={() => router.push(`/editor/${id}`)} className="cursor-pointer gap-1">
           <ArrowLeft className="h-4 w-4" />

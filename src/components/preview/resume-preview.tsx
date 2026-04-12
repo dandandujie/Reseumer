@@ -11,9 +11,9 @@ interface ResumePreviewProps {
 }
 
 const DEFAULT_THEME: ThemeConfig = {
-  primaryColor: '#1a1a1a',
-  accentColor: '#3b82f6',
-  fontFamily: 'Inter',
+  primaryColor: '#1c1a17',
+  accentColor: '#1c1a17',
+  fontFamily: 'Georgia',
   fontSize: DEFAULT_THEME_FONT_SIZE,
   lineSpacing: 1.5,
   margin: { top: 20, right: 20, bottom: 20, left: 20 },
