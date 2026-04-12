@@ -13,6 +13,7 @@ export class SQLiteAdapter implements DatabaseAdapter {
   constructor(path: string) {
     mkdirSync(dirname(path), { recursive: true });
     this.sqlite = new Database(path);
+    this.sqlite.pragma('busy_timeout = 5000');
     this.sqlite.pragma('journal_mode = WAL');
     this.sqlite.pragma('foreign_keys = ON');
     this.db = drizzle(this.sqlite, { schema });

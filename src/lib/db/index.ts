@@ -3,6 +3,20 @@ import { SQLiteAdapter } from './adapters/sqlite';
 import { PostgreSQLAdapter } from './adapters/postgresql';
 import type { DatabaseAdapter } from './adapter';
 
+function resolveSqlitePath() {
+  if (process.env.SQLITE_PATH) {
+    return process.env.SQLITE_PATH;
+  }
+
+  // Next.js production build may fan out multiple workers in CI. Give each
+  // worker its own SQLite file to avoid SQLITE_BUSY during migration/seed.
+  if (process.env.CI === 'true' && process.env.GITHUB_ACTIONS === 'true') {
+    return `./data/reseumer-ci-${process.pid}.db`;
+  }
+
+  return './data/reseumer.db';
+}
+
 let adapter: DatabaseAdapter;
 
 if (config.db.type === 'postgresql') {
@@ -14,7 +28,7 @@ if (config.db.type === 'postgresql') {
       'Please set DB_TYPE=postgresql and DATABASE_URL in your Vercel environment variables.',
     );
   }
-  adapter = new SQLiteAdapter(process.env.SQLITE_PATH || './data/reseumer.db');
+  adapter = new SQLiteAdapter(resolveSqlitePath());
 }
 
 // Initialize (migrate + seed) — must complete before first query.
