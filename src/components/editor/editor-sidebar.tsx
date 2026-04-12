@@ -12,6 +12,8 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
+  DragOverlay,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -85,10 +87,12 @@ function SortableSidebarItem({
   };
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : undefined,
-  };
+    opacity: isDragging ? 0.8 : undefined,
+    zIndex: isDragging ? 50 : undefined,
+    position: isDragging ? 'relative' : undefined,
+  } as React.CSSProperties;
 
   const isRenamable = section.type !== 'personal_info';
 
@@ -97,13 +101,14 @@ function SortableSidebarItem({
       ref={setNodeRef}
       style={style}
       className={`group/item flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors duration-150 ${
+        isDragging ? 'shadow-md ring-1 ring-brand/20 bg-white dark:bg-zinc-800 cursor-grabbing' :
         isSelected
           ? 'bg-brand-muted text-brand dark:bg-brand-muted dark:text-brand'
           : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800'
       }`}
     >
       <GripVertical
-        className="h-3 w-3 shrink-0 cursor-grab text-zinc-300 active:cursor-grabbing"
+        className={`h-3 w-3 shrink-0 text-zinc-300 ${isDragging ? 'cursor-grabbing text-brand' : 'cursor-grab active:cursor-grabbing'}`}
         {...attributes}
         {...listeners}
       />
@@ -153,6 +158,7 @@ export function EditorSidebar({ sections, onAddSection, onReorderSections }: Edi
   const t = useTranslations('editor');
   const { selectedSectionId, selectSection } = useEditorStore();
   const { updateSectionTitle } = useResumeStore();
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const handleSelect = useCallback((id: string) => {
     selectSection(id);
@@ -167,9 +173,15 @@ export function EditorSidebar({ sections, onAddSection, onReorderSections }: Edi
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
+      setActiveId(null);
+      
       if (over && active.id !== over.id) {
         const oldIndex = sections.findIndex((s) => s.id === active.id);
         const newIndex = sections.findIndex((s) => s.id === over.id);
@@ -184,6 +196,9 @@ export function EditorSidebar({ sections, onAddSection, onReorderSections }: Edi
     },
     [sections, onReorderSections]
   );
+
+  const activeSection = activeId ? sections.find((s) => s.id === activeId) : null;
+  const ActiveIcon = activeSection ? (sectionIcons[activeSection.type] || LayoutList) : null;
 
   const sectionTypeLabels: Record<string, string> = {
     personal_info: t('sections.personalInfo'),
@@ -238,6 +253,7 @@ export function EditorSidebar({ sections, onAddSection, onReorderSections }: Edi
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
             <SortableContext
@@ -258,6 +274,15 @@ export function EditorSidebar({ sections, onAddSection, onReorderSections }: Edi
                 );
               })}
             </SortableContext>
+            <DragOverlay>
+              {activeSection && ActiveIcon && (
+                <div className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm shadow-xl ring-1 ring-brand/30 bg-white dark:bg-zinc-800 cursor-grabbing opacity-95">
+                  <GripVertical className="h-3 w-3 shrink-0 text-brand" />
+                  <ActiveIcon className="h-4 w-4 shrink-0 text-brand" />
+                  <span className="truncate text-zinc-900 dark:text-zinc-100">{activeSection.title}</span>
+                </div>
+              )}
+            </DragOverlay>
           </DndContext>
         </div>
 
