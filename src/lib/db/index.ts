@@ -8,10 +8,10 @@ function resolveSqlitePath() {
     return process.env.SQLITE_PATH;
   }
 
-  // Next.js production build may fan out multiple workers in CI. Give each
-  // worker its own SQLite file to avoid SQLITE_BUSY during migration/seed.
+  // GitHub Actions packaging only needs the schema to exist during Next build.
+  // Use an isolated in-memory DB to avoid file locking across build workers.
   if (process.env.CI === 'true' && process.env.GITHUB_ACTIONS === 'true') {
-    return `./data/reseumer-ci-${process.pid}.db`;
+    return ':memory:';
   }
 
   return './data/reseumer.db';

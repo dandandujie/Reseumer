@@ -28,6 +28,10 @@ export class SQLiteAdapter implements DatabaseAdapter {
 
   async initialize(): Promise<void> {
     try {
+      if (process.env.CI === 'true' && process.env.GITHUB_ACTIONS === 'true') {
+        return;
+      }
+
       const row = this.sqlite.prepare('SELECT count(*) as count FROM users').get() as any;
       if (row?.count === 0) {
         const { seedDemoUser } = await import('../seed-demo');
