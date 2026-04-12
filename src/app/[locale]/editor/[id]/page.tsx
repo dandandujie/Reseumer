@@ -86,6 +86,16 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
           />
         </div>
 
+        {/* Preview: always mounted, hidden on mobile when edit tab active */}
+        <div className={cn(
+          "min-w-0 flex-1 overflow-hidden md:flex-[6]",
+          isMobile && mobileActiveTab !== "preview" && "hidden"
+        )}>
+          <EditorPreviewPanel />
+        </div>
+
+        {showThemeEditor && <ThemeEditor />}
+
         {/* Canvas: always mounted, hidden on mobile when preview tab active */}
         <div className={cn(
           "min-w-0 flex-1 overflow-hidden md:flex-[4]",
@@ -95,18 +105,7 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
             sections={sections}
             onUpdateSection={updateSection}
             onRemoveSection={removeSection}
-            onReorderSections={reorderSections}
           />
-        </div>
-
-        {showThemeEditor && <ThemeEditor />}
-
-        {/* Preview: always mounted, hidden on mobile when edit tab active */}
-        <div className={cn(
-          "min-w-0 flex-1 overflow-hidden md:flex-[6]",
-          isMobile && mobileActiveTab !== "preview" && "hidden"
-        )}>
-          <EditorPreviewPanel />
         </div>
       </div>
 

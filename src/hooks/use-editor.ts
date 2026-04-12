@@ -15,7 +15,7 @@ function getHeaders() {
 
 export function useEditor(resumeId: string) {
   const { setResume, sections, currentResume, updateSection, addSection, removeSection, reorderSections, reset: resetResume } = useResumeStore();
-  const { pushSnapshot, reset: resetEditor } = useEditorStore();
+  const { pushSnapshot, reset: resetEditor, selectSection } = useEditorStore();
 
   const loadResume = useCallback(async () => {
     try {
@@ -55,8 +55,9 @@ export function useEditor(resumeId: string) {
     (section: ResumeSection) => {
       pushSnapshot(sections);
       addSection(section);
+      selectSection(section.id);
     },
-    [sections, pushSnapshot, addSection]
+    [sections, pushSnapshot, addSection, selectSection]
   );
 
   const handleRemoveSection = useCallback(

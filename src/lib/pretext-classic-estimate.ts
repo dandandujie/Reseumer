@@ -640,3 +640,55 @@ export function estimateClassicPages(pretext: PretextModule, resume: Resume): Cl
     overflowSections,
   };
 }
+
+/**
+ * Smart layout algorithm: uses Pretext's fast calculation to perform a binary search.
+ * Finds the maximum base font size that fits the content within a single A4 page.
+ */
+export function calculateOptimalFit(pretext: PretextModule, resume: Resume): ThemeConfig | null {
+  const A4_MAX_CONTENT_HEIGHT = 1123;
+  const MIN_FONT_SIZE = 12;
+  const MAX_FONT_SIZE = 16;
+  const TOLERANCE = 0.1;
+
+  let low = MIN_FONT_SIZE;
+  let high = MAX_FONT_SIZE;
+  let optimalSize: number | null = null;
+  
+  const testResume = JSON.parse(JSON.stringify(resume)) as Resume;
+  testResume.themeConfig = testResume.themeConfig || { ...DEFAULT_THEME };
+
+  // First check if it fits with max font size
+  testResume.themeConfig.fontSize = MAX_FONT_SIZE;
+  if (estimateClassicPages(pretext, testResume).totalHeight <= A4_MAX_CONTENT_HEIGHT) {
+    return { ...testResume.themeConfig, fontSize: MAX_FONT_SIZE };
+  }
+
+  // Then check if it even fits with min font size
+  testResume.themeConfig.fontSize = MIN_FONT_SIZE;
+  if (estimateClassicPages(pretext, testResume).totalHeight > A4_MAX_CONTENT_HEIGHT) {
+    return null; // Cannot fit in one page even with minimum font
+  }
+
+  // Binary search for the optimal font size
+  while (high - low > TOLERANCE) {
+    const mid = (low + high) / 2;
+    testResume.themeConfig.fontSize = mid;
+
+    const estimate = estimateClassicPages(pretext, testResume);
+
+    if (estimate.totalHeight <= A4_MAX_CONTENT_HEIGHT) {
+      optimalSize = mid;
+      low = mid; 
+    } else {
+      high = mid; 
+    }
+  }
+
+  if (!optimalSize) return null;
+
+  return {
+    ...testResume.themeConfig,
+    fontSize: optimalSize,
+  };
+}

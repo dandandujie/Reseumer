@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Resume, ResumeSection, SectionContent } from '@/types/resume';
+import type { Resume, ResumeSection, SectionContent, ThemeConfig } from '@/types/resume';
 import { AUTOSAVE_DELAY } from '@/lib/constants';
 import { generateId } from '@/lib/utils';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -14,6 +14,7 @@ interface ResumeStore {
   setResume: (resume: Resume) => void;
   updateSection: (sectionId: string, content: Partial<SectionContent>) => void;
   updateSectionTitle: (sectionId: string, title: string) => void;
+  updateThemeConfig: (config: Partial<ThemeConfig>) => void;
   addSection: (section: ResumeSection) => void;
   removeSection: (sectionId: string) => void;
   reorderSections: (sections: ResumeSection[]) => void;
@@ -86,6 +87,23 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
       return {
         sections,
         currentResume: state.currentResume ? { ...state.currentResume, sections } : null,
+        isDirty: true,
+      };
+    });
+    get()._scheduleSave();
+  },
+
+  updateThemeConfig: (config) => {
+    set((state) => {
+      if (!state.currentResume) return state;
+      return {
+        currentResume: {
+          ...state.currentResume,
+          themeConfig: {
+            ...state.currentResume.themeConfig,
+            ...config,
+          },
+        },
         isDirty: true,
       };
     });

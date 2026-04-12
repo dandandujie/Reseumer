@@ -16,6 +16,8 @@ import type {
 import { isSectionEmpty, md } from '../utils';
 import { AvatarImage } from '../avatar-image';
 import { QrCodesPreview } from '../qr-codes-preview';
+import { useEditorStore } from '@/stores/editor-store';
+import { cn } from '@/lib/utils';
 
 function getDateRange(startDate?: string, endDate?: string | null, presentLabel = 'Present') {
   if (!startDate) return '';
@@ -23,37 +25,52 @@ function getDateRange(startDate?: string, endDate?: string | null, presentLabel 
   return tail ? `${startDate} - ${tail}` : startDate;
 }
 
-export function ClassicTemplate({ resume }: { resume: Resume }) {
+export function ClassicTemplate({ resume, interactive }: { resume: Resume; interactive?: boolean }) {
   const personalInfo = resume.sections.find((s) => s.type === 'personal_info');
   const pi = (personalInfo?.content || {}) as PersonalInfoContent;
+  const { selectedSectionId, selectSection } = useEditorStore();
+
+  const getSectionProps = (sectionId: string) => {
+    if (!interactive) return {};
+    const isSelected = selectedSectionId === sectionId;
+    return {
+      onClick: () => selectSection(sectionId),
+      className: cn(
+        'transition-all duration-200 cursor-pointer p-2 -mx-2 rounded-lg',
+        isSelected ? 'bg-brand/5 ring-1 ring-brand/20' : 'hover:bg-zinc-50'
+      )
+    };
+  };
 
   return (
     <div className="mx-auto max-w-[210mm] bg-white shadow-lg" style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
       <div className="mb-6 border-b-2 border-zinc-800 pb-4">
-        <div className="flex items-center justify-center gap-4">
-          {pi.avatar && (
-            <AvatarImage src={pi.avatar} avatarStyle={resume.themeConfig?.avatarStyle} size={64} className="shrink-0" />
-          )}
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-zinc-900">{pi.fullName || 'Your Name'}</h1>
-            {pi.jobTitle && <p className="mt-1 text-lg text-zinc-600">{pi.jobTitle}</p>}
+        <div {...(personalInfo ? getSectionProps(personalInfo.id) : {})}>
+          <div className="flex items-center justify-center gap-4">
+            {pi.avatar && (
+              <AvatarImage src={pi.avatar} avatarStyle={resume.themeConfig?.avatarStyle} size={64} className="shrink-0" />
+            )}
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-zinc-900">{pi.fullName || 'Your Name'}</h1>
+              {pi.jobTitle && <p className="mt-1 text-lg text-zinc-600">{pi.jobTitle}</p>}
+            </div>
           </div>
-        </div>
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-sm text-zinc-500">
-          {pi.age && <span>{pi.age}</span>}
-          {pi.politicalStatus && <span>{pi.politicalStatus}</span>}
-          {pi.gender && <span>{pi.gender}</span>}
-          {pi.ethnicity && <span>{pi.ethnicity}</span>}
-          {pi.hometown && <span>{pi.hometown}</span>}
-          {pi.maritalStatus && <span>{pi.maritalStatus}</span>}
-          {pi.yearsOfExperience && <span>{pi.yearsOfExperience}</span>}
-          {pi.educationLevel && <span>{pi.educationLevel}</span>}
-          {pi.email && <span>{pi.email}</span>}
-          {pi.phone && <span>{pi.phone}</span>}
-          {pi.wechat && <span>{pi.wechat}</span>}
-          {pi.location && <span>{pi.location}</span>}
-          {pi.website && <span>{pi.website}</span>}
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-sm text-zinc-500">
+            {pi.age && <span>{pi.age}</span>}
+            {pi.politicalStatus && <span>{pi.politicalStatus}</span>}
+            {pi.gender && <span>{pi.gender}</span>}
+            {pi.ethnicity && <span>{pi.ethnicity}</span>}
+            {pi.hometown && <span>{pi.hometown}</span>}
+            {pi.maritalStatus && <span>{pi.maritalStatus}</span>}
+            {pi.yearsOfExperience && <span>{pi.yearsOfExperience}</span>}
+            {pi.educationLevel && <span>{pi.educationLevel}</span>}
+            {pi.email && <span>{pi.email}</span>}
+            {pi.phone && <span>{pi.phone}</span>}
+            {pi.wechat && <span>{pi.wechat}</span>}
+            {pi.location && <span>{pi.location}</span>}
+            {pi.website && <span>{pi.website}</span>}
+          </div>
         </div>
       </div>
 
@@ -62,10 +79,12 @@ export function ClassicTemplate({ resume }: { resume: Resume }) {
         .filter((s) => s.visible && s.type !== 'personal_info' && !isSectionEmpty(s))
         .map((section) => (
           <div key={section.id} className="mb-5" data-section>
-            <h2 className="mb-2 border-b border-zinc-300 pb-1 text-sm font-bold uppercase tracking-wider text-zinc-800">
-              {section.title}
-            </h2>
-            <SectionContent section={section} lang={resume.language} />
+            <div {...getSectionProps(section.id)}>
+              <h2 className="mb-2 border-b border-zinc-300 pb-1 text-sm font-bold uppercase tracking-wider text-zinc-800">
+                {section.title}
+              </h2>
+              <SectionContent section={section} lang={resume.language} />
+            </div>
           </div>
         ))}
     </div>

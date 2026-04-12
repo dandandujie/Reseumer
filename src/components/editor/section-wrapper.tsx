@@ -2,11 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { GripVertical, X, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { X, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEditorStore } from '@/stores/editor-store';
 import { useResumeStore } from '@/stores/resume-store';
-import { useDragHandle } from './dnd/sortable-section';
 import type { ResumeSection, SectionContent } from '@/types/resume';
 import { PersonalInfoSection } from './sections/personal-info';
 import { SummarySection } from './sections/summary';
@@ -44,7 +43,6 @@ export function SectionWrapper({ section, onUpdate, onRemove }: SectionWrapperPr
   const t = useTranslations('editor');
   const { selectedSectionId, selectSection, showAiChat, toggleAiChat } = useEditorStore();
   const { toggleSectionVisibility, updateSectionTitle } = useResumeStore();
-  const { attributes, listeners } = useDragHandle();
   const isSelected = selectedSectionId === section.id;
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(section.title);
@@ -79,11 +77,6 @@ export function SectionWrapper({ section, onUpdate, onRemove }: SectionWrapperPr
     >
       <div className="flex flex-row items-center justify-between border-b border-zinc-100 px-3 py-2.5 md:px-4 dark:border-zinc-800">
         <div className="flex items-center gap-2">
-          <GripVertical
-            className="h-4 w-4 cursor-grab text-zinc-300 active:cursor-grabbing"
-            {...attributes}
-            {...listeners}
-          />
           {isRenaming ? (
             <input
               ref={renameInputRef}

@@ -7,6 +7,7 @@ import { ClassicTemplate } from './templates/classic';
 
 interface ResumePreviewProps {
   resume: Resume;
+  interactive?: boolean;
 }
 
 const DEFAULT_THEME: ThemeConfig = {
@@ -118,7 +119,7 @@ function buildThemeCSS(scopeId: string, theme: ThemeConfig): string {
   `;
 }
 
-export function ResumePreview({ resume }: ResumePreviewProps) {
+export function ResumePreview({ resume, interactive }: ResumePreviewProps) {
   const fixedResume = { ...resume, template: 'classic' };
   const scopeId = useId();
   const theme: ThemeConfig = { ...DEFAULT_THEME, ...(fixedResume.themeConfig || {}) };
@@ -138,7 +139,7 @@ export function ResumePreview({ resume }: ResumePreviewProps) {
       ))}
       <div data-theme-scope={scopeId}>
         <style dangerouslySetInnerHTML={{ __html: buildThemeCSS(scopeId, theme) }} />
-        <ClassicTemplate resume={safeResume} />
+        <ClassicTemplate resume={safeResume} interactive={interactive} />
       </div>
     </>
   );

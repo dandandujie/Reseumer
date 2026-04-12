@@ -16,6 +16,7 @@ import { useResumeStore } from '@/stores/resume-store';
 import { useUIStore } from '@/stores/ui-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { LocaleSwitcher } from '@/components/layout/locale-switcher';
+import { SmartFitButton } from '@/components/editor/smart-fit-button';
 
 interface EditorToolbarProps {
   resumeId: string;
@@ -212,6 +213,9 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        <Separator orientation="vertical" className="hidden h-6 sm:block" />
+        <SmartFitButton />
 
         {/* Primary: theme toggle — always visible */}
         <Separator orientation="vertical" className="hidden h-6 sm:block" />
