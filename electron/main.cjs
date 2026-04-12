@@ -36,6 +36,17 @@ function getWindowIconPath() {
   return fs.existsSync(target) ? target : undefined;
 }
 
+function applyRuntimeAppIcon() {
+  const iconPath = getWindowIconPath();
+  if (!iconPath) {
+    return;
+  }
+
+  if (process.platform === 'darwin' && app.dock?.setIcon) {
+    app.dock.setIcon(iconPath);
+  }
+}
+
 function waitForUrl(targetUrl, timeoutMs = 60_000) {
   const startedAt = Date.now();
 
@@ -220,6 +231,7 @@ app.whenReady().then(async () => {
     if (process.platform === 'win32') {
       app.setAppUserModelId(APP_USER_MODEL_ID);
     }
+    applyRuntimeAppIcon();
     registerIpc();
     await createMainWindow();
 

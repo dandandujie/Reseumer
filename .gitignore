@@ -47,3 +47,4 @@ jadeai-data/*
 test
 .ace-tool/
 release/
+.desktop-app/
