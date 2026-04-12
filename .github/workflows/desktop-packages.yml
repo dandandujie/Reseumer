@@ -33,7 +33,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build macOS app bundle
-        run: pnpm desktop:build:dir
+        run: |
+          ulimit -n 65536
+          pnpm desktop:build:dir
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
