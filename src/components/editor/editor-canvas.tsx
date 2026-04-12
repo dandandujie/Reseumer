@@ -21,7 +21,7 @@ export function EditorCanvas({
   const displaySection = sections.find((s) => s.id === selectedSectionId) || sections[0];
 
   return (
-    <div className="h-full min-w-0 overflow-hidden border-l border-border/20 bg-background/80 dark:bg-zinc-950 dark:border-zinc-800">
+    <div className="h-full min-w-0 overflow-hidden border-l bg-zinc-50 dark:bg-zinc-950 dark:border-zinc-800">
       <ScrollArea className="h-full">
         <div className="mx-auto max-w-3xl px-3 py-4 md:px-6 md:py-8">
           {displaySection ? (

@@ -242,7 +242,7 @@ export function EditorSidebar({ sections, onAddSection, onReorderSections }: Edi
   };
 
   return (
-    <div className="w-56 shrink-0 border-r border-border/20 bg-white dark:bg-zinc-900 dark:border-zinc-800 max-md:w-full max-md:border-r-0">
+    <div className="w-56 shrink-0 border-r bg-white dark:bg-zinc-900 dark:border-zinc-800 max-md:w-full max-md:border-r-0">
       <div className="p-3">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
           {t('sidebar.sections')}
@@ -288,7 +288,7 @@ export function EditorSidebar({ sections, onAddSection, onReorderSections }: Edi
 
         {availableTypes.length > 0 && (
           <>
-            <Separator className="my-3 bg-border/20" />
+            <Separator className="my-3" />
             <div className="px-2 pb-4">
               <p className="mb-2 px-2 text-xs text-zinc-400">{t('sidebar.addSection')}</p>
               <div className="space-y-0.5">

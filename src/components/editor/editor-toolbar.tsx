@@ -45,7 +45,7 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
   };
 
   return (
-    <div className="flex h-12 items-center justify-between gap-2 border-b border-border/20 bg-white px-2 sm:px-3 dark:bg-background dark:border-zinc-800">
+    <div className="flex h-12 items-center justify-between gap-2 border-b bg-white px-2 sm:px-3 dark:bg-background dark:border-zinc-800">
       <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
         <Button
           variant="ghost"
@@ -55,7 +55,7 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <Separator orientation="vertical" className="hidden h-6 sm:block bg-border/20" />
+        <Separator orientation="vertical" className="hidden h-6 sm:block" />
         <span className="min-w-0 max-w-[8rem] truncate text-sm font-medium text-zinc-900 sm:max-w-48 dark:text-zinc-100">
           {currentResume?.title || ''}
         </span>
@@ -97,7 +97,7 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
         >
           <Redo2 className="h-4 w-4" />
         </Button>
-        <Separator orientation="vertical" className="hidden h-6 sm:block bg-border/20" />
+        <Separator orientation="vertical" className="hidden h-6 sm:block" />
 
         {/* Desktop: show all secondary buttons */}
         <div className="hidden items-center gap-1 md:flex">
@@ -161,7 +161,7 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
             <SpellCheck className="h-4 w-4" />
             <span className="ml-1 text-xs hidden sm:inline">{t('grammarCheck')}</span>
           </Button>
-          <Separator orientation="vertical" className="h-6 bg-border/20" />
+          <Separator orientation="vertical" className="h-6" />
           <Button
             variant="ghost"
             size="sm"
@@ -214,11 +214,11 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
           </DropdownMenu>
         </div>
 
-        <Separator orientation="vertical" className="hidden h-6 sm:block bg-border/20" />
+        <Separator orientation="vertical" className="hidden h-6 sm:block" />
         <SmartFitButton />
 
         {/* Primary: theme toggle — always visible */}
-        <Separator orientation="vertical" className="hidden h-6 sm:block bg-border/20" />
+        <Separator orientation="vertical" className="hidden h-6 sm:block" />
         <Button
           variant={showThemeEditor ? 'secondary' : 'ghost'}
           size="icon"
@@ -229,7 +229,7 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
           <Palette className="h-4 w-4" />
           <span className="ml-1 hidden text-xs sm:inline">{t('theme')}</span>
         </Button>
-        <Separator orientation="vertical" className="hidden h-6 sm:block bg-border/20" />
+        <Separator orientation="vertical" className="hidden h-6 sm:block" />
         <LocaleSwitcher />
       </div>
     </div>
