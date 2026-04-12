@@ -129,7 +129,9 @@
       "coverLetter": "Cover Letter",
       "grammarCheck": "Grammar",
       "share": "Share",
-      "import": "Import"
+      "import": "Import",
+      "smartFitSuccess": "Smart fitted to optimal one-page layout",
+      "smartFitFailed": "Content too long to fit one page. Consider trimming."
     },
     "aiPolish": "AI Polish",
     "invalidSectionContent": "This section has invalid data. Please use AI to regenerate the content.",

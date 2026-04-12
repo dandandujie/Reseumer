@@ -129,7 +129,9 @@
       "coverLetter": "求职信",
       "grammarCheck": "语法检查",
       "share": "分享",
-      "import": "导入"
+      "import": "导入",
+      "smartFitSuccess": "已为您智能排版至单页最优状态",
+      "smartFitFailed": "内容过多，建议删减工作经历或项目细节"
     },
     "aiPolish": "AI 润色",
     "invalidSectionContent": "该模块数据异常，请使用 AI 重新生成内容",
