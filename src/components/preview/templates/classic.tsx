@@ -18,6 +18,7 @@ import { AvatarImage } from '../avatar-image';
 import { QrCodesPreview } from '../qr-codes-preview';
 import { useEditorStore } from '@/stores/editor-store';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 function getDateRange(startDate?: string, endDate?: string | null, presentLabel = 'Present') {
   if (!startDate) return '';
@@ -77,16 +78,25 @@ export function ClassicTemplate({ resume, interactive }: { resume: Resume; inter
       {/* Sections */}
       {resume.sections
         .filter((s) => s.visible && s.type !== 'personal_info' && !isSectionEmpty(s))
-        .map((section) => (
-          <div key={section.id} className="mb-5" data-section>
-            <div {...getSectionProps(section.id)}>
-              <h2 className="mb-2 border-b border-zinc-300 pb-1 text-sm font-bold uppercase tracking-wider text-zinc-800">
-                {section.title}
-              </h2>
-              <SectionContent section={section} lang={resume.language} />
-            </div>
-          </div>
-        ))}
+        .map((section) => {
+          const Comp = interactive ? motion.div : 'div';
+          return (
+            <Comp 
+              key={section.id} 
+              className="mb-5" 
+              data-section
+              layout={interactive ? "position" : false}
+              transition={interactive ? { type: 'spring', stiffness: 300, damping: 30 } : undefined}
+            >
+              <div {...getSectionProps(section.id)}>
+                <h2 className="mb-2 border-b border-zinc-300 pb-1 text-sm font-bold uppercase tracking-wider text-zinc-800">
+                  {section.title}
+                </h2>
+                <SectionContent section={section} lang={resume.language} />
+              </div>
+            </Comp>
+          );
+        })}
     </div>
   );
 }
