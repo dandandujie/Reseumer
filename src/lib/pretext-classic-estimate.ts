@@ -656,7 +656,19 @@ export function calculateOptimalFit(pretext: PretextModule, resume: Resume): The
   let optimalSize: number | null = null;
   
   const testResume = JSON.parse(JSON.stringify(resume)) as Resume;
-  testResume.themeConfig = testResume.themeConfig || { ...DEFAULT_THEME };
+  
+  // themeConfig might be a JSON string from DB or undefined
+  if (typeof testResume.themeConfig === 'string') {
+    try {
+      testResume.themeConfig = JSON.parse(testResume.themeConfig);
+    } catch {
+      testResume.themeConfig = { ...DEFAULT_THEME };
+    }
+  } else if (!testResume.themeConfig) {
+    testResume.themeConfig = { ...DEFAULT_THEME };
+  } else {
+    testResume.themeConfig = { ...DEFAULT_THEME, ...testResume.themeConfig };
+  }
 
   // First check if it fits with max font size
   testResume.themeConfig.fontSize = MAX_FONT_SIZE;
