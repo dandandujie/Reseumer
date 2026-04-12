@@ -35,7 +35,7 @@ export function EditorPreviewPanel() {
   return (
     <div className="flex h-full min-w-0 flex-col bg-background/80 dark:bg-zinc-900">
       {/* Header */}
-      <div className="hidden shrink-0 items-center justify-between border-b bg-white px-4 py-2 md:flex dark:bg-background dark:border-zinc-800">
+      <div className="hidden shrink-0 items-center justify-between border-b border-border/20 bg-white px-4 py-2 md:flex dark:bg-background dark:border-zinc-800">
         <div className="min-w-0">
           <span className="text-xs font-medium text-zinc-500">{t('preview')}</span>
           <div className="mt-1 flex min-h-5 items-center gap-2 text-[11px]">
