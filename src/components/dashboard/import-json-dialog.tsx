@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/routing';
+import { getClientFingerprintHeaders } from '@/lib/client-fingerprint';
 import {
   Dialog,
   DialogContent,
@@ -28,11 +29,9 @@ interface ImportJsonDialogProps {
 type ImportState = 'idle' | 'importing' | 'success' | 'error';
 
 function getHeaders() {
-  const fingerprint = typeof window !== 'undefined' ? localStorage.getItem('jade_fingerprint') : null;
-  return {
+  return getClientFingerprintHeaders({
     'Content-Type': 'application/json',
-    ...(fingerprint ? { 'x-fingerprint': fingerprint } : {}),
-  };
+  });
 }
 
 export function ImportJsonDialog({ open, onOpenChange }: ImportJsonDialogProps) {

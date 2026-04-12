@@ -26,6 +26,18 @@ function getDateRange(startDate?: string, endDate?: string | null, presentLabel 
   return tail ? `${startDate} - ${tail}` : startDate;
 }
 
+function EmptySectionPlaceholder({ lang }: { lang?: string }) {
+  return (
+    <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-3 py-4">
+      <div className="h-2.5 w-24 rounded-full bg-zinc-200/80" />
+      <div className="mt-2 h-2.5 w-full max-w-[16rem] rounded-full bg-zinc-100" />
+      <p className="mt-3 text-xs text-zinc-400">
+        {lang === 'zh' ? '填写后会显示在这里' : 'Content will appear here'}
+      </p>
+    </div>
+  );
+}
+
 export function ClassicTemplate({ resume, interactive }: { resume: Resume; interactive?: boolean }) {
   const personalInfo = resume.sections.find((s) => s.type === 'personal_info');
   const pi = (personalInfo?.content || {}) as PersonalInfoContent;
@@ -77,7 +89,7 @@ export function ClassicTemplate({ resume, interactive }: { resume: Resume; inter
 
       {/* Sections */}
       {resume.sections
-        .filter((s) => s.visible && s.type !== 'personal_info' && !isSectionEmpty(s))
+        .filter((s) => s.visible && s.type !== 'personal_info' && (interactive || !isSectionEmpty(s)))
         .map((section) => {
           const Comp = interactive ? motion.div : 'div';
           return (
@@ -92,7 +104,7 @@ export function ClassicTemplate({ resume, interactive }: { resume: Resume; inter
                 <h2 className="mb-2 border-b border-zinc-300 pb-1 text-sm font-bold uppercase tracking-wider text-zinc-800">
                   {section.title}
                 </h2>
-                <SectionContent section={section} lang={resume.language} />
+                <SectionContent section={section} lang={resume.language} interactive={interactive} />
               </div>
             </Comp>
           );
@@ -101,9 +113,14 @@ export function ClassicTemplate({ resume, interactive }: { resume: Resume; inter
   );
 }
 
-function SectionContent({ section, lang }: { section: any; lang?: string }) {
+function SectionContent({ section, lang, interactive }: { section: any; lang?: string; interactive?: boolean }) {
   const content = section.content;
   if (!content) return null;
+  const empty = isSectionEmpty(section);
+
+  if (interactive && empty) {
+    return <EmptySectionPlaceholder lang={lang} />;
+  }
 
   if (section.type === 'summary') {
     return <p className="text-sm text-zinc-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: md((content as SummaryContent).text) }} />;

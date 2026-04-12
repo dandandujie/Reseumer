@@ -1,16 +1,15 @@
 'use client';
 
 import { useCallback, useEffect } from 'react';
+import { getClientFingerprintHeaders } from '@/lib/client-fingerprint';
 import { useResumeStore } from '@/stores/resume-store';
 import { useEditorStore } from '@/stores/editor-store';
 import type { ResumeSection } from '@/types/resume';
 
 function getHeaders() {
-  const fingerprint = typeof window !== 'undefined' ? localStorage.getItem('jade_fingerprint') : null;
-  return {
+  return getClientFingerprintHeaders({
     'Content-Type': 'application/json',
-    ...(fingerprint ? { 'x-fingerprint': fingerprint } : {}),
-  };
+  });
 }
 
 export function useEditor(resumeId: string) {

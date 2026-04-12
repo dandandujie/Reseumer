@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { LanguageSelect } from '@/components/ui/language-select';
+import { getClientFingerprintHeaders } from '@/lib/client-fingerprint';
 import { getAIHeaders } from '@/stores/settings-store';
 
 interface GenerateResumeDialogProps {
@@ -46,14 +47,12 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
     setError('');
 
     try {
-      const fingerprint = typeof window !== 'undefined' ? localStorage.getItem('jade_fingerprint') : null;
       const res = await fetch('/api/ai/generate-resume', {
         method: 'POST',
-        headers: {
+        headers: getClientFingerprintHeaders({
           'Content-Type': 'application/json',
-          ...(fingerprint ? { 'x-fingerprint': fingerprint } : {}),
           ...getAIHeaders(),
-        },
+        }),
         body: JSON.stringify({
           jobTitle: jobTitle.trim(),
           yearsOfExperience: yearsOfExperience === '' ? undefined : yearsOfExperience,

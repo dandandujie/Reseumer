@@ -28,6 +28,7 @@
     "title": "My Resumes",
     "createResume": "New Resume",
     "createResumeDescription": "Start from a blank resume",
+    "createFailed": "Failed to create resume. Please try again.",
     "resumeCount": "{count} resumes",
     "lastEdited": "Last edited {date}",
     "deleteConfirm": "Are you sure you want to delete \"{title}\"? This action cannot be undone.",

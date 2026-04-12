@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getClientFingerprintHeaders } from '@/lib/client-fingerprint';
 import type { Resume, ResumeSection, SectionContent, ThemeConfig } from '@/types/resume';
 import { AUTOSAVE_DELAY } from '@/lib/constants';
 import { generateId } from '@/lib/utils';
@@ -173,16 +174,11 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
 
     set({ isSaving: true });
     try {
-      const fingerprint = typeof window !== 'undefined'
-        ? localStorage.getItem('jade_fingerprint')
-        : null;
-
       await fetch(`/api/resume/${currentResume.id}`, {
         method: 'PUT',
-        headers: {
+        headers: getClientFingerprintHeaders({
           'Content-Type': 'application/json',
-          ...(fingerprint ? { 'x-fingerprint': fingerprint } : {}),
-        },
+        }),
         body: JSON.stringify({
           title: currentResume.title,
           themeConfig: currentResume.themeConfig,

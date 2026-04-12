@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getClientFingerprintHeaders } from '@/lib/client-fingerprint';
 
 export type AIProvider = 'openai' | 'anthropic' | 'gemini';
 
@@ -54,17 +55,10 @@ function saveProviderConfigs(configs: Partial<Record<AIProvider, ProviderConfig>
   try { localStorage.setItem(PROVIDER_CONFIGS_KEY, JSON.stringify(configs)); } catch { /* ignore */ }
 }
 
-function getFingerprint(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('jade_fingerprint');
-}
-
 function getHeaders(): Record<string, string> {
-  const fp = getFingerprint();
-  return {
+  return getClientFingerprintHeaders({
     'Content-Type': 'application/json',
-    ...(fp ? { 'x-fingerprint': fp } : {}),
-  };
+  });
 }
 
 // Sync settings to server (debounced)

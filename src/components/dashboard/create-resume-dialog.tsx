@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { getClientFingerprintHeaders } from '@/lib/client-fingerprint';
 import { cn } from '@/lib/utils';
 import { getAIHeaders } from '@/stores/settings-store';
 import { Upload, FileText, Image, X, Loader2 } from 'lucide-react';
@@ -32,6 +33,7 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
   const [tab, setTab] = useState<Tab>('blank');
   const [title, setTitle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   // Upload state
   const [file, setFile] = useState<File | null>(null);
@@ -42,12 +44,16 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
 
   const handleCreate = async () => {
     setIsCreating(true);
+    setCreateError('');
     try {
       const resume = await onCreate({ title: title || undefined });
-      if (resume) {
-        resetAndClose();
-        router.push(`/editor/${resume.id}`);
+      if (!resume) {
+        throw new Error(t('dashboard.createFailed'));
       }
+      resetAndClose();
+      router.push(`/editor/${resume.id}`);
+    } catch (err: any) {
+      setCreateError(err.message || t('dashboard.createFailed'));
     } finally {
       setIsCreating(false);
     }
@@ -73,13 +79,12 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
     setParseError('');
 
     try {
-      const fingerprint = typeof window !== 'undefined' ? localStorage.getItem('jade_fingerprint') : null;
       const formData = new FormData();
       formData.append('file', file);
 
       const res = await fetch('/api/resume/parse', {
         method: 'POST',
-        headers: { ...(fingerprint ? { 'x-fingerprint': fingerprint } : {}), ...getAIHeaders() },
+        headers: getClientFingerprintHeaders(getAIHeaders()),
         body: formData,
       });
 
@@ -103,6 +108,7 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
     setTitle('');
     setTab('blank');
     setFile(null);
+    setCreateError('');
     setParseError('');
   };
 
@@ -168,8 +174,14 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
               <Input
                 placeholder={t('editor.fields.fullName')}
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (createError) setCreateError('');
+                }}
               />
+              {createError ? (
+                <p className="text-sm text-red-600 dark:text-red-400">{createError}</p>
+              ) : null}
             </div>
           ) : (
             <div className="space-y-4">

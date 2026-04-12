@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { getClientFingerprintHeaders } from '@/lib/client-fingerprint';
 import type { Resume } from '@/types/resume';
 
 function getHeaders() {
-  const fingerprint = typeof window !== 'undefined' ? localStorage.getItem('jade_fingerprint') : null;
-  return {
+  return getClientFingerprintHeaders({
     'Content-Type': 'application/json',
-    ...(fingerprint ? { 'x-fingerprint': fingerprint } : {}),
-  };
+  });
 }
 
 export function useResume() {
@@ -31,21 +30,21 @@ export function useResume() {
   }, []);
 
   const createResume = useCallback(async (data: { title?: string; language?: string }) => {
-    try {
-      const res = await fetch('/api/resume', {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify(data),
-      });
-      if (res.ok) {
-        const resume = await res.json();
-        setResumes((prev) => [resume, ...prev]);
-        return resume;
-      }
-    } catch (error) {
-      console.error('Failed to create resume:', error);
+    const res = await fetch('/api/resume', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      const message = typeof payload.error === 'string' ? payload.error : 'Failed to create resume';
+      throw new Error(message);
     }
-    return null;
+
+    const resume = await res.json();
+    setResumes((prev) => [resume, ...prev]);
+    return resume;
   }, []);
 
   const deleteResume = useCallback(async (id: string) => {

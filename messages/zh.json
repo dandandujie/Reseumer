@@ -28,6 +28,7 @@
     "title": "我的简历",
     "createResume": "新建简历",
     "createResumeDescription": "从空白简历开始创建",
+    "createFailed": "新建简历失败，请重试",
     "resumeCount": "共 {count} 份简历",
     "lastEdited": "最后编辑于 {date}",
     "deleteConfirm": "确定要删除「{title}」吗？此操作不可恢复。",
