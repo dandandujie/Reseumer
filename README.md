@@ -202,3 +202,7 @@ public/                    图标与静态资源
 ## 许可证
 
 Apache-2.0，见 [LICENSE](./LICENSE)。
+
+## 友情链接
+
+- [linux.do](https://linux.do)
