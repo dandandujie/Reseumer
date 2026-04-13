@@ -34,7 +34,8 @@ jobs:
 
       - name: Build macOS app bundle
         run: |
-          ulimit -n 65536
+          ulimit -Sn 524288 || ulimit -Sn 262144 || ulimit -Sn 131072 || ulimit -Sn 65536
+          ulimit -n
           pnpm desktop:build:dir
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
