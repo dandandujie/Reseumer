@@ -1,6 +1,6 @@
 # Reseumer
 
-一个以桌面端为优先形态的 AI 简历应用，基于 Next.js 16、React 19 和 Electron 构建。
+一个桌面端优先的 AI 简历应用，基于 **Tauri 2 + React 19 + Vite** 构建。所有数据保存在本地 SQLite，不需要登录、不需要后端服务。
 
 原项目链接：<https://github.com/twwch/JadeAI>
 
@@ -13,191 +13,126 @@
 - 将 JSON 导出再次导回应用。
 - 解析已有 PDF 或图片简历，生成可编辑数据。
 - 使用 AI 聊天改简历、生成简历、生成求职信、做语法检查、做 JD 匹配分析和翻译。
-- 既可以作为 Electron 桌面应用运行，也可以作为本地 / Web 版 Next.js 应用运行。
-
-## 当前产品范围
-
-### 简历编辑与工作流
-
-- 支持创建、复制、重命名、删除、导入简历。
-- 支持模块拖拽排序和行内编辑。
-- 支持颜色、间距、页边距、字体、字号等样式设置。
-- 已加入中文字体预设：`宋体`、`微软雅黑`、`楷体`、`霞鹜文楷`。
-- 预览和导出都基于同一套 `classic` 模板。
-
-### AI 能力
-
-- 根据岗位、经验和技能生成完整简历。
-- 编辑器内 AI 聊天助手，支持历史会话。
-- 上传 PDF / 图片后解析已有简历。
-- JD 匹配分析，并保存历史记录。
-- 语法与表达检查，并保存历史记录。
-- 求职信生成。
-- 简历翻译。
-- 在应用内配置 OpenAI、Anthropic、Gemini 或兼容 OpenAI 的接口。
-
-### 导出与数据
-
-- 导出格式：`pdf`、`pdf-one-page`、`docx`、`html`、`txt`、`json`。
-- 仪表盘和编辑器都支持 JSON 导入。
-- 默认使用 SQLite，也可切换 PostgreSQL。
-- 支持中英文界面。
-
-### 桌面端运行方式
-
-- Electron 主进程在生产环境中启动打包后的 Next.js standalone 服务。
-- 桌面模式默认走本地 SQLite，并关闭登录认证。
-- 已配置 `electron-builder`，可打 macOS / Windows 包。
+- 在应用内配置 OpenAI、Anthropic、Gemini 或兼容 OpenAI 的接口，不需要在启动前设置环境变量。
 
 ## 技术栈
 
 | 层级 | 技术 |
 | --- | --- |
-| 桌面壳 | Electron 36 |
-| Web 框架 | Next.js 16 App Router |
-| UI | React 19、Tailwind CSS 4、shadcn/ui、Radix UI |
+| 桌面壳 | Tauri 2（Rust） |
+| 前端框架 | React 19 + Vite 7 |
+| 路由 | React Router 6 |
+| UI | Tailwind CSS 4 + shadcn/ui + Radix UI |
 | 状态管理 | Zustand |
 | 拖拽 | `@dnd-kit` |
-| 数据库 | Drizzle ORM + SQLite / PostgreSQL |
-| 认证 | NextAuth v5，可选 Google OAuth |
-| AI | Vercel AI SDK |
-| AI 提供方 | OpenAI、Anthropic、Gemini、兼容 OpenAI 的接口 |
-| 导出 | Puppeteer Core、DOCX |
-| 国际化 | next-intl |
+| 国际化 | i18next + react-i18next |
+| 数据库 | SQLite（Rust 侧 `rusqlite` 嵌入） |
+| 导出 | `docx-rs`（DOCX）、自渲染 HTML、Rust 侧 PDF 链路 |
+| PDF 解析 | `pdf-extract`（上传简历解析） |
+| AI 调用 | Rust `reqwest` 流式代理 OpenAI / Anthropic / Gemini / 兼容接口 |
 
 ## 环境要求
 
-- 推荐 Node.js 20+
+- Node.js 20+
 - pnpm 9+
-- 本地导出 PDF 时需要 Google Chrome 或 Chromium，或者手动设置 `CHROME_PATH`
+- Rust 稳定版工具链（通过 `rustup` 安装）
+- Tauri 系统依赖参考 <https://v2.tauri.app/start/prerequisites/>
+  - macOS：Xcode Command Line Tools
+  - Windows：Microsoft C++ Build Tools 与 WebView2
+  - Linux：`webkit2gtk-4.1`、`libappindicator`、`librsvg` 等
 
 ## 快速开始
 
-### 1. 安装依赖
-
 ```bash
 pnpm install
-```
-
-### 2. 复制环境变量文件
-
-```bash
-cp .env.example .env.local
-```
-
-如果只是跑桌面开发版，默认配置通常就够用。
-
-### 3. 启动桌面应用
-
-```bash
-pnpm desktop:dev
-```
-
-这个命令会同时启动：
-
-- `http://127.0.0.1:3000` 上的 Next.js 开发服务器
-- 指向该本地地址的 Electron 桌面壳
-
-### 4. 或者只启动 Web 版
-
-```bash
 pnpm dev
 ```
 
-然后打开 `http://localhost:3000`。
+`pnpm dev` 会启动 Vite 开发服务器并拉起 Tauri 窗口。首次启动会自动在用户数据目录创建 SQLite 数据库文件。
 
-## 环境变量说明
+仅想在浏览器里预览前端 UI（不含 Tauri 命令）：
 
-应用启动时不要求预先在服务端写死 AI Key。AI 密钥、Base URL、模型都在应用设置页里配置，并在调用时通过请求头传递。
-
-| 变量 | 是否必填 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `APP_NAME` | 否 | `Reseumer` | 应用显示名称 |
-| `AUTH_ENABLED` | 否 | `false` | Web 模式下是否启用 Google 登录 |
-| `AUTH_SECRET` | 启用认证时必填 | 无 | NextAuth 所需 |
-| `GOOGLE_CLIENT_ID` | 启用认证时必填 | 无 | Google OAuth |
-| `GOOGLE_CLIENT_SECRET` | 启用认证时必填 | 无 | Google OAuth |
-| `DB_TYPE` | 否 | `sqlite` | `sqlite` 或 `postgresql` |
-| `DATABASE_URL` | PostgreSQL 时必填 | 无 | PostgreSQL 连接串 |
-| `SQLITE_PATH` | 否 | `./data/reseumer.db` | Web / 本地模式的 SQLite 文件路径 |
-| `DEFAULT_LOCALE` | 否 | `zh` | `zh` 或 `en` |
-| `CHROME_PATH` | 可选 | 无 | 指定本地 Chrome / Chromium 路径，用于 PDF 导出 |
-
-### 桌面端的默认行为
-
-通过 Electron 启动时，当前会默认使用这些运行时配置，除非你主动覆盖：
-
-- `APP_NAME=Reseumer`
-- `AUTH_ENABLED=false`
-- `DB_TYPE=sqlite`
-- `SQLITE_PATH=<应用数据目录>/reseumer.db`
+```bash
+pnpm dev:vite
+```
 
 ## 常用命令
 
 ```bash
-pnpm dev
-pnpm type-check
+pnpm dev           # Tauri + Vite 开发模式
+pnpm dev:vite      # 仅启动 Vite（浏览器预览，Tauri invoke 不可用）
+pnpm build         # 当前平台打包
+pnpm build:mac     # macOS (Apple Silicon) DMG 构建
+pnpm build:win     # Windows x86_64 NSIS 构建
 pnpm lint
-pnpm build
-pnpm desktop:dev
-pnpm desktop:build:dir
-pnpm desktop:build:mac
-pnpm desktop:build:win
-pnpm db:generate
-pnpm db:migrate
-pnpm db:seed
+pnpm type-check
 ```
 
-## 构建桌面应用
+macOS Intel 当前未在 CI 中构建，本地可执行 `pnpm tauri build --target x86_64-apple-darwin`。
 
-### 生成未封装目录产物
+## AI 与数据
 
-```bash
-pnpm desktop:build:dir
-```
+AI 密钥、Base URL、模型都在应用「设置」页内配置，写入本地 SQLite 的 `users.settings` 字段，不在启动前暴露为环境变量。AI 请求由 Rust 侧 `reqwest` 负责流式转发，前端通过 Tauri event 接收分片。
 
-产物会输出到 `release/`。
+桌面端所有数据保存在 Tauri 的 `app_data_dir/reseumer.db`：
 
-### 构建 macOS 包
-
-```bash
-pnpm desktop:build:mac
-```
-
-### 构建 Windows 包
-
-```bash
-pnpm desktop:build:win
-```
+- macOS：`~/Library/Application Support/com.reseumer.desktop/reseumer.db`
+- Windows：`%APPDATA%\com.reseumer.desktop\reseumer.db`
+- Linux：`~/.local/share/com.reseumer.desktop/reseumer.db`
 
 ## 项目结构
 
 ```text
-electron/                  Electron 主进程与 preload
-scripts/                   桌面端与构建辅助脚本
-src/app/                   Next.js 页面与 API 路由
-src/components/dashboard/  仪表盘与新建简历流程
-src/components/editor/     编辑器、AI 弹窗、导出界面
-src/components/preview/    简历预览
-src/lib/                   数据库、AI、导出、配置等工具
-drizzle/                   数据库迁移
-public/                    图标与静态资源
+src-tauri/                  Tauri 桌面壳（Rust）
+├── src/
+│   ├── commands/           暴露给前端的 Tauri 命令（resume / user / ai / chat / export）
+│   ├── db/                 rusqlite 连接、迁移执行器、按实体划分的 repo
+│   ├── ai/                 provider、流式、prompts、工具调用、JSON 提取
+│   └── export/             PDF / HTML / DOCX / TXT / 二维码生成
+└── migrations/             SQLite schema 迁移
+src/
+├── pages/                  dashboard / editor / preview 三个顶层页面
+├── router.tsx              React Router 路由定义
+├── components/             编辑器、仪表盘、AI、预览、布局、设置
+├── stores/                 Zustand stores（editor / resume / settings / ui）
+├── lib/                    Tauri API 封装、AI client、导出工具、品牌常量
+└── i18n/                   i18next 配置
+messages/                   国际化翻译（zh / en）
+packaging/homebrew/         macOS Homebrew Cask 模板
+.github/workflows/          构建与发布的 GitHub Actions
 ```
 
 ## 说明与限制
 
 - 当前运行时只保留 `classic` 一个模板。
-- 本地 / Web 模式下的 PDF 导出依赖系统中的 Chrome 或 Chromium，除非显式设置 `CHROME_PATH`。
-- 某些本地存储键仍保留旧名字的兼容迁移逻辑，这是为了兼容旧数据，不代表当前品牌名。
+- 所有导出都由 Tauri 命令完成，不再依赖本机 Chrome / Chromium。
+- GitHub Actions 只构建 `aarch64-apple-darwin` 和 `x86_64-pc-windows-msvc`。Intel Mac、Linux 与 Windows ARM 需要本地自行构建。
+- 简历数据保存在本地 SQLite 中，卸载应用会带走数据；换设备前请先用 **导出 JSON** 做备份。
 
-## 已验证流程
+## macOS 首次启动
 
-当前桌面工作流已经实际跑通过：
+本项目的 macOS 安装包只做了 ad-hoc 签名，没有 Apple Developer ID 签名和公证。直接双击从 Release 下载的 `.dmg` 安装后，首次打开可能会被 Gatekeeper 拦下（提示「已损坏」或「未鉴定开发者」）。有两种解决方式：
 
-- `pnpm install`
-- `pnpm type-check`
-- `pnpm desktop:dev`
-- `pnpm desktop:build:dir`
+**方式 A：通过 Homebrew 安装（推荐，无感）**
+
+Homebrew 安装的应用会自动跳过 Gatekeeper quarantine 检查：
+
+```bash
+brew tap dandandujie/reseumer
+brew install --cask reseumer
+```
+
+tap 仓库的 Cask 模板见 [`packaging/homebrew/reseumer.rb`](./packaging/homebrew/reseumer.rb)。
+
+**方式 B：直接下载 DMG 后手动放行**
+
+安装到 `/Applications` 后，打开终端执行一次即可：
+
+```bash
+xattr -cr /Applications/Reseumer.app
+```
+
+之后正常双击打开。或者在 Finder 里**右键点击 → 打开**，在弹出的警告对话框里选「打开」也可以。
 
 ## 许可证
 
