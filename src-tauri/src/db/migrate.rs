@@ -1,0 +1,34 @@
+use rusqlite::Connection;
+
+const MIGRATIONS: &[&str] = &[include_str!("../../migrations/001_initial.sql")];
+
+pub fn run(conn: &Connection) -> Result<(), rusqlite::Error> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS _migrations (
+            version INTEGER PRIMARY KEY,
+            applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )",
+    )?;
+
+    let current: i64 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(version), 0) FROM _migrations",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    for (i, sql) in MIGRATIONS.iter().enumerate() {
+        let version = (i + 1) as i64;
+        if version > current {
+            conn.execute_batch(sql)?;
+            conn.execute(
+                "INSERT INTO _migrations (version) VALUES (?1)",
+                [version],
+            )?;
+            log::info!("Applied migration {}", version);
+        }
+    }
+
+    Ok(())
+}

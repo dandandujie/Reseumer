@@ -1,0 +1,48 @@
+[package]
+name = "reseumer"
+version = "0.4.0"
+description = "AI-powered resume builder"
+authors = ["liuchen"]
+edition = "2024"
+
+[lib]
+name = "reseumer_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.31", features = ["bundled"] }
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["stream", "json"] }
+futures = "0.3"
+thiserror = "2"
+log = "0.4"
+env_logger = "0.11"
+bytes = "1"
+async-stream = "0.3"
+regex = "1"
+base64 = "0.22"
+urlencoding = "2"
+pdf-extract = "0.7"
+qrcode = "0.14"
+docx-rs = "0.4"
+zip = "0.6"
+mime_guess = "2"
+which = "6"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

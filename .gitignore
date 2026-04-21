@@ -1,0 +1,9 @@
+# Tauri & Rust 自动忽略编译文件
+src-tauri/target/
+target/
+node_modules/
+dist/
+.DS_Store
+*.log
+*.pdb
+*.lib

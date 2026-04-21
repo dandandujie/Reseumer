@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh" suppressHydrationWarning>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reseumer - AI Resume Builder</title>
+    <script>
+      // Brand color initialization (from original root layout)
+      (function(){try{var key='reseumer-brand';var legacy='jadeai-brand';var b=localStorage.getItem(key)||localStorage.getItem(legacy);if(b==='boss'){b='mint';}else if(b==='jade'){b='blue';}if(b==='mint'||b==='blue'||b==='pink'){localStorage.setItem(key,b);if(localStorage.getItem(legacy)!==null){localStorage.removeItem(legacy);}if(b==='blue'||b==='pink'){document.documentElement.setAttribute('data-brand',b);}}
+      }catch(e){}})();
+    </script>
+  </head>
+  <body class="font-sans antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

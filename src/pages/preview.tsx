@@ -1,0 +1,60 @@
+/**
+ * Preview page — adapted from app/[locale]/preview/[id]/page.tsx
+ * Changes: useParams() instead of use(params), useTranslations from compat
+ */
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useTranslations } from '@/i18n';
+import { ArrowLeft, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useRouter } from '@/i18n/routing';
+import { ResumePreview } from '@/components/preview/resume-preview';
+import { usePdfExport } from '@/hooks/use-pdf-export';
+import * as api from '@/lib/tauri-api';
+import type { Resume } from '@/types/resume';
+
+export default function PreviewPage() {
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const t = useTranslations();
+  const { exportPdf, isExporting } = usePdfExport();
+  const [resume, setResume] = useState<Resume | null>(null);
+
+  useEffect(() => {
+    api.getResume(id!)
+      .then((data) => setResume(data as Resume))
+      .catch(console.error);
+  }, [id]);
+
+  if (!resume) {
+    return <div className="flex h-screen items-center justify-center text-zinc-400">{t('common.loading')}</div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-2">
+        <Button variant="ghost" size="sm" onClick={() => router.push(`/editor/${id}`)} className="cursor-pointer gap-1">
+          <ArrowLeft className="h-4 w-4" />
+          {t('common.back')}
+        </Button>
+        <Button size="sm" disabled={isExporting} onClick={() => exportPdf(id!, resume.title)} className="cursor-pointer gap-1 bg-brand hover:bg-brand-hover">
+          <Download className="h-4 w-4" />
+          {isExporting ? t('pdf.exporting') : t('editor.toolbar.export')}
+        </Button>
+      </div>
+      <div className="p-8 pb-20 sm:pb-8">
+        <ResumePreview resume={resume} />
+      </div>
+      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t bg-white p-3 dark:bg-background sm:hidden">
+        <Button variant="outline" className="flex-1 cursor-pointer" onClick={() => router.push(`/editor/${id}`)}>
+          <ArrowLeft className="mr-1.5 h-4 w-4" />
+          {t('common.back')}
+        </Button>
+        <Button className="flex-1 cursor-pointer bg-brand hover:bg-brand-hover" onClick={() => exportPdf(id!, resume.title)} disabled={isExporting}>
+          <Download className="mr-1.5 h-4 w-4" />
+          {isExporting ? t('pdf.exporting') : t('editor.toolbar.export')}
+        </Button>
+      </div>
+    </div>
+  );
+}
