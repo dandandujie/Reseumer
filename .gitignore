@@ -7,3 +7,9 @@ dist/
 *.log
 *.pdb
 *.lib
+
+# 内部文档：本地保留作开发参考，不推送公开仓库
+/ARCHITECTURE.md
+/FEATURE-IDEAS.md
+/README.zh-CN.md
+/docs/
