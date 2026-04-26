@@ -6,6 +6,33 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getOrCreateClientFingerprint } from '@/lib/client-fingerprint';
 
+const LOCAL_AI_PROVIDER_KEY = 'jade_active_provider';
+const LOCAL_AI_API_KEY = 'jade_api_key';
+const LOCAL_AI_PROVIDER_CONFIGS = 'jade_provider_configs';
+const LOCAL_AI_DEFAULTS = {
+  openai: { baseURL: 'https://api.openai.com/v1', model: 'gpt-4o' },
+  anthropic: { baseURL: 'https://api.anthropic.com', model: 'claude-sonnet-4-20250514' },
+  gemini: { baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-2.0-flash' },
+} as const;
+
+function normalizeAIProvider(value: unknown): keyof typeof LOCAL_AI_DEFAULTS {
+  return value === 'anthropic' || value === 'gemini' ? value : 'openai';
+}
+
+function getAIConfigFromLocalCache() {
+  const provider = normalizeAIProvider(localStorage.getItem(LOCAL_AI_PROVIDER_KEY));
+  const defaults = LOCAL_AI_DEFAULTS[provider];
+  const configs = JSON.parse(localStorage.getItem(LOCAL_AI_PROVIDER_CONFIGS) || '{}');
+  const cached = configs?.[provider] || {};
+
+  return {
+    provider,
+    apiKey: cached.apiKey || localStorage.getItem(LOCAL_AI_API_KEY) || '',
+    baseUrl: cached.baseURL || defaults.baseURL,
+    model: cached.model || defaults.model,
+  };
+}
+
 async function getUserId(): Promise<string> {
   const fingerprint = getOrCreateClientFingerprint();
   if (!fingerprint) throw new Error('No fingerprint');
@@ -66,14 +93,16 @@ export async function updateResume(
   }
 ) {
   const userId = await getCachedUserId();
-  return invoke<void>('update_resume', {
+  const payload = JSON.parse(JSON.stringify({
     id,
     userId,
     title: data.title,
     template: data.template || 'classic',
     themeConfig: data.themeConfig || {},
     sections: data.sections,
-  });
+  }));
+
+  return invoke<void>('update_resume', { payload });
 }
 
 export async function deleteResume(id: string) {
@@ -115,19 +144,50 @@ export async function updateSettings(settings: Record<string, any>) {
 // ── AI Config ──
 
 function getAIConfigFromStore() {
-  if (typeof window === 'undefined') return { provider: 'openai', apiKey: '', baseURL: 'https://api.openai.com/v1', model: 'gpt-4o' };
+  if (typeof window === 'undefined') return { provider: 'openai', apiKey: '', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o' };
   // Access the global store lazily to avoid import cycles
   const w = window as any;
   const store = w.__jadeSettingsStore;
   if (store) {
     const s = store.getState();
-    return { provider: s.aiProvider, apiKey: s.aiApiKey, baseURL: s.aiBaseURL, model: s.aiModel };
+    const local = (() => {
+      try {
+        return getAIConfigFromLocalCache();
+      } catch {
+        return null;
+      }
+    })();
+
+    const providerReady = s._hydrated || !!s.aiApiKey;
+    const providerChanged = local && s.aiProvider !== local.provider;
+    const missingApiKey = local && !s.aiApiKey && !!local.apiKey;
+    const usingDefaultBaseUrl =
+      s.aiProvider === 'openai' &&
+      s.aiBaseURL === LOCAL_AI_DEFAULTS.openai.baseURL &&
+      s.aiModel === LOCAL_AI_DEFAULTS.openai.model;
+
+    if (local && (!providerReady || providerChanged || missingApiKey || usingDefaultBaseUrl)) {
+      return local;
+    }
+
+    return { provider: s.aiProvider, apiKey: s.aiApiKey, baseUrl: s.aiBaseURL, model: s.aiModel };
   }
-  return { provider: 'openai', apiKey: '', baseURL: 'https://api.openai.com/v1', model: 'gpt-4o' };
+
+  try {
+    return getAIConfigFromLocalCache();
+  } catch {
+    // ignore local fallback failure
+  }
+
+  return { provider: 'openai', apiKey: '', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o' };
 }
 
 export async function aiListModels(config?: any) {
   return invoke<any[]>('ai_list_models', { config: config || getAIConfigFromStore() });
+}
+
+export async function aiTestConnection(config?: any) {
+  return invoke<any>('ai_test_connection', { config: config || getAIConfigFromStore() });
 }
 
 export async function aiCoverLetter(data: {

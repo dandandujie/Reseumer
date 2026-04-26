@@ -3541,7 +3541,7 @@ dependencies = [
 
 [[package]]
 name = "reseumer"
-version = "0.4.0"
+version = "0.4.2"
 dependencies = [
  "async-stream",
  "base64 0.22.1",

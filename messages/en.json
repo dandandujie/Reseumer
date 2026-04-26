@@ -267,7 +267,17 @@
       "baseURL": "Base URL",
       "model": "Default Model",
       "modelPlaceholder": "Enter model name...",
-      "noModelsFound": "No models found. Enter a model name manually below."
+      "noModelsFound": "No models found. Enter a model name manually below.",
+      "connectionHint": "After filling in your API Key, you can test the connection and automatically load the available models.",
+      "fetchModels": "Load Models",
+      "fetchingModels": "Loading...",
+      "testConnection": "Test Connection",
+      "testingConnection": "Testing...",
+      "apiKeyRequired": "Please fill in both the API Key and Base URL first.",
+      "modelsUpdated": "Model list refreshed. {count} models found.",
+      "connectionSuccess": "Connection successful. {count} available models found.",
+      "connectionSuccessModelMissing": "Connection successful. {count} models found, but the current default model is not in the returned list.",
+      "connectionFailedGeneric": "Connection failed. Please verify your network, Base URL, and API key."
     },
     "appearance": {
       "title": "Appearance",

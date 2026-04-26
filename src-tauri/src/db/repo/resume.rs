@@ -215,16 +215,42 @@ pub fn create_section(
     content: &Value,
 ) -> Result<String, rusqlite::Error> {
     let id = uuid::Uuid::new_v4().to_string();
+    insert_section(conn, &id, resume_id, section_type, title, sort_order, visible, content)
+}
+
+pub fn create_section_with_id(
+    conn: &Connection,
+    section_id: &str,
+    resume_id: &str,
+    section_type: &str,
+    title: &str,
+    sort_order: i32,
+    visible: bool,
+    content: &Value,
+) -> Result<String, rusqlite::Error> {
+    insert_section(conn, section_id, resume_id, section_type, title, sort_order, visible, content)
+}
+
+fn insert_section(
+    conn: &Connection,
+    section_id: &str,
+    resume_id: &str,
+    section_type: &str,
+    title: &str,
+    sort_order: i32,
+    visible: bool,
+    content: &Value,
+) -> Result<String, rusqlite::Error> {
     conn.execute(
         "INSERT INTO resume_sections (id, resume_id, type, title, sort_order, visible, content) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        params![id, resume_id, section_type, title, sort_order, visible, serde_json::to_string(content).unwrap_or_default()],
+        params![section_id, resume_id, section_type, title, sort_order, visible, serde_json::to_string(content).unwrap_or_default()],
     )?;
     // Update resume timestamp
     conn.execute(
         "UPDATE resumes SET updated_at = unixepoch() WHERE id = ?1",
         params![resume_id],
     )?;
-    Ok(id)
+    Ok(section_id.to_string())
 }
 
 pub fn update_section(conn: &Connection, section_id: &str, title: &str, sort_order: i32, visible: bool, content: &Value) -> Result<(), rusqlite::Error> {

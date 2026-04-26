@@ -18,6 +18,12 @@ pub async fn ai_list_models(config: Value) -> Result<Vec<ai::provider::AiModel>,
 }
 
 #[tauri::command]
+pub async fn ai_test_connection(config: Value) -> Result<ai::provider::AiConnectionTest, CommandError> {
+    let cfg = cfg_from(config);
+    ai::provider::test_connection(&cfg).await.map_err(|e| CommandError { message: e.to_string() })
+}
+
+#[tauri::command]
 pub async fn ai_cover_letter(
     db: State<'_, AppDb>,
     config: Value,

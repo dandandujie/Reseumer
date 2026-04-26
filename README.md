@@ -72,7 +72,7 @@ macOS Intel 当前未在 CI 中构建，本地可执行 `pnpm tauri build --targ
 
 ## AI 与数据
 
-AI 密钥、Base URL、模型都在应用「设置」页内配置，写入本地 SQLite 的 `users.settings` 字段，不在启动前暴露为环境变量。AI 请求由 Rust 侧 `reqwest` 负责流式转发，前端通过 Tauri event 接收分片。
+AI Provider、Base URL、模型等设置写入本地 SQLite 的 `users.settings` 字段；API Key 只保存在当前设备本地存储，并由桌面端直接带给模型服务商。设置页支持测试连接和拉取模型列表。AI 请求由 Rust 侧 `reqwest` 负责流式转发，前端通过 Tauri event 接收分片。
 
 桌面端所有数据保存在 Tauri 的 `app_data_dir/reseumer.db`：
 

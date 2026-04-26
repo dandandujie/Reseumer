@@ -40,6 +40,7 @@ pub fn run() {
             commands::user::get_settings,
             commands::user::update_settings,
             commands::ai::ai_list_models,
+            commands::ai::ai_test_connection,
             commands::ai::ai_cover_letter,
             commands::ai::ai_grammar_check,
             commands::ai::ai_jd_analysis,

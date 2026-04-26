@@ -7,6 +7,7 @@ use thiserror::Error;
 pub struct AIConfig {
     pub provider: String,
     pub api_key: String,
+    #[serde(alias = "baseURL")]
     pub base_url: String,
     pub model: String,
 }
@@ -328,6 +329,16 @@ pub struct AiModel {
     pub label: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiConnectionTest {
+    pub provider: String,
+    pub current_model: String,
+    pub current_model_available: bool,
+    pub model_count: usize,
+    pub models: Vec<AiModel>,
+}
+
 pub async fn list_models(config: &AIConfig) -> Result<Vec<AiModel>, ProviderError> {
     if config.api_key.is_empty() {
         return Err(ProviderError::MissingApiKey);
@@ -343,6 +354,11 @@ pub async fn list_models(config: &AIConfig) -> Result<Vec<AiModel>, ProviderErro
                 .header("anthropic-version", "2023-06-01")
                 .send()
                 .await?;
+            if !res.status().is_success() {
+                let status = res.status();
+                let txt = res.text().await.unwrap_or_default();
+                return Err(ProviderError::Api(format!("{} {}", status, txt)));
+            }
             let data: Value = res.json().await?;
             let mut out = Vec::new();
             if let Some(arr) = data.get("data").and_then(|v| v.as_array()) {
@@ -358,6 +374,11 @@ pub async fn list_models(config: &AIConfig) -> Result<Vec<AiModel>, ProviderErro
         "gemini" => {
             let url = format!("{}/models?key={}", config.base_url.trim_end_matches('/'), urlencoding::encode(&config.api_key));
             let res = client.get(&url).send().await?;
+            if !res.status().is_success() {
+                let status = res.status();
+                let txt = res.text().await.unwrap_or_default();
+                return Err(ProviderError::Api(format!("{} {}", status, txt)));
+            }
             let data: Value = res.json().await?;
             let mut out = Vec::new();
             if let Some(arr) = data.get("models").and_then(|v| v.as_array()) {
@@ -374,6 +395,11 @@ pub async fn list_models(config: &AIConfig) -> Result<Vec<AiModel>, ProviderErro
         _ => {
             let url = format!("{}/models", config.base_url.trim_end_matches('/'));
             let res = client.get(&url).bearer_auth(&config.api_key).send().await?;
+            if !res.status().is_success() {
+                let status = res.status();
+                let txt = res.text().await.unwrap_or_default();
+                return Err(ProviderError::Api(format!("{} {}", status, txt)));
+            }
             let data: Value = res.json().await?;
             let mut out = Vec::new();
             if let Some(arr) = data.get("data").and_then(|v| v.as_array()) {
@@ -386,4 +412,22 @@ pub async fn list_models(config: &AIConfig) -> Result<Vec<AiModel>, ProviderErro
             Ok(out)
         }
     }
+}
+
+pub async fn test_connection(config: &AIConfig) -> Result<AiConnectionTest, ProviderError> {
+    let models = list_models(config).await?;
+    let current_model = config.model.clone();
+    let current_model_available = if current_model.is_empty() {
+        false
+    } else {
+        models.iter().any(|model| model.id == current_model)
+    };
+
+    Ok(AiConnectionTest {
+        provider: config.provider.clone(),
+        current_model,
+        current_model_available,
+        model_count: models.len(),
+        models,
+    })
 }

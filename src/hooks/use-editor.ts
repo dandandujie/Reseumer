@@ -28,6 +28,7 @@ export function useEditor(resumeId: string) {
   useEffect(() => {
     loadResume();
     return () => {
+      void useResumeStore.getState().flushPendingSave();
       resetResume();
       resetEditor();
     };

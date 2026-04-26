@@ -1,10 +1,27 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import i18n from '@/i18n';
-import { Settings, Cpu, Paintbrush, PenTool, Eye, EyeOff, Sun, Moon, Monitor, ChevronsUpDown, Check, Loader2 } from 'lucide-react';
+import {
+  Settings,
+  Cpu,
+  Paintbrush,
+  PenTool,
+  Eye,
+  EyeOff,
+  Sun,
+  Moon,
+  Monitor,
+  ChevronsUpDown,
+  Check,
+  Loader2,
+  RefreshCw,
+  PlugZap,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -27,7 +44,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useUIStore } from '@/stores/ui-store';
-import { useSettingsStore, getAIHeaders, type AIProvider } from '@/stores/settings-store';
+import { useSettingsStore, type AIProvider } from '@/stores/settings-store';
 import { usePathname, useRouter } from '@/i18n/routing';
 import { locales, localeNames } from '@/i18n/config';
 import { cn } from '@/lib/utils';
@@ -37,6 +54,21 @@ const AI_PROVIDERS: { value: AIProvider; label: string }[] = [
   { value: 'anthropic', label: 'Anthropic' },
   { value: 'gemini', label: 'Google Gemini' },
 ];
+
+type ConnectionState = 'idle' | 'success' | 'warning' | 'error';
+
+interface AiModelOption {
+  id: string;
+  label?: string | null;
+}
+
+interface AiConnectionTestResult {
+  provider: string;
+  currentModel: string;
+  currentModelAvailable: boolean;
+  modelCount: number;
+  models: AiModelOption[];
+}
 
 export function SettingsDialog() {
   const t = useTranslations('settings');
@@ -71,7 +103,12 @@ export function SettingsDialog() {
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
   const [modelsFetching, setModelsFetching] = useState(false);
   const [modelsFetched, setModelsFetched] = useState(false);
+  const [connectionState, setConnectionState] = useState<ConnectionState>('idle');
+  const [connectionMessage, setConnectionMessage] = useState('');
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const modelSearchRef = useRef<HTMLInputElement>(null);
+  const canQueryAI = Boolean(aiApiKey.trim() && aiBaseURL.trim());
+  const queriedModelSignatureRef = useRef('');
 
   useEffect(() => {
     if (isOpen && !_hydrated) {
@@ -79,40 +116,123 @@ export function SettingsDialog() {
     }
   }, [isOpen, _hydrated, hydrate]);
 
-  // Fetch models when combobox opens or when apiKey/baseURL changes
-  const fetchModels = useCallback(async () => {
+  const buildAIConfig = useCallback(() => ({
+    provider: aiProvider,
+    apiKey: aiApiKey.trim(),
+    baseUrl: aiBaseURL.trim(),
+    model: aiModel.trim(),
+  }), [aiProvider, aiApiKey, aiBaseURL, aiModel]);
+
+  const modelQuerySignature = useMemo(() => {
+    if (!canQueryAI) return '';
+    return [aiProvider, aiBaseURL.trim(), aiApiKey.trim()].join('::');
+  }, [aiProvider, aiApiKey, aiBaseURL, canQueryAI]);
+
+  const applyFetchedModels = useCallback((models: AiModelOption[]) => {
+    const ids = Array.from(new Set((models || []).map((model) => model.id).filter(Boolean)));
+    setFetchedModels(ids);
+    setModelsFetched(true);
+  }, []);
+
+  const fetchModels = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (!canQueryAI) {
+      setFetchedModels([]);
+      setModelsFetched(false);
+      if (!silent) {
+        setConnectionState('error');
+        setConnectionMessage(t('ai.apiKeyRequired'));
+      }
+      return [];
+    }
+
+    queriedModelSignatureRef.current = modelQuerySignature;
     setModelsFetching(true);
     try {
       const { aiListModels } = await import('@/lib/tauri-api');
-      const models = await aiListModels();
-      const ids = (models || []).map((m: { id: string }) => m.id);
-      setFetchedModels(ids);
-      setModelsFetched(true);
-    } catch {
+      const models: AiModelOption[] = await aiListModels(buildAIConfig());
+      applyFetchedModels(models);
+      if (!silent) {
+        setConnectionState('success');
+        setConnectionMessage(t('ai.modelsUpdated', { count: models.length }));
+      }
+      return models;
+    } catch (error: any) {
       setFetchedModels([]);
       setModelsFetched(true);
+      if (!silent) {
+        setConnectionState('error');
+        setConnectionMessage(error?.message || t('ai.connectionFailedGeneric'));
+      }
+      return [];
     } finally {
       setModelsFetching(false);
     }
-  }, []);
+  }, [applyFetchedModels, buildAIConfig, canQueryAI, modelQuerySignature, t]);
 
-  // Re-fetch models when apiKey or baseURL changes
-  const prevKeyRef = useRef(aiApiKey);
-  const prevUrlRef = useRef(aiBaseURL);
-  useEffect(() => {
-    if (prevKeyRef.current !== aiApiKey || prevUrlRef.current !== aiBaseURL) {
-      prevKeyRef.current = aiApiKey;
-      prevUrlRef.current = aiBaseURL;
-      setModelsFetched(false);
-      setFetchedModels([]);
-    }
-  }, [aiApiKey, aiBaseURL]);
+  const fetchModelsRef = useRef(fetchModels);
 
   useEffect(() => {
-    if (modelOpen && !modelsFetched && !modelsFetching) {
-      fetchModels();
+    fetchModelsRef.current = fetchModels;
+  }, [fetchModels]);
+
+  const handleTestConnection = useCallback(async () => {
+    if (!canQueryAI) {
+      setConnectionState('error');
+      setConnectionMessage(t('ai.apiKeyRequired'));
+      return;
     }
-  }, [modelOpen, modelsFetched, modelsFetching, fetchModels]);
+
+    setIsTestingConnection(true);
+    try {
+      const { aiTestConnection } = await import('@/lib/tauri-api');
+      const result: AiConnectionTestResult = await aiTestConnection(buildAIConfig());
+      applyFetchedModels(result.models || []);
+
+      if (result.currentModel && !result.currentModelAvailable) {
+        setConnectionState('warning');
+        setConnectionMessage(t('ai.connectionSuccessModelMissing', { count: result.modelCount }));
+      } else {
+        setConnectionState('success');
+        setConnectionMessage(t('ai.connectionSuccess', { count: result.modelCount }));
+      }
+    } catch (error: any) {
+      setConnectionState('error');
+      setConnectionMessage(error?.message || t('ai.connectionFailedGeneric'));
+    } finally {
+      setIsTestingConnection(false);
+    }
+  }, [applyFetchedModels, buildAIConfig, canQueryAI, t]);
+
+  useEffect(() => {
+    queriedModelSignatureRef.current = '';
+    setModelsFetched(false);
+    setFetchedModels([]);
+    setConnectionState('idle');
+    setConnectionMessage('');
+  }, [aiProvider, aiApiKey, aiBaseURL]);
+
+  useEffect(() => {
+    setConnectionState('idle');
+    setConnectionMessage('');
+  }, [aiModel]);
+
+  useEffect(() => {
+    if (!isOpen || settingsTab !== 'ai') return;
+    if (!canQueryAI) return;
+    if (queriedModelSignatureRef.current === modelQuerySignature) return;
+
+    const timeout = window.setTimeout(() => {
+      void fetchModelsRef.current({ silent: true });
+    }, 500);
+
+    return () => window.clearTimeout(timeout);
+  }, [isOpen, settingsTab, canQueryAI, modelQuerySignature]);
+
+  useEffect(() => {
+    if (modelOpen && canQueryAI && !modelsFetched && !modelsFetching) {
+      void fetchModelsRef.current({ silent: true });
+    }
+  }, [modelOpen, canQueryAI, modelsFetched, modelsFetching]);
 
   // Focus search input when popover opens
   useEffect(() => {
@@ -123,7 +243,12 @@ export function SettingsDialog() {
     }
   }, [modelOpen]);
 
-  const filteredModels = fetchedModels.filter((m) =>
+  const availableModels = useMemo(() => {
+    const merged = aiModel ? [aiModel, ...fetchedModels] : fetchedModels;
+    return Array.from(new Set(merged.filter(Boolean)));
+  }, [aiModel, fetchedModels]);
+
+  const filteredModels = availableModels.filter((m) =>
     m.toLowerCase().includes(modelSearch.toLowerCase())
   );
 
@@ -299,6 +424,63 @@ export function SettingsDialog() {
                   </div>
                 </PopoverContent>
               </Popover>
+            </div>
+
+            <div className="space-y-3 rounded-lg border border-zinc-200/80 bg-zinc-50/60 p-3 dark:border-zinc-800 dark:bg-zinc-900/40">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                {t('ai.connectionHint')}
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void fetchModels()}
+                  disabled={!canQueryAI || modelsFetching || isTestingConnection}
+                  className="cursor-pointer"
+                >
+                  {modelsFetching ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                  <span>{modelsFetching ? t('ai.fetchingModels') : t('ai.fetchModels')}</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void handleTestConnection()}
+                  disabled={!canQueryAI || isTestingConnection || modelsFetching}
+                  className="cursor-pointer bg-brand hover:bg-brand-hover"
+                >
+                  {isTestingConnection ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <PlugZap className="h-3.5 w-3.5" />
+                  )}
+                  <span>{isTestingConnection ? t('ai.testingConnection') : t('ai.testConnection')}</span>
+                </Button>
+              </div>
+
+              {connectionState === 'idle' ? null : (
+                <div
+                  className={cn(
+                    'flex items-start gap-2 rounded-md px-3 py-2 text-xs',
+                    connectionState === 'success' && 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
+                    connectionState === 'warning' && 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
+                    connectionState === 'error' && 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
+                  )}
+                >
+                  {connectionState === 'success' ? (
+                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  ) : (
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  )}
+                  <span className="leading-relaxed break-all">{connectionMessage}</span>
+                </div>
+              )}
             </div>
           </TabsContent>
 

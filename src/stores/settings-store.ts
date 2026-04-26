@@ -29,6 +29,7 @@ interface SettingsStore {
 
 const API_KEY_STORAGE_KEY = 'jade_api_key';
 const PROVIDER_CONFIGS_KEY = 'jade_provider_configs';
+const ACTIVE_PROVIDER_STORAGE_KEY = 'jade_active_provider';
 
 interface ProviderConfig {
   baseURL: string;
@@ -42,6 +43,25 @@ const PROVIDER_DEFAULTS: Record<AIProvider, ProviderConfig> = {
   gemini: { baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-2.0-flash', apiKey: '' },
 };
 
+function normalizeProvider(value: unknown): AIProvider {
+  return value === 'anthropic' || value === 'gemini' ? value : 'openai';
+}
+
+function resolveProviderConfig(
+  provider: AIProvider,
+  overrides?: Partial<Omit<ProviderConfig, 'apiKey'>>
+): ProviderConfig {
+  const cached = loadProviderConfigs()[provider];
+  const defaults = PROVIDER_DEFAULTS[provider];
+  const fallbackApiKey = loadApiKeyLocally();
+
+  return {
+    baseURL: cached?.baseURL || overrides?.baseURL || defaults.baseURL,
+    model: cached?.model || overrides?.model || defaults.model,
+    apiKey: cached?.apiKey || fallbackApiKey || defaults.apiKey,
+  };
+}
+
 function loadProviderConfigs(): Partial<Record<AIProvider, ProviderConfig>> {
   if (typeof window === 'undefined') return {};
   try {
@@ -53,6 +73,22 @@ function loadProviderConfigs(): Partial<Record<AIProvider, ProviderConfig>> {
 function saveProviderConfigs(configs: Partial<Record<AIProvider, ProviderConfig>>) {
   if (typeof window === 'undefined') return;
   try { localStorage.setItem(PROVIDER_CONFIGS_KEY, JSON.stringify(configs)); } catch { /* ignore */ }
+}
+
+function saveActiveProviderLocally(provider: AIProvider) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(ACTIVE_PROVIDER_STORAGE_KEY, provider);
+  } catch { /* ignore */ }
+}
+
+function loadActiveProviderLocally(): AIProvider {
+  if (typeof window === 'undefined') return 'openai';
+  try {
+    return normalizeProvider(localStorage.getItem(ACTIVE_PROVIDER_STORAGE_KEY));
+  } catch {
+    return 'openai';
+  }
 }
 
 // Sync settings to server (debounced)
@@ -144,7 +180,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       aiModel: restored.model,
       aiApiKey: restored.apiKey,
     });
+    saveActiveProviderLocally(provider);
     saveApiKeyLocally(restored.apiKey);
+    syncProviderConfig(get());
     syncToServer(get());
   },
 
@@ -179,29 +217,43 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   hydrate: async () => {
     if (get()._hydrated) return;
 
-    // Load API key from localStorage immediately
-    const apiKey = loadApiKeyLocally();
-    set({ aiApiKey: apiKey });
-
     // Load other settings from Tauri backend
     try {
       const data = await api.getSettings();
       if (data && typeof data === 'object') {
-        const provider = (data.aiProvider === 'custom' || data.aiProvider === 'azure') ? 'openai' : data.aiProvider;
+        const provider = normalizeProvider(data.aiProvider);
+        const resolved = resolveProviderConfig(provider, {
+          baseURL: data.aiBaseURL,
+          model: data.aiModel,
+        });
         set({
-          ...(provider && { aiProvider: provider }),
-          ...(data.aiBaseURL && { aiBaseURL: data.aiBaseURL }),
-          ...(data.aiModel && { aiModel: data.aiModel }),
+          aiProvider: provider,
+          aiApiKey: resolved.apiKey,
+          aiBaseURL: resolved.baseURL,
+          aiModel: resolved.model,
           ...(typeof data.autoSave === 'boolean' && { autoSave: data.autoSave }),
           ...(typeof data.autoSaveInterval === 'number' && { autoSaveInterval: data.autoSaveInterval }),
           _hydrated: true,
         });
+        saveActiveProviderLocally(provider);
+        saveApiKeyLocally(resolved.apiKey);
         syncProviderConfig(get());
         return;
       }
     } catch { /* fall through */ }
 
-    set({ _hydrated: true });
+    const provider = loadActiveProviderLocally();
+    const resolved = resolveProviderConfig(provider);
+    set({
+      aiProvider: provider,
+      aiApiKey: resolved.apiKey,
+      aiBaseURL: resolved.baseURL,
+      aiModel: resolved.model,
+      _hydrated: true,
+    });
+    saveActiveProviderLocally(provider);
+    saveApiKeyLocally(resolved.apiKey);
+    syncProviderConfig(get());
   },
 }));
 

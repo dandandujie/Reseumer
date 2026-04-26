@@ -267,7 +267,17 @@
       "baseURL": "API 地址",
       "model": "默认模型",
       "modelPlaceholder": "输入模型名称...",
-      "noModelsFound": "未找到模型，请在下方手动输入模型名称。"
+      "noModelsFound": "未找到模型，请在下方手动输入模型名称。",
+      "connectionHint": "填写 API Key 后可以测试连接，并自动拉取当前服务可用的模型列表。",
+      "fetchModels": "拉取模型",
+      "fetchingModels": "拉取中...",
+      "testConnection": "测试连接",
+      "testingConnection": "测试中...",
+      "apiKeyRequired": "请先填写 API Key 和 API 地址。",
+      "modelsUpdated": "模型列表已更新，共 {count} 个。",
+      "connectionSuccess": "连接成功，共获取到 {count} 个可用模型。",
+      "connectionSuccessModelMissing": "连接成功，共获取到 {count} 个模型，但当前默认模型不在列表中。",
+      "connectionFailedGeneric": "连接失败，请检查网络、API 地址和密钥。"
     },
     "appearance": {
       "title": "外观",

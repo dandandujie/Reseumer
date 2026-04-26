@@ -26,9 +26,14 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
   const t = useTranslations('editor.toolbar');
   const router = useRouter();
   const { toggleThemeEditor, showThemeEditor, undo, redo, undoStack, redoStack } = useEditorStore();
-  const { isSaving, isDirty, currentResume, sections, reorderSections, save } = useResumeStore();
+  const { isSaving, isDirty, currentResume, sections, reorderSections, flushPendingSave } = useResumeStore();
   const { openModal } = useUIStore();
   const autoSave = useSettingsStore((s) => s.autoSave);
+
+  const handleBack = async () => {
+    await flushPendingSave();
+    router.push('/dashboard');
+  };
 
   const handleUndo = () => {
     const snapshot = undo();
@@ -50,8 +55,9 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => router.push('/dashboard')}
+          onClick={() => void handleBack()}
           className="h-8 w-8 shrink-0 cursor-pointer text-zinc-600"
+          disabled={isSaving}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -60,19 +66,8 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
           {currentResume?.title || ''}
         </span>
         <span className="hidden text-xs text-zinc-400 sm:inline">
-          {isSaving ? t('saving') : isDirty ? (autoSave ? '' : t('unsaved')) : t('autoSaved')}
+          {isSaving ? t('saving') : isDirty ? t('unsaved') : autoSave ? t('autoSaved') : ''}
         </span>
-        {!autoSave && isDirty && !isSaving && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => save()}
-            className="cursor-pointer gap-1 text-brand hover:text-brand hover:bg-brand-muted"
-          >
-            <Save className="h-3.5 w-3.5" />
-            <span className="text-xs">{t('save')}</span>
-          </Button>
-        )}
       </div>
 
       <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
@@ -97,6 +92,19 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
         >
           <Redo2 className="h-4 w-4" />
         </Button>
+        {currentResume && (
+          <Button
+            variant={isDirty ? 'outline' : 'ghost'}
+            size="sm"
+            onClick={() => void flushPendingSave()}
+            disabled={!isDirty || isSaving}
+            className="shrink-0 cursor-pointer gap-1"
+            title={t('save')}
+          >
+            <Save className="h-3.5 w-3.5" />
+            <span className="hidden text-xs sm:inline">{t('save')}</span>
+          </Button>
+        )}
         <Separator orientation="vertical" className="hidden h-6 sm:block" />
 
         {/* Desktop: show all secondary buttons */}
@@ -186,6 +194,12 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
                 <Download className="mr-2 h-4 w-4" />
                 {t('exportPdf')}
               </DropdownMenuItem>
+              {currentResume && (
+                <DropdownMenuItem onClick={() => void flushPendingSave()} disabled={!isDirty || isSaving}>
+                  <Save className="mr-2 h-4 w-4" />
+                  {t('save')}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => openModal('import')}>
                 <Upload className="mr-2 h-4 w-4" />
                 {t('import')}

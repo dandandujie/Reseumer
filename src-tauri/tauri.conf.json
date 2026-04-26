@@ -1,11 +1,11 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicegram/nicegram-schemas/refs/heads/main/tauri/tauri.conf.2.schema.json",
   "productName": "Reseumer",
-  "version": "0.4.0",
+  "version": "0.4.2",
   "identifier": "com.reseumer.desktop",
   "build": {
     "beforeDevCommand": "pnpm dev:vite",
-    "devUrl": "http://localhost:5173",
+    "devUrl": "http://localhost:5173/?tauri_dev=1",
     "beforeBuildCommand": "pnpm build:vite",
     "frontendDist": "../dist"
   },

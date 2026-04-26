@@ -22,6 +22,7 @@ interface ResumeStore {
   toggleSectionVisibility: (sectionId: string) => void;
   setTitle: (title: string) => void;
   save: () => Promise<void>;
+  flushPendingSave: () => Promise<void>;
   _scheduleSave: () => void;
   reset: () => void;
 }
@@ -169,23 +170,26 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   },
 
   save: async () => {
-    const { currentResume, sections, isDirty } = get();
+    const { currentResume, sections, isDirty, _saveTimeout } = get();
     if (!currentResume || !isDirty) return;
 
-    set({ isSaving: true });
+    if (_saveTimeout) clearTimeout(_saveTimeout);
+    set({ isSaving: true, _saveTimeout: null });
     try {
+      const serializedSections = sections.map((s, i) => ({
+        id: s.id,
+        type: s.type,
+        title: s.title,
+        sortOrder: i,
+        visible: s.visible,
+        content: s.content,
+      }));
+
       await api.updateResume(currentResume.id, {
         title: currentResume.title,
         template: currentResume.template || 'classic',
         themeConfig: currentResume.themeConfig,
-        sections: sections.map((s, i) => ({
-          id: s.id,
-          type: s.type,
-          title: s.title,
-          sortOrder: i,
-          visible: s.visible,
-          content: s.content,
-        })),
+        sections: serializedSections,
       });
 
       set({ isDirty: false });
@@ -193,6 +197,18 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
       console.error('Failed to save resume:', error);
     } finally {
       set({ isSaving: false });
+    }
+  },
+
+  flushPendingSave: async () => {
+    const { _saveTimeout, isDirty } = get();
+    if (_saveTimeout) {
+      clearTimeout(_saveTimeout);
+      set({ _saveTimeout: null });
+    }
+
+    if (isDirty) {
+      await get().save();
     }
   },
 
