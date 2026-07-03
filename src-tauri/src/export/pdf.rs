@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-/// Detect system Chrome/Edge executable path.
+/// Detect a Chromium-family executable able to run `--headless --print-to-pdf`.
+/// Any Chromium fork works, so probe broadly (Chrome, Edge, Brave, Vivaldi,
+/// Opera, Arc, Chromium) before giving up.
 pub fn find_chrome() -> Option<PathBuf> {
     let candidates: Vec<PathBuf> = if cfg!(target_os = "windows") {
         vec![
@@ -9,12 +11,21 @@ pub fn find_chrome() -> Option<PathBuf> {
             r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe".into(),
             r"C:\Program Files\Microsoft\Edge\Application\msedge.exe".into(),
             r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe".into(),
+            r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe".into(),
+            r"C:\Program Files\Vivaldi\Application\vivaldi.exe".into(),
+            r"C:\Program Files\Opera\opera.exe".into(),
+            r"C:\Program Files\Chromium\Application\chrome.exe".into(),
         ]
     } else if cfg!(target_os = "macos") {
         vec![
             "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome".into(),
             "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge".into(),
             "/Applications/Chromium.app/Contents/MacOS/Chromium".into(),
+            "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser".into(),
+            "/Applications/Vivaldi.app/Contents/MacOS/Vivaldi".into(),
+            "/Applications/Opera.app/Contents/MacOS/Opera".into(),
+            "/Applications/Arc.app/Contents/MacOS/Arc".into(),
+            "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary".into(),
         ]
     } else {
         vec![
@@ -23,6 +34,10 @@ pub fn find_chrome() -> Option<PathBuf> {
             "/usr/bin/chromium".into(),
             "/usr/bin/chromium-browser".into(),
             "/usr/bin/microsoft-edge".into(),
+            "/usr/bin/brave-browser".into(),
+            "/usr/bin/vivaldi".into(),
+            "/usr/bin/opera".into(),
+            "/snap/bin/chromium".into(),
         ]
     };
 
@@ -33,17 +48,29 @@ pub fn find_chrome() -> Option<PathBuf> {
     }
 
     // Fallback: try PATH
-    for name in ["google-chrome", "chrome", "chromium", "microsoft-edge", "msedge"] {
-        if which::which(name).is_ok() {
-            return which::which(name).ok();
+    for name in [
+        "google-chrome",
+        "chrome",
+        "chromium",
+        "chromium-browser",
+        "microsoft-edge",
+        "msedge",
+        "brave-browser",
+        "vivaldi",
+        "opera",
+    ] {
+        if let Ok(path) = which::which(name) {
+            return Some(path);
         }
     }
     None
 }
 
 pub fn generate_pdf_from_html(html: &str, output_path: &std::path::Path) -> Result<(), String> {
+    // Stable CHROME_NOT_FOUND prefix lets the frontend detect this case and
+    // show a localized, actionable message.
     let chrome = find_chrome().ok_or_else(|| {
-        "Chrome or Edge not found. Please install Google Chrome or Microsoft Edge to export PDFs.".to_string()
+        "CHROME_NOT_FOUND: no Chromium-family browser found for PDF rendering.".to_string()
     })?;
 
     // Write HTML to a temp file

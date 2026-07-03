@@ -191,3 +191,15 @@ export interface Resume {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type ResumeVersionEvent = 'save' | 'ai_accept' | 'ai_reject';
+
+export interface ResumeVersion {
+  id: string;
+  resumeId: string;
+  userId: string;
+  event: ResumeVersionEvent;
+  resumeTitle: string;
+  snapshot: Resume;
+  createdAt: number;
+}

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { useTheme } from 'next-themes';
 import i18n from '@/i18n';
 import {
   Settings,
@@ -11,9 +10,6 @@ import {
   PenTool,
   Eye,
   EyeOff,
-  Sun,
-  Moon,
-  Monitor,
   ChevronsUpDown,
   Check,
   Loader2,
@@ -76,7 +72,6 @@ export function SettingsDialog() {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
-  const { theme: currentTheme, setTheme } = useTheme();
   const { activeModal, closeModal, settingsTab, setSettingsTab } = useUIStore();
   const {
     aiProvider,
@@ -264,16 +259,12 @@ export function SettingsDialog() {
     }
   };
 
-  const handleThemeChange = (theme: string) => {
-    setTheme(theme);
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && closeModal()}>
       <DialogContent className="sm:max-w-[540px] p-0 gap-0">
         <DialogHeader className="px-6 pt-6 pb-0">
           <DialogTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-zinc-500" />
+            <Settings className="h-5 w-5 text-muted-foreground" />
             {t('title')}
           </DialogTitle>
         </DialogHeader>
@@ -330,13 +321,13 @@ export function SettingsDialog() {
                   type="button"
                   variant="ghost"
                   size="icon-xs"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 cursor-pointer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                   onClick={() => setShowApiKey(!showApiKey)}
                 >
                   {showApiKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </Button>
               </div>
-              <p className="text-xs text-zinc-400">{t('ai.apiKeyHint')}</p>
+              <p className="text-xs text-muted-foreground">{t('ai.apiKeyHint')}</p>
             </div>
 
             {/* Base URL */}
@@ -379,14 +370,14 @@ export function SettingsDialog() {
                   {/* Model list */}
                   <div className="max-h-48 overflow-y-auto p-1" onWheel={(e) => e.stopPropagation()}>
                     {modelsFetching && (
-                      <div className="flex items-center justify-center py-4 text-sm text-zinc-400">
+                      <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         {tCommon('loading')}
                       </div>
                     )}
 
                     {!modelsFetching && filteredModels.length === 0 && modelsFetched && (
-                      <div className="py-3 text-center text-xs text-zinc-400">
+                      <div className="py-3 text-center text-xs text-muted-foreground">
                         {t('ai.noModelsFound')}
                       </div>
                     )}
@@ -396,8 +387,8 @@ export function SettingsDialog() {
                         key={m}
                         type="button"
                         className={cn(
-                          'flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800',
-                          aiModel === m && 'bg-zinc-100 dark:bg-zinc-800'
+                          'flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm hover:bg-muted',
+                          aiModel === m && 'bg-muted'
                         )}
                         onClick={() => {
                           setAIModel(m);
@@ -426,8 +417,8 @@ export function SettingsDialog() {
               </Popover>
             </div>
 
-            <div className="space-y-3 rounded-lg border border-zinc-200/80 bg-zinc-50/60 p-3 dark:border-zinc-800 dark:bg-zinc-900/40">
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            <div className="space-y-3 rounded-lg border border-border bg-muted/60 p-3">
+              <p className="text-xs text-muted-foreground">
                 {t('ai.connectionHint')}
               </p>
 
@@ -468,9 +459,9 @@ export function SettingsDialog() {
                 <div
                   className={cn(
                     'flex items-start gap-2 rounded-md px-3 py-2 text-xs',
-                    connectionState === 'success' && 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
-                    connectionState === 'warning' && 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
-                    connectionState === 'error' && 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
+                    connectionState === 'success' && 'bg-emerald-50 text-emerald-700',
+                    connectionState === 'warning' && 'bg-amber-50 text-amber-700',
+                    connectionState === 'error' && 'bg-red-50 text-red-700'
                   )}
                 >
                   {connectionState === 'success' ? (
@@ -486,34 +477,6 @@ export function SettingsDialog() {
 
           {/* Appearance Tab */}
           <TabsContent value="appearance" className="px-6 pb-6 pt-4 space-y-5">
-            {/* Theme */}
-            <div className="space-y-3">
-              <Label>{t('appearance.theme')}</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { value: 'light', icon: Sun, label: t('appearance.themeLight') },
-                  { value: 'dark', icon: Moon, label: t('appearance.themeDark') },
-                  { value: 'system', icon: Monitor, label: t('appearance.themeSystem') },
-                ].map(({ value, icon: Icon, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => handleThemeChange(value)}
-                    className={`flex cursor-pointer flex-col items-center gap-2 rounded-lg border p-3 text-sm transition-all ${
-                      currentTheme === value
-                        ? 'border-zinc-900 bg-zinc-50 text-zinc-900 dark:border-zinc-100 dark:bg-zinc-800 dark:text-zinc-100'
-                        : 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-700 dark:border-zinc-700 dark:hover:border-zinc-600'
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span>{label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
             {/* Language */}
             <div className="space-y-2">
               <Label>{t('appearance.language')}</Label>
@@ -538,7 +501,7 @@ export function SettingsDialog() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>{t('editorTab.autoSave')}</Label>
-                <p className="text-xs text-zinc-400">{t('editorTab.autoSaveDescription')}</p>
+                <p className="text-xs text-muted-foreground">{t('editorTab.autoSaveDescription')}</p>
               </div>
               <Switch
                 checked={autoSave}
@@ -552,7 +515,7 @@ export function SettingsDialog() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label>{t('editorTab.autoSaveInterval')}</Label>
-                <span className="text-sm text-zinc-500">
+                <span className="text-sm text-muted-foreground">
                   {(autoSaveInterval / 1000).toFixed(1)}s
                 </span>
               </div>
@@ -564,7 +527,7 @@ export function SettingsDialog() {
                 step={100}
                 disabled={!autoSave}
               />
-              <div className="flex justify-between text-xs text-zinc-400">
+              <div className="flex justify-between text-xs text-muted-foreground">
                 <span>0.3s</span>
                 <span>5.0s</span>
               </div>

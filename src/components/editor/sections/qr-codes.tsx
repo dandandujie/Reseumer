@@ -49,7 +49,7 @@ export function QrCodesSection({ section, onUpdate }: Props) {
             ];
             onUpdate({ items: merged });
           }}
-          className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+          className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <Sparkles className="h-3 w-3" />
           {t('qrAutoGenerate')}
@@ -67,7 +67,7 @@ export function QrCodesSection({ section, onUpdate }: Props) {
               updated[idx] = { ...updated[idx], label: e.target.value };
               onUpdate({ items: updated });
             }}
-            className="h-7 w-20 shrink-0 rounded border border-zinc-200 bg-transparent px-2 text-xs outline-none focus:border-zinc-400 dark:border-zinc-700 dark:focus:border-zinc-500"
+            className="h-7 w-20 shrink-0 rounded border border-border bg-transparent px-2 text-xs outline-none focus:border-[var(--whale-ink-soft)]"
           />
           <input
             type="text"
@@ -89,7 +89,7 @@ export function QrCodesSection({ section, onUpdate }: Props) {
                 setInvalidIds((prev) => { const next = new Set(prev); next.delete(qr.id); return next; });
               }
             }}
-            className={`h-7 min-w-0 flex-1 rounded border bg-transparent px-2 text-xs outline-none ${invalidIds.has(qr.id) ? 'border-red-400 text-red-500 placeholder:text-red-300 focus:border-red-500' : 'border-zinc-200 focus:border-zinc-400 dark:border-zinc-700 dark:focus:border-zinc-500'}`}
+            className={`h-7 min-w-0 flex-1 rounded border bg-transparent px-2 text-xs outline-none ${invalidIds.has(qr.id) ? 'border-red-400 text-red-500 placeholder:text-red-300 focus:border-red-500' : 'border-[var(--whale-divider)] focus:border-[var(--whale-ink-soft)]'}`}
           />
           <button
             type="button"
@@ -97,7 +97,7 @@ export function QrCodesSection({ section, onUpdate }: Props) {
               const updated = items.filter((_, i) => i !== idx);
               onUpdate({ items: updated });
             }}
-            className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -110,7 +110,7 @@ export function QrCodesSection({ section, onUpdate }: Props) {
           const newItem: QrCodeItem = { id: `qr-${Date.now()}`, label: '', url: '' };
           onUpdate({ items: [...items, newItem] });
         }}
-        className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+        className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         <Plus className="h-3 w-3" />
         {t('qrAdd')}

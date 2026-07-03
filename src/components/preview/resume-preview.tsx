@@ -1,13 +1,15 @@
 'use client';
 
 import { useId } from 'react';
-import type { Resume, ThemeConfig } from '@/types/resume';
+import type { Resume, ResumeSection, ThemeConfig } from '@/types/resume';
 import { DEFAULT_THEME_FONT_SIZE, resolveCssFontScale, resolveThemeFontStack, WEBFONT_STYLESHEETS } from '@/lib/theme-config';
 import { ClassicTemplate } from './templates/classic';
+import { ModernTemplate } from './templates/modern';
 
 interface ResumePreviewProps {
   resume: Resume;
   interactive?: boolean;
+  onReorderSections?: (sections: ResumeSection[]) => void;
 }
 
 const DEFAULT_THEME: ThemeConfig = {
@@ -119,13 +121,23 @@ function buildThemeCSS(scopeId: string, theme: ThemeConfig): string {
   `;
 }
 
-export function ResumePreview({ resume, interactive }: ResumePreviewProps) {
-  const fixedResume = { ...resume, template: 'classic' };
+export function ResumePreview({ resume, interactive, onReorderSections }: ResumePreviewProps) {
   const scopeId = useId();
-  const theme: ThemeConfig = { ...DEFAULT_THEME, ...(fixedResume.themeConfig || {}) };
+  const theme: ThemeConfig = { ...DEFAULT_THEME, ...(resume.themeConfig || {}) };
 
   // Defensive: ensure resume.sections is always an array (AI may return invalid/empty data)
-  const safeResume = fixedResume.sections ? fixedResume : { ...fixedResume, sections: [] };
+  const safeResume = resume.sections ? resume : { ...resume, sections: [] };
+
+  // Select template component based on resume.template
+  const TemplateComponent = (() => {
+    switch (resume.template) {
+      case 'modern':
+        return ModernTemplate;
+      case 'classic':
+      default:
+        return ClassicTemplate;
+    }
+  })();
 
   return (
     <>
@@ -139,7 +151,7 @@ export function ResumePreview({ resume, interactive }: ResumePreviewProps) {
       ))}
       <div data-theme-scope={scopeId}>
         <style dangerouslySetInnerHTML={{ __html: buildThemeCSS(scopeId, theme) }} />
-        <ClassicTemplate resume={safeResume} interactive={interactive} />
+        <TemplateComponent resume={safeResume} interactive={interactive} onReorderSections={onReorderSections} />
       </div>
     </>
   );

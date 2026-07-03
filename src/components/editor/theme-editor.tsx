@@ -166,18 +166,18 @@ function ColorPickerField({
 }) {
   return (
     <div className="flex items-center justify-between">
-      <Label className="text-xs text-zinc-600 dark:text-zinc-400">{label}</Label>
+      <Label className="text-xs text-[var(--whale-ink-soft)]">{label}</Label>
       <Popover>
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex cursor-pointer items-center gap-2 rounded-md border border-zinc-200 px-2 py-1 text-xs transition-colors hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600"
+            className="flex cursor-pointer items-center gap-2 rounded-md border border-[var(--whale-divider)] px-2 py-1 text-xs transition-colors hover:border-[var(--whale-ink)]/30"
           >
             <div
-              className="h-4 w-4 rounded-sm border border-zinc-200"
+              className="h-4 w-4 rounded-sm border border-[var(--whale-divider)]"
               style={{ backgroundColor: value }}
             />
-            <span className="font-mono text-zinc-500">{value}</span>
+            <span className="font-mono text-[var(--whale-ink-soft)]">{value}</span>
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-56 p-3" align="end">
@@ -226,7 +226,7 @@ function ThemeSection({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full cursor-pointer items-center gap-2 py-2 text-left text-xs font-semibold uppercase tracking-wider text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+        className="flex w-full cursor-pointer items-center gap-2 py-2 text-left text-xs font-semibold uppercase tracking-wider text-[var(--whale-ink-muted)] transition-colors hover:text-foreground"
       >
         {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         <Icon className="h-3.5 w-3.5" />
@@ -243,7 +243,7 @@ interface ThemeEditorProps {
   onClose?: () => void;
 }
 
-export function ThemeEditor({ onClose }: ThemeEditorProps) {
+export function ThemeEditor() {
   const t = useTranslations('themeEditor');
   const { currentResume } = useResumeStore();
 
@@ -281,11 +281,11 @@ export function ThemeEditor({ onClose }: ThemeEditorProps) {
   }, [updateTheme]);
 
   return (
-    <div className="flex h-full w-72 shrink-0 flex-col border-l bg-white dark:bg-zinc-900 dark:border-zinc-800">
+    <div className="flex h-full w-72 shrink-0 flex-col border-l border-[var(--whale-divider)] bg-[var(--whale-card)]">
       {/* Header */}
-      <div className="flex items-center justify-between border-b px-4 py-3 dark:border-zinc-800">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-          <Palette className="h-4 w-4 text-zinc-500" />
+      <div className="flex items-center justify-between border-b border-[var(--whale-divider)] px-4 py-3">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--whale-ink)]">
+          <Palette className="h-4 w-4 text-[var(--whale-ink-muted)]" />
           {t('title')}
         </h3>
         <Button
@@ -293,7 +293,7 @@ export function ThemeEditor({ onClose }: ThemeEditorProps) {
           size="icon-xs"
           onClick={resetTheme}
           title={t('reset')}
-          className="cursor-pointer text-zinc-400 hover:text-zinc-600"
+          className="cursor-pointer text-[var(--whale-ink-muted)] hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)]"
         >
           <RotateCcw className="h-3.5 w-3.5" />
         </Button>
@@ -309,19 +309,19 @@ export function ThemeEditor({ onClose }: ThemeEditorProps) {
                   key={preset.id}
                   type="button"
                   onClick={() => applyPreset(preset)}
-                  className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-zinc-200 p-2 transition-all hover:border-zinc-400 hover:shadow-sm dark:border-zinc-700 dark:hover:border-zinc-500"
+                  className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-[var(--whale-divider)] p-2 transition-all hover:border-[var(--whale-ink)]/30 hover:bg-[var(--whale-cream-soft)] hover:shadow-sm"
                   title={t(`preset.${preset.id}`)}
                 >
                   <div className="flex gap-0.5">
                     {preset.colors.map((color, i) => (
                       <div
                         key={i}
-                        className="h-3 w-3 rounded-full border border-zinc-200"
+                        className="h-3 w-3 rounded-full border border-[var(--whale-divider)]"
                         style={{ backgroundColor: color }}
                       />
                     ))}
                   </div>
-                  <span className="text-[10px] text-zinc-500 group-hover:text-zinc-700 dark:text-zinc-400 dark:group-hover:text-zinc-200">
+                  <span className="text-[10px] text-[var(--whale-ink-soft)] group-hover:text-foreground">
                     {t(`preset.${preset.id}`)}
                   </span>
                 </button>
@@ -351,7 +351,7 @@ export function ThemeEditor({ onClose }: ThemeEditorProps) {
           <ThemeSection icon={Type} title={t('typography')}>
             {/* Header Font */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-600 dark:text-zinc-400">{t('fontFamily')}</Label>
+              <Label className="text-xs text-[var(--whale-ink-soft)]">{t('fontFamily')}</Label>
               <Select
                 value={themeConfig.fontFamily}
                 onValueChange={(v) => updateTheme({ fontFamily: v })}
@@ -372,8 +372,8 @@ export function ThemeEditor({ onClose }: ThemeEditorProps) {
             {/* Font Size */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label className="text-xs text-zinc-600 dark:text-zinc-400">{t('fontSizeLabel')}</Label>
-                <span className="text-xs text-zinc-400">{fontSizeValue}px</span>
+                <Label className="text-xs text-[var(--whale-ink-soft)]">{t('fontSizeLabel')}</Label>
+                <span className="text-xs text-[var(--whale-ink-muted)]">{fontSizeValue}px</span>
               </div>
               <Slider
                 value={[fontSizeValue]}
@@ -387,15 +387,15 @@ export function ThemeEditor({ onClose }: ThemeEditorProps) {
             {/* Line Spacing */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label className="text-xs text-zinc-600 dark:text-zinc-400">{t('lineSpacing')}</Label>
-                <span className="text-xs text-zinc-400">{themeConfig.lineSpacing.toFixed(1)}</span>
+                <Label className="text-xs text-[var(--whale-ink-soft)]">{t('lineSpacing')}</Label>
+                <span className="text-xs text-[var(--whale-ink-muted)]">{themeConfig.lineSpacing.toFixed(1)}</span>
               </div>
               <Slider
                 value={[themeConfig.lineSpacing]}
                 onValueChange={([v]) => updateTheme({ lineSpacing: v })}
-                min={1.0}
+                min={0.8}
                 max={2.5}
-                step={0.1}
+                step={0.05}
               />
             </div>
           </ThemeSection>
@@ -407,25 +407,25 @@ export function ThemeEditor({ onClose }: ThemeEditorProps) {
             {/* Section Spacing */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label className="text-xs text-zinc-600 dark:text-zinc-400">{t('sectionSpacing')}</Label>
-                <span className="text-xs text-zinc-400">{themeConfig.sectionSpacing}px</span>
+                <Label className="text-xs text-[var(--whale-ink-soft)]">{t('sectionSpacing')}</Label>
+                <span className="text-xs text-[var(--whale-ink-muted)]">{themeConfig.sectionSpacing}px</span>
               </div>
               <Slider
                 value={[themeConfig.sectionSpacing]}
                 onValueChange={([v]) => updateTheme({ sectionSpacing: v })}
-                min={4}
+                min={0}
                 max={32}
-                step={2}
+                step={1}
               />
             </div>
 
             {/* Page Margin */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-600 dark:text-zinc-400">{t('pageMargin')}</Label>
+              <Label className="text-xs text-[var(--whale-ink-soft)]">{t('pageMargin')}</Label>
               <div className="grid grid-cols-4 gap-1.5">
                 {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
                   <div key={side} className="space-y-0.5">
-                    <span className="text-[10px] text-zinc-400 block text-center">{t(`margin.${side}`)}</span>
+                    <span className="text-[10px] text-[var(--whale-ink-muted)] block text-center">{t(`margin.${side}`)}</span>
                     <Input
                       type="number"
                       value={themeConfig.margin[side]}

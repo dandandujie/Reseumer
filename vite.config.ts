@@ -12,12 +12,6 @@ export default defineConfig(async () => ({
       '@': path.resolve(__dirname, './src'),
       // Redirect next-intl imports to our i18next compatibility layer
       'next-intl': path.resolve(__dirname, './src/i18n/compat-next-intl.ts'),
-      // next-auth/react is not needed in desktop mode
-      'next-auth/react': path.resolve(__dirname, './src/compat/next-auth-react.ts'),
-      // next/image → plain img
-      'next/image': path.resolve(__dirname, './src/compat/next-image.ts'),
-      // next/navigation → react-router wrappers
-      'next/navigation': path.resolve(__dirname, './src/compat/next-navigation.ts'),
     },
   },
   clearScreen: false,

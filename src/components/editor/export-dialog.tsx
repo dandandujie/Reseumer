@@ -132,7 +132,12 @@ export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps
       setTimeout(() => onOpenChange(false), 1500);
     } catch (err: any) {
       setState('error');
-      setErrorMessage(err.message || t('error'));
+      const raw = String(err?.message || err || '');
+      if (raw.includes('CHROME_NOT_FOUND')) {
+        setErrorMessage(t('chromeMissing'));
+      } else {
+        setErrorMessage(raw || t('error'));
+      }
     }
   }, [resumeId, selectedFormat, currentResume, isDirty, save, onOpenChange, t]);
 
@@ -161,17 +166,17 @@ export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps
                       <button
                         key={format.value}
                         onClick={() => setSelectedFormat(format.value)}
-                        className={`cursor-pointer flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-center transition-all duration-150 hover:border-brand hover:bg-brand-muted/50 dark:hover:border-brand dark:hover:bg-brand-muted/20 ${
+                        className={`cursor-pointer flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-center transition-all duration-150 hover:border-brand hover:bg-brand-muted/50 ${
                           isSelected
-                            ? 'border-brand bg-brand-muted dark:border-brand dark:bg-brand-muted'
-                            : 'border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900'
+                            ? 'border-brand bg-brand-muted'
+                            : 'border-border bg-card'
                         }`}
                       >
-                        <Icon className={`h-6 w-6 ${isSelected ? 'text-brand' : 'text-zinc-500 dark:text-zinc-400'}`} />
-                        <span className={`text-sm font-medium ${isSelected ? 'text-brand dark:text-brand' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                        <Icon className={`h-6 w-6 ${isSelected ? 'text-brand' : 'text-muted-foreground'}`} />
+                        <span className={`text-sm font-medium ${isSelected ? 'text-brand' : 'text-[var(--whale-ink-soft)]'}`}>
                           {t(format.labelKey)}
                         </span>
-                        <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                        <span className="text-xs text-muted-foreground">
                           {t(format.descKey)}
                         </span>
                       </button>
@@ -195,8 +200,8 @@ export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps
                 <div
                   className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm ${
                     hasOnePageRisk
-                      ? 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100'
-                      : 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100'
+                      ? 'border-amber-200 bg-amber-50 text-amber-900'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-900'
                   }`}
                 >
                   {hasOnePageRisk ? (
@@ -226,7 +231,7 @@ export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps
           {state === 'exporting' && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Loader2 className="h-8 w-8 animate-spin text-brand mb-3" />
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <p className="text-sm font-medium text-[var(--whale-ink-soft)]">
                 {t('exporting')}
               </p>
             </div>
@@ -235,7 +240,7 @@ export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps
           {state === 'success' && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CheckCircle2 className="h-8 w-8 text-green-500 mb-3" />
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <p className="text-sm font-medium text-[var(--whale-ink-soft)]">
                 {t('success')}
               </p>
             </div>
@@ -244,14 +249,14 @@ export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps
           {state === 'error' && (
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <AlertCircle className="h-8 w-8 text-red-500 mb-3" />
-              <p className="text-sm font-medium text-red-600 dark:text-red-400">
+              <p className="text-sm font-medium text-red-600">
                 {errorMessage || t('error')}
               </p>
             </div>
           )}
         </div>
 
-        <DialogFooter className="border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
+        <DialogFooter className="border-t border-border px-6 py-4">
           {(state === 'idle' || state === 'error') && (
             <>
               <Button

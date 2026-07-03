@@ -1,6 +1,7 @@
 'use client';
 
 import { Plus, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -12,6 +13,7 @@ interface EditableListProps {
 }
 
 export function EditableList({ label, items, onChange, placeholder }: EditableListProps) {
+  const t = useTranslations('common');
   const addItem = () => onChange([...(items || []), '']);
 
   const updateItem = (index: number, value: string) => {
@@ -26,7 +28,7 @@ export function EditableList({ label, items, onChange, placeholder }: EditableLi
 
   return (
     <div className="space-y-1">
-      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</label>
+      <label className="text-xs font-medium text-[var(--whale-ink-muted)]">{label}</label>
       <div className="space-y-1.5">
         {(items || []).map((item, index) => (
           <div key={index} className="flex items-center gap-1">
@@ -39,7 +41,7 @@ export function EditableList({ label, items, onChange, placeholder }: EditableLi
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 shrink-0 cursor-pointer p-0 text-zinc-400 hover:text-red-500"
+              className="h-8 w-8 shrink-0 cursor-pointer p-0 text-[var(--whale-ink-muted)] hover:text-red-500"
               onClick={() => removeItem(index)}
             >
               <X className="h-3.5 w-3.5" />
@@ -53,7 +55,7 @@ export function EditableList({ label, items, onChange, placeholder }: EditableLi
           className="h-7 cursor-pointer gap-1 text-xs"
         >
           <Plus className="h-3 w-3" />
-          Add
+          {t('add')}
         </Button>
       </div>
     </div>

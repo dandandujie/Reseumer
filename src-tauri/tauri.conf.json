@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicegram/nicegram-schemas/refs/heads/main/tauri/tauri.conf.2.schema.json",
-  "productName": "Reseumer",
+  "productName": "Resumer",
   "version": "0.4.2",
   "identifier": "com.reseumer.desktop",
   "build": {
@@ -12,12 +12,14 @@
   "app": {
     "windows": [
       {
-        "title": "Reseumer",
+        "title": "Resumer",
         "width": 1440,
         "height": 960,
         "minWidth": 1200,
         "minHeight": 760,
-        "center": true
+        "center": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
       }
     ],
     "security": {

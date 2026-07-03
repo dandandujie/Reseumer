@@ -3,6 +3,7 @@ pub mod user;
 pub mod ai;
 pub mod chat;
 pub mod export;
+pub mod global_agent;
 
 use serde::Serialize;
 

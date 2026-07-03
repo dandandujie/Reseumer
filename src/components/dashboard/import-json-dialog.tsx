@@ -136,10 +136,10 @@ export function ImportJsonDialog({ open, onOpenChange }: ImportJsonDialogProps) 
               onClick={() => fileInputRef.current?.click()}
               className={`flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
                 isDragging
-                  ? 'border-brand bg-brand-muted dark:bg-brand-muted'
+                  ? 'border-brand bg-brand-muted'
                   : selectedFile
-                    ? 'border-green-300 bg-green-50/50 dark:border-green-700 dark:bg-green-950/20'
-                    : 'border-zinc-300 hover:border-brand hover:bg-brand-muted/30 dark:border-zinc-600 dark:hover:border-brand dark:hover:bg-brand-muted/10'
+                    ? 'border-green-300 bg-green-50/50'
+                    : 'border-border hover:border-brand hover:bg-brand-muted/30'
               }`}
             >
               <input
@@ -152,18 +152,18 @@ export function ImportJsonDialog({ open, onOpenChange }: ImportJsonDialogProps) 
               {selectedFile ? (
                 <>
                   <FileJson className="mb-3 h-8 w-8 text-green-500" />
-                  <p className="max-w-full truncate text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <p className="max-w-full truncate text-sm font-medium text-[var(--whale-ink-soft)]">
                     {selectedFile.name}
                   </p>
-                  <p className="mt-1 text-xs text-zinc-400">{t('dragHint')}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{t('dragHint')}</p>
                 </>
               ) : (
                 <>
-                  <Upload className="mb-3 h-8 w-8 text-zinc-400" />
-                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <Upload className="mb-3 h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm font-medium text-[var(--whale-ink-soft)]">
                     {t('selectFile')}
                   </p>
-                  <p className="mt-1 text-xs text-zinc-400">{t('dragHint')}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{t('dragHint')}</p>
                 </>
               )}
             </div>
@@ -172,7 +172,7 @@ export function ImportJsonDialog({ open, onOpenChange }: ImportJsonDialogProps) 
           {state === 'error' && !selectedFile && (
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <AlertCircle className="mb-3 h-8 w-8 text-red-500" />
-              <p className="text-sm font-medium text-red-600 dark:text-red-400">
+              <p className="text-sm font-medium text-red-600">
                 {errorMessage || t('error')}
               </p>
             </div>
@@ -181,7 +181,7 @@ export function ImportJsonDialog({ open, onOpenChange }: ImportJsonDialogProps) 
           {state === 'importing' && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Loader2 className="mb-3 h-8 w-8 animate-spin text-brand" />
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <p className="text-sm font-medium text-[var(--whale-ink-soft)]">
                 {t('importing')}
               </p>
             </div>
@@ -190,14 +190,14 @@ export function ImportJsonDialog({ open, onOpenChange }: ImportJsonDialogProps) 
           {state === 'success' && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CheckCircle2 className="mb-3 h-8 w-8 text-green-500" />
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <p className="text-sm font-medium text-[var(--whale-ink-soft)]">
                 {t('success')}
               </p>
             </div>
           )}
         </div>
 
-        <DialogFooter className="border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
+        <DialogFooter className="border-t border-border px-6 py-4">
           {(state === 'idle' || state === 'error') && (
             <>
               <Button

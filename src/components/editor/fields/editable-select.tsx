@@ -20,7 +20,7 @@ interface EditableSelectProps {
 export function EditableSelect({ label, value, onChange, options, placeholder }: EditableSelectProps) {
   return (
     <div className="space-y-1">
-      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</label>
+      <label className="text-xs font-medium text-[var(--whale-ink-muted)]">{label}</label>
       <div className="relative">
         <Select value={value || ''} onValueChange={onChange}>
           <SelectTrigger size="sm" className="w-full text-sm">
@@ -38,7 +38,7 @@ export function EditableSelect({ label, value, onChange, options, placeholder }:
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onChange(''); }}
-            className="absolute top-1/2 right-7 -translate-y-1/2 rounded p-0.5 text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+            className="absolute top-1/2 right-7 -translate-y-1/2 rounded p-0.5 text-[var(--whale-ink-muted)] transition-colors hover:text-[var(--whale-ink)]"
           >
             <X className="h-3 w-3" />
           </button>

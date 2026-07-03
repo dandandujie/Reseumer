@@ -1,0 +1,4 @@
+-- Migration 002: resume_versions table
+-- This table was already created in 001_initial.sql (lines 73-87)
+-- This migration is kept as a placeholder to maintain version numbering
+-- No changes needed.

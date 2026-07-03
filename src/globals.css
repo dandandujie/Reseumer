@@ -2,13 +2,22 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Keep the class-based dark variant registered so stray `dark:` utilities in
+   components stay inert (the app is deliberately light-only — the `.dark`
+   class is never applied). Without this, Tailwind's default media-query dark
+   variant would activate them under OS dark mode. */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Typography — Instrument Sans for UI, Fraunces for display/editorial moments.
+     CJK falls back to system fonts (PingFang SC / Microsoft YaHei) for UI, and
+     to serif CJK faces (Songti SC) under the display stack so zh headings keep
+     the editorial voice. */
+  --font-sans: 'Instrument Sans Variable', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces Variable', 'Songti SC', 'STSong', 'SimSun', ui-serif, serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Consolas', monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -85,85 +94,11 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  /* Brand: BOSS green (default) */
   --brand: oklch(0.64 0.15 168);
   --brand-foreground: oklch(1 0 0);
   --brand-hover: oklch(0.56 0.14 168);
   --brand-muted: oklch(0.94 0.05 168);
   --brand-ring: oklch(0.64 0.15 168 / 40%);
-}
-
-.dark {
-  --background: oklch(0.185 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.235 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.235 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.3 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.3 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.3 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.235 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.3 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-  --brand: oklch(0.83 0.16 168);
-  --brand-foreground: oklch(0.20 0.05 168);
-  --brand-hover: oklch(0.74 0.16 168);
-  --brand-muted: oklch(0.32 0.08 168);
-  --brand-ring: oklch(0.83 0.16 168 / 40%);
-}
-
-[data-brand="blue"] {
-  --brand: oklch(0.55 0.22 258);
-  --brand-foreground: oklch(1 0 0);
-  --brand-hover: oklch(0.48 0.22 258);
-  --brand-muted: oklch(0.95 0.04 258);
-  --brand-ring: oklch(0.55 0.22 258 / 40%);
-}
-
-.dark[data-brand="blue"],
-[data-brand="blue"] .dark {
-  --brand: oklch(0.72 0.18 258);
-  --brand-foreground: oklch(0.18 0.05 258);
-  --brand-hover: oklch(0.62 0.20 258);
-  --brand-muted: oklch(0.32 0.10 258);
-  --brand-ring: oklch(0.72 0.18 258 / 40%);
-}
-
-[data-brand="pink"] {
-  --brand: oklch(0.65 0.22 350);
-  --brand-foreground: oklch(1 0 0);
-  --brand-hover: oklch(0.58 0.22 350);
-  --brand-muted: oklch(0.95 0.04 350);
-  --brand-ring: oklch(0.65 0.22 350 / 40%);
-}
-
-.dark[data-brand="pink"],
-[data-brand="pink"] .dark {
-  --brand: oklch(0.72 0.20 350);
-  --brand-foreground: oklch(0.18 0.05 350);
-  --brand-hover: oklch(0.65 0.22 350);
-  --brand-muted: oklch(0.32 0.10 350);
-  --brand-ring: oklch(0.72 0.20 350 / 40%);
 }
 
 @layer base {
@@ -172,155 +107,350 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-optical-sizing: auto;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: rgba(168, 232, 216, 0.55);
+    color: #1c1a17;
   }
 }
 
-/* Landing page animations */
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-12px); }
+/* Editorial display type — Fraunces with gentle optical tuning */
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  letter-spacing: -0.01em;
 }
 
-@keyframes float-delayed {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
 }
 
-.animate-float {
-  animation: float 6s ease-in-out infinite;
+button,
+a,
+input,
+textarea,
+select,
+[role="button"],
+[data-radix-popper-content-wrapper] {
+  -webkit-app-region: no-drag;
 }
 
-.animate-float-delayed {
-  animation: float-delayed 5s ease-in-out infinite;
-  animation-delay: 1s;
+.tauri-edge-drag-region {
+  -webkit-app-region: drag;
 }
 
-.landing-cta-bg {
-  background: linear-gradient(135deg, var(--brand), var(--brand-hover));
+.toast-compact {
+  min-height: 0 !important;
+  width: min(280px, calc(100vw - 28px)) !important;
+  padding: 7px 10px !important;
+  gap: 6px !important;
+  border-radius: 8px !important;
 }
 
-/* Landing feature demos */
-@keyframes demo-typing-dot {
-  0%, 20%, 100% { opacity: 0.2; }
-  50% { opacity: 1; }
+/* ──────────────────────────────────────────────────────────────
+   Whale Cream — app-wide design tokens
+   Activated by [data-design="whale"] on layout roots.
+   Warm paper + ink + mint: the chrome reads as cream stationery
+   so the white A4 sheet in the preview pops as "paper on a desk".
+   ────────────────────────────────────────────────────────────── */
+[data-design="whale"] {
+  --whale-cream: #FAF7F0;
+  --whale-sidebar: #F1EDE3;
+  --whale-cream-soft: #F3EFE6;
+  --whale-cream-deep: #E7E1D2;
+  --whale-ink: #1C1A17;
+  --whale-ink-soft: #3A352D;
+  --whale-ink-muted: #6E665A;
+  --whale-mint: #A8E8D8;
+  --whale-mint-deep: #12A98E;
+  --whale-divider: #E3DDCC;
+  --whale-card: #FFFFFF;
+
+  /* Alias shadcn brand tokens to Whale tokens so every existing bg-brand /
+     text-brand / border-brand / brand-muted picks up the whale palette
+     without per-file edits. Portal-rendered dialogs inherit this when the
+     [data-design="whale"] attribute is also set on <html>. */
+  --brand: var(--whale-ink);
+  --brand-foreground: var(--whale-cream);
+  --brand-hover: var(--whale-ink-soft);
+  --brand-muted: #DCF2EA;
+  --brand-ring: rgba(20, 184, 154, 0.35);
+
+  /* Alias shadcn core tokens — inputs, borders, focus rings, popovers all
+     inherit Whale styling automatically. */
+  --background: var(--whale-cream);
+  --foreground: var(--whale-ink);
+  --card: var(--whale-card);
+  --card-foreground: var(--whale-ink);
+  --popover: var(--whale-card);
+  --popover-foreground: var(--whale-ink);
+  --primary: var(--whale-ink);
+  --primary-foreground: var(--whale-cream);
+  --secondary: var(--whale-cream-soft);
+  --secondary-foreground: var(--whale-ink);
+  --muted: var(--whale-cream-soft);
+  --muted-foreground: var(--whale-ink-muted);
+  --accent: var(--whale-cream-soft);
+  --accent-foreground: var(--whale-ink);
+  --border: var(--whale-divider);
+  --input: var(--whale-divider);
+  --ring: var(--whale-mint-deep);
+  --sidebar: var(--whale-sidebar);
+  --sidebar-foreground: var(--whale-ink);
+  --sidebar-border: var(--whale-divider);
+  --sidebar-accent: var(--whale-cream-deep);
+  --sidebar-accent-foreground: var(--whale-ink);
 }
 
-@keyframes demo-slide-up {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Soft scrollbars everywhere inside the whale scope */
+[data-design="whale"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+[data-design="whale"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+[data-design="whale"] ::-webkit-scrollbar-thumb {
+  background: var(--whale-divider);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+[data-design="whale"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--whale-ink-muted);
+  background-clip: padding-box;
 }
 
-@keyframes demo-drag-item {
-  0%, 10% { transform: translateY(0); box-shadow: none; }
-  20% { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-  40% { transform: translateY(-40px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-  60%, 100% { transform: translateY(-40px); box-shadow: none; }
+/* Map hardcoded green/emerald utilities to Whale mint inside [data-design="whale"].
+   Keeps "good = green" semantics but unifies the hue with the design system. */
+[data-design="whale"] :is(.text-green-400, .text-emerald-400) {
+  color: #4ECCB4 !important;
+}
+[data-design="whale"]
+  :is(.text-green-500, .text-emerald-500, .text-green-600, .text-emerald-600,
+      .text-green-700, .text-emerald-700) {
+  color: var(--whale-mint-deep) !important;
+}
+[data-design="whale"] :is(.text-green-900, .text-emerald-900) {
+  color: var(--whale-ink) !important;
+}
+[data-design="whale"] :is(.stroke-emerald-500, .stroke-green-500) {
+  stroke: var(--whale-mint-deep) !important;
+}
+[data-design="whale"] :is(.stroke-emerald-100, .stroke-green-100) {
+  stroke: rgba(168, 232, 216, 0.4) !important;
+}
+[data-design="whale"] :is(.bg-green-50, .bg-emerald-50) {
+  background-color: rgba(168, 232, 216, 0.15) !important;
+}
+[data-design="whale"] :is(.bg-green-100, .bg-emerald-100) {
+  background-color: rgba(168, 232, 216, 0.35) !important;
+}
+[data-design="whale"] :is(.border-green-200, .border-emerald-200) {
+  border-color: rgba(168, 232, 216, 0.6) !important;
+}
+[data-design="whale"] :is(.border-green-300, .border-emerald-300) {
+  border-color: rgba(168, 232, 216, 0.8) !important;
 }
 
-@keyframes demo-drag-displaced {
-  0%, 40% { transform: translateY(0); }
-  50%, 100% { transform: translateY(40px); }
+@keyframes whale-sparkle {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.85; }
+  50% { transform: scale(1.06) rotate(2deg); opacity: 1; }
 }
 
-@keyframes demo-download-arrow {
-  0%, 30% { transform: translateY(0); opacity: 1; }
-  50% { transform: translateY(8px); opacity: 0.6; }
-  70%, 100% { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes demo-ring-fill {
-  from { stroke-dashoffset: 251; }
-  to { stroke-dashoffset: 50; }
-}
-
-@keyframes demo-check-pop {
-  0% { transform: scale(0); opacity: 0; }
-  60% { transform: scale(1.2); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-@keyframes demo-swap {
-  0%, 40% { transform: translateX(0); }
-  50%, 90% { transform: translateX(8px); }
-  100% { transform: translateX(0); }
-}
-
-@keyframes demo-line-appear {
-  from { width: 0; opacity: 0; }
-  to { width: 100%; opacity: 1; }
-}
-
-@keyframes demo-underline-fix {
-  0%, 50% { background-color: #fca5a5; }
-  60%, 100% { background-color: #86efac; }
-}
-
-@keyframes demo-progress {
-  from { width: 0; }
-  to { width: 100%; }
-}
-
-/* AI chat markdown */
+/* ──────────────────────────────────────────────────────────────
+   AI message markdown — whale-toned, compact chat typography
+   ────────────────────────────────────────────────────────────── */
 .ai-markdown {
-  @apply text-[13px] leading-relaxed;
-}
-.ai-markdown p {
-  @apply mb-2 last:mb-0;
-}
-.ai-markdown strong {
-  @apply font-semibold text-zinc-900 dark:text-zinc-100;
-}
-.ai-markdown ul,
-.ai-markdown ol {
-  @apply mb-2 ml-4 last:mb-0;
-}
-.ai-markdown ul {
-  @apply list-disc;
-}
-.ai-markdown ol {
-  @apply list-decimal;
-}
-.ai-markdown li {
-  @apply mb-0.5;
-}
-.ai-markdown code {
-  @apply rounded bg-zinc-200/60 px-1 py-0.5 text-xs text-brand dark:bg-zinc-700/60;
-}
-.ai-markdown pre {
-  @apply mb-2 overflow-x-auto rounded-lg bg-zinc-800 p-2.5 text-xs last:mb-0;
-}
-.ai-markdown pre code {
-  @apply bg-transparent p-0 text-zinc-100;
-}
-.ai-markdown h1,
-.ai-markdown h2,
-.ai-markdown h3 {
-  @apply mb-1.5 mt-3 font-semibold text-zinc-900 dark:text-zinc-100 first:mt-0;
-}
-.ai-markdown h1 { @apply text-sm; }
-.ai-markdown h2 { @apply text-[13px]; }
-.ai-markdown h3 { @apply text-[13px]; }
-.ai-markdown blockquote {
-  @apply mb-2 border-l-2 border-brand pl-2.5 text-zinc-500 dark:text-zinc-400 last:mb-0;
-}
-.ai-markdown hr {
-  @apply my-2 border-zinc-200 dark:border-zinc-700;
-}
-.ai-markdown table {
-  @apply mb-2 w-full border-collapse text-[12px] last:mb-0;
-}
-.ai-markdown th {
-  @apply border border-zinc-200 bg-zinc-100 px-2 py-1 text-left font-semibold text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200;
-}
-.ai-markdown td {
-  @apply border border-zinc-200 px-2 py-1 text-zinc-600 dark:border-zinc-700 dark:text-zinc-400;
+  font-size: 13px;
+  color: var(--whale-ink-soft);
+  line-height: 1.7;
 }
 
-@keyframes thinkingWave {
-  0%, 100% { transform: scaleY(0.4); }
-  50% { transform: scaleY(1.2); }
+.ai-markdown h1 {
+  font-size: 1.1875rem;
+  font-weight: 700;
+  color: var(--whale-ink);
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
 }
-@utility shadow-sharp {
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
-  border: 1px solid black;
+
+.ai-markdown h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--whale-ink);
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--whale-divider);
+  padding-bottom: 0.375rem;
+}
+
+.ai-markdown h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--whale-ink);
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.ai-markdown h4 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--whale-ink-soft);
+  margin-top: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.ai-markdown h1:first-child,
+.ai-markdown h2:first-child,
+.ai-markdown h3:first-child,
+.ai-markdown h4:first-child {
+  margin-top: 0;
+}
+
+.ai-markdown p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.ai-markdown p:first-child {
+  margin-top: 0;
+}
+
+.ai-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.ai-markdown ul, .ai-markdown ol {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+}
+
+.ai-markdown ul {
+  list-style-type: disc;
+}
+
+.ai-markdown ol {
+  list-style-type: decimal;
+}
+
+.ai-markdown li {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.ai-markdown code {
+  background-color: var(--whale-cream-deep);
+  color: var(--whale-ink);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-family: var(--font-mono);
+}
+
+.ai-markdown pre {
+  background-color: var(--whale-cream-deep);
+  border: 1px solid var(--whale-divider);
+  border-radius: 0.5rem;
+  padding: 0.875rem;
+  overflow-x: auto;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.ai-markdown pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.ai-markdown blockquote {
+  border-left: 3px solid var(--whale-mint-deep);
+  padding-left: 1rem;
+  margin-left: 0;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: var(--whale-ink-muted);
+  font-style: italic;
+}
+
+.ai-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.ai-markdown th {
+  background-color: var(--whale-cream-soft);
+  border: 1px solid var(--whale-divider);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--whale-ink);
+}
+
+.ai-markdown td {
+  border: 1px solid var(--whale-divider);
+  padding: 0.5rem 0.75rem;
+}
+
+.ai-markdown a {
+  color: var(--whale-mint-deep);
+  text-decoration: underline;
+  text-decoration-color: rgba(168, 232, 216, 0.4);
+  text-underline-offset: 2px;
+}
+
+.ai-markdown a:hover {
+  text-decoration-color: var(--whale-mint-deep);
+}
+
+.ai-markdown hr {
+  border: none;
+  border-top: 1px solid var(--whale-divider);
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.ai-markdown strong {
+  font-weight: 600;
+  color: var(--whale-ink);
+}
+
+.ai-markdown em {
+  font-style: italic;
+}
+
+/* Embedded HTML styling - keep minimal for user control */
+.ai-markdown div[style] {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ai-markdown details {
+  border: 1px solid var(--whale-divider);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  background-color: var(--whale-cream-soft);
+}
+
+.ai-markdown summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--whale-ink);
+  user-select: none;
+}
+
+.ai-markdown summary:hover {
+  color: var(--whale-mint-deep);
 }

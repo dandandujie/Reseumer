@@ -2,9 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import * as api from '@/lib/tauri-api';
 import { useResumeStore } from '@/stores/resume-store';
-import { useSettingsStore } from '@/stores/settings-store';
+import { useProposalsStore, isMutationTool } from '@/stores/proposals-store';
+import { useJournalStore, summarizeForAI } from '@/stores/journal-store';
 import { generateId } from '@/lib/utils';
 import type { UIMessage, MessagePart } from '@/types/chat';
+import type { ResumeSection } from '@/types/resume';
+import type { AIProviderId } from '@/lib/tauri-api';
 
 export type { UIMessage, MessagePart };
 
@@ -12,6 +15,7 @@ interface UseAIChatOptions {
   resumeId: string;
   sessionId?: string;
   initialMessages?: UIMessage[];
+  selectedProvider?: AIProviderId;
   selectedModel?: string;
 }
 
@@ -26,7 +30,7 @@ interface StreamEvent {
     | { type: 'error'; message: string };
 }
 
-export function useAIChat({ resumeId, sessionId, initialMessages }: UseAIChatOptions) {
+export function useAIChat({ resumeId, sessionId, initialMessages, selectedProvider, selectedModel }: UseAIChatOptions) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [localMessages, setLocalMessages] = useState<UIMessage[]>([]);
@@ -36,6 +40,47 @@ export function useAIChat({ resumeId, sessionId, initialMessages }: UseAIChatOpt
   const isLoading = status === 'streaming' || status === 'submitted';
   const streamIdRef = useRef<string | null>(null);
   const assistantMsgIdRef = useRef<string | null>(null);
+  // Tracks pending mutation tool calls so we can snapshot before/after for proposals
+  const pendingMutationsRef = useRef<
+    Map<
+      string,
+      {
+        name: string;
+        beforeSections: ResumeSection[];
+        args: Record<string, unknown>;
+        messageId: string;
+      }
+    >
+  >(new Map());
+  // Buffer text deltas in a ref so we can throttle setMessages updates.
+  // Streaming providers can fire 100+ deltas/sec — without this each token
+  // would trigger a full React re-render of the chat list.
+  const textBufferRef = useRef<string>('');
+  const flushTimerRef = useRef<number | null>(null);
+
+  const flushTextBuffer = useCallback(() => {
+    const chunk = textBufferRef.current;
+    if (!chunk) return;
+    textBufferRef.current = '';
+    setMessages((prev) => {
+      const msgId = assistantMsgIdRef.current;
+      if (!msgId) return prev;
+      const idx = prev.findIndex((m) => m.id === msgId);
+      if (idx === -1) return prev;
+      const msg = { ...prev[idx] };
+      const parts = [...msg.parts];
+      const lastPart = parts[parts.length - 1];
+      if (lastPart?.type === 'text') {
+        parts[parts.length - 1] = { type: 'text', text: lastPart.text + chunk };
+      } else {
+        parts.push({ type: 'text', text: chunk });
+      }
+      msg.parts = parts;
+      const out = [...prev];
+      out[idx] = msg;
+      return out;
+    });
+  }, []);
 
   // Hydrate initial messages
   useEffect(() => {
@@ -74,6 +119,29 @@ export function useAIChat({ resumeId, sessionId, initialMessages }: UseAIChatOpt
       const payload = evt.payload;
       if (!payload || payload.streamId !== streamIdRef.current) return;
 
+      // Fast path for text deltas: buffer them and schedule one flush per frame.
+      // This drops re-renders from per-token to ~25fps, which the React DOM
+      // can keep up with even on long responses.
+      if (payload.event.type === 'textDelta') {
+        textBufferRef.current += payload.event.text;
+        if (flushTimerRef.current === null) {
+          flushTimerRef.current = window.setTimeout(() => {
+            flushTimerRef.current = null;
+            flushTextBuffer();
+          }, 40);
+        }
+        return;
+      }
+
+      // Any non-text event flushes pending text first so ordering stays correct.
+      if (textBufferRef.current) {
+        if (flushTimerRef.current !== null) {
+          clearTimeout(flushTimerRef.current);
+          flushTimerRef.current = null;
+        }
+        flushTextBuffer();
+      }
+
       setMessages((prev) => {
         const msgId = assistantMsgIdRef.current;
         if (!msgId) return prev;
@@ -83,43 +151,76 @@ export function useAIChat({ resumeId, sessionId, initialMessages }: UseAIChatOpt
         const parts = [...msg.parts];
 
         switch (payload.event.type) {
-          case 'textDelta': {
-            // Append text to the last text part, or create a new one
-            const lastPart = parts[parts.length - 1];
-            if (lastPart?.type === 'text') {
-              parts[parts.length - 1] = { type: 'text', text: lastPart.text + payload.event.text };
-            } else {
-              parts.push({ type: 'text', text: payload.event.text });
+          case 'toolCallStart': {
+            parts.push({ type: 'tool', toolName: payload.event.name, toolCallId: payload.event.id, args: {}, state: 'input-available' });
+            if (isMutationTool(payload.event.name)) {
+              // Snapshot resume sections BEFORE the backend executes the tool
+              // Note: we deep clone here and cache in pendingMutations to avoid double-cloning later
+              const snapshot = useResumeStore.getState().sections.map((s) => ({
+                ...s,
+                content: structuredClone(s.content)
+              }));
+              pendingMutationsRef.current.set(payload.event.id, {
+                name: payload.event.name,
+                beforeSections: snapshot,
+                args: {},
+                messageId: msgId,
+              });
             }
             break;
           }
-          case 'toolCallStart': {
-            parts.push({ type: 'tool', toolName: payload.event.name, args: {}, state: 'input-available' });
-            break;
-          }
           case 'toolCallArgs': {
-            // Update latest tool part with args
+            // Update tool part matching this id with args
             for (let i = parts.length - 1; i >= 0; i--) {
-              if (parts[i].type === 'tool' && (parts[i] as any).result === undefined) {
+              if (parts[i].type === 'tool' && (parts[i] as any).toolCallId === payload.event.id) {
                 parts[i] = { ...parts[i], args: payload.event.args } as MessagePart;
                 break;
               }
             }
+            const pending = pendingMutationsRef.current.get(payload.event.id);
+            if (pending) {
+              pending.args = (payload.event.args as Record<string, unknown>) || {};
+            }
             break;
           }
           case 'toolResult': {
+            const toolResultId = payload.event.id;
             for (let i = parts.length - 1; i >= 0; i--) {
               const p = parts[i];
-              if (p.type === 'tool' && p.toolName === payload.event.name && p.result === undefined) {
+              if (p.type === 'tool' && (p as any).toolCallId === toolResultId) {
                 parts[i] = { ...p, result: payload.event.result, state: 'output-available' };
                 break;
               }
             }
-            // Trigger resume reload
-            reloadResume();
+            // Trigger resume reload, then push a proposal so the user can accept/reject
+            const pending = pendingMutationsRef.current.get(toolResultId);
+            if (pending) {
+              pendingMutationsRef.current.delete(toolResultId);
+              void (async () => {
+                await reloadResume();
+                // Shallow clone sections (content is already loaded from DB and doesn't need deep clone)
+                const afterSections = useResumeStore
+                  .getState()
+                  .sections.map((s) => ({ ...s, content: s.content }));
+                useProposalsStore.getState().addProposal({
+                  id: toolResultId,
+                  resumeId,
+                  messageId: pending.messageId,
+                  toolName: pending.name,
+                  toolCallId: toolResultId,
+                  args: pending.args,
+                  beforeSections: pending.beforeSections,
+                  afterSections,
+                  createdAt: Date.now(),
+                });
+              })();
+            } else {
+              reloadResume();
+            }
             break;
           }
           case 'finish': {
+            // Drain any remaining buffered text before the state flips to idle
             setStatus('idle');
             break;
           }
@@ -143,8 +244,12 @@ export function useAIChat({ resumeId, sessionId, initialMessages }: UseAIChatOpt
     return () => {
       cancelled = true;
       if (unlisten) unlisten();
+      if (flushTimerRef.current !== null) {
+        clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
     };
-  }, [reloadResume]);
+  }, [reloadResume, flushTextBuffer, resumeId]);
 
   const sendMessage = useCallback(
     async (data: { text: string }) => {
@@ -178,18 +283,26 @@ export function useAIChat({ resumeId, sessionId, initialMessages }: UseAIChatOpt
 
       setStatus('streaming');
       try {
+        // Pull the resume's journal entries (if any) and pass as AI context.
+        useJournalStore.getState().hydrate();
+        const journalEntries = useJournalStore.getState().byResume[resumeId] || [];
+        const journalContext = summarizeForAI(journalEntries);
+
         await api.aiChat({
           streamId,
           messages: backendMessages,
           resumeId,
           sessionId,
+          journalContext: journalContext || undefined,
+          selectedProvider,
+          selectedModel,
         });
       } catch (err: any) {
         setError(err instanceof Error ? err : new Error(String(err)));
         setStatus('idle');
       }
     },
-    [messages, resumeId, sessionId]
+    [messages, resumeId, sessionId, selectedProvider, selectedModel]
   );
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -201,7 +314,7 @@ export function useAIChat({ resumeId, sessionId, initialMessages }: UseAIChatOpt
       e.preventDefault();
       if (!input.trim()) return;
 
-      if (!useSettingsStore.getState().aiApiKey) {
+      if (!api.isAISelectionConfigured({ provider: selectedProvider, model: selectedModel })) {
         const userMsg: UIMessage = { id: generateId(), role: 'user', parts: [{ type: 'text', text: input }] };
         const errorMsg: UIMessage = {
           id: generateId(),
@@ -217,7 +330,7 @@ export function useAIChat({ resumeId, sessionId, initialMessages }: UseAIChatOpt
       sendMessage({ text: input });
       setInput('');
     },
-    [input, localMessages, sendMessage]
+    [input, localMessages, selectedProvider, selectedModel, sendMessage]
   );
 
   const allMessages = useMemo(

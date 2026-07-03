@@ -49,8 +49,8 @@ export function ProjectsSection({ section, onUpdate }: Props) {
           {index > 0 && <Separator className="mb-4" />}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-zinc-400">#{index + 1}</span>
-              <Button variant="ghost" size="sm" className="h-7 cursor-pointer p-1 text-zinc-400 hover:text-red-500" onClick={() => removeItem(index)}>
+              <span className="text-xs font-medium text-muted-foreground">#{index + 1}</span>
+              <Button variant="ghost" size="sm" className="h-7 cursor-pointer p-1 text-[var(--whale-ink-muted)] hover:text-red-500" onClick={() => removeItem(index)}>
                 <X className="h-3.5 w-3.5" />
               </Button>
             </div>

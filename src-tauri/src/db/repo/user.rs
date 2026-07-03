@@ -50,22 +50,6 @@ pub fn upsert_by_fingerprint(conn: &Connection, fingerprint: &str) -> Result<Use
     find_by_id(conn, &id)?.ok_or(rusqlite::Error::QueryReturnedNoRows)
 }
 
-pub fn update(conn: &Connection, id: &str, name: Option<&str>, avatar_url: Option<&str>) -> Result<(), rusqlite::Error> {
-    if let Some(n) = name {
-        conn.execute(
-            "UPDATE users SET name = ?1, updated_at = unixepoch() WHERE id = ?2",
-            params![n, id],
-        )?;
-    }
-    if let Some(url) = avatar_url {
-        conn.execute(
-            "UPDATE users SET avatar_url = ?1, updated_at = unixepoch() WHERE id = ?2",
-            params![url, id],
-        )?;
-    }
-    Ok(())
-}
-
 pub fn get_settings(conn: &Connection, id: &str) -> Result<Value, rusqlite::Error> {
     let settings_str: String = conn.query_row(
         "SELECT settings FROM users WHERE id = ?1",

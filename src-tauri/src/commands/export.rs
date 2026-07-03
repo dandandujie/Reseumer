@@ -5,7 +5,7 @@ use tauri_plugin_dialog::DialogExt;
 
 use crate::db::AppDb;
 use crate::db::repo::resume as resume_repo;
-use crate::export::{pdf, txt, docx, qrcode};
+use crate::export::{pdf, txt, docx};
 use super::CommandError;
 
 #[derive(serde::Deserialize)]
@@ -153,9 +153,4 @@ pub async fn export_docx(
         .map_err(|e| CommandError { message: e })?;
 
     Ok(Some(path.to_string_lossy().to_string()))
-}
-
-#[tauri::command]
-pub async fn generate_qrcode(content: String) -> Result<String, CommandError> {
-    qrcode::generate_svg(&content).map_err(|e| CommandError { message: e })
 }

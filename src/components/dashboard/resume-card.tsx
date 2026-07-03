@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/routing';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Copy, Trash2, MoreVertical, Pencil, FileText } from 'lucide-react';
+import { Copy, Trash2, MoreVertical, Pencil } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,41 @@ interface ResumeCardProps {
   onDelete: () => void;
   onDuplicate: () => void;
   onRename: (title: string) => void;
+}
+
+function MiniResumeThumb({ langCode }: { langCode: string }) {
+  return (
+    <div className="relative h-28 w-full overflow-hidden rounded-xl bg-[var(--whale-card)] ring-1 ring-[var(--whale-divider)] transition-transform duration-300 ease-out group-hover:scale-[1.02]">
+      <div className="absolute inset-0 p-3">
+        {/* Header block (avatar circle + name lines) */}
+        <div className="flex items-center gap-1.5">
+          <div className="h-3.5 w-3.5 rounded-full bg-[var(--whale-ink)]" />
+          <div className="flex-1 space-y-0.5">
+            <div className="h-1.5 w-3/5 rounded-full bg-[var(--whale-ink)]/80" />
+            <div className="h-1 w-2/5 rounded-full bg-[var(--whale-ink-muted)]/40" />
+          </div>
+        </div>
+        {/* divider */}
+        <div className="mt-2 h-px w-full bg-[var(--whale-divider)]" />
+        {/* paragraph lines */}
+        <div className="mt-1.5 space-y-1">
+          <div className="h-[3px] w-full rounded-full bg-[var(--whale-cream-deep)]" />
+          <div className="h-[3px] w-11/12 rounded-full bg-[var(--whale-cream-deep)]" />
+          <div className="h-[3px] w-8/12 rounded-full bg-[var(--whale-cream-deep)]" />
+        </div>
+        {/* skills bar */}
+        <div className="mt-2 flex gap-1">
+          <div className="h-1.5 w-6 rounded-full bg-[var(--whale-mint)]" />
+          <div className="h-1.5 w-4 rounded-full bg-[var(--whale-cream-deep)]" />
+          <div className="h-1.5 w-5 rounded-full bg-[var(--whale-cream-deep)]" />
+        </div>
+      </div>
+      {/* Language badge */}
+      <span className="absolute right-2 top-2 rounded-full bg-[var(--whale-ink)] px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-[var(--whale-cream)]">
+        {langCode.toUpperCase()}
+      </span>
+    </div>
+  );
 }
 
 export function ResumeCard({ resume, onDelete, onDuplicate, onRename }: ResumeCardProps) {
@@ -76,17 +111,15 @@ export function ResumeCard({ resume, onDelete, onDuplicate, onRename }: ResumeCa
   }, []);
   return (
     <div
-      className={`group relative overflow-hidden rounded-xl border border-zinc-200 bg-white transition-all duration-200 dark:border-zinc-700/60 dark:bg-card ${isRenaming ? '' : 'cursor-pointer hover:shadow-lg hover:-translate-y-0.5'}`}
+      className={`group relative overflow-hidden rounded-2xl border border-[var(--whale-divider)] bg-[var(--whale-card)] transition-all duration-200 ${isRenaming ? '' : 'cursor-pointer hover:-translate-y-0.5 hover:border-[var(--whale-ink)]/30 hover:shadow-[0_12px_32px_-12px_rgba(28,26,23,0.18)]'}`}
       onClick={() => { if (!renamingRef.current) router.push(`/editor/${resume.id}`); }}
     >
-      <div className="border-b border-zinc-100 bg-zinc-50 p-5 dark:border-zinc-700/40 dark:bg-zinc-800/50">
-        <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-zinc-200 bg-white text-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-600">
-          <FileText className="h-10 w-10" />
-        </div>
+      <div className="border-b border-[var(--whale-divider)] bg-[var(--whale-cream-soft)] p-4">
+        <MiniResumeThumb langCode={resume.language || 'en'} />
       </div>
 
       {/* Info section */}
-      <div className="p-2.5">
+      <div className="p-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             {isRenaming ? (
@@ -101,14 +134,15 @@ export function ResumeCard({ resume, onDelete, onDuplicate, onRename }: ResumeCa
                 }}
                 onClick={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="w-full truncate rounded border border-brand bg-white px-1 text-sm font-semibold text-zinc-900 outline-none focus:ring-1 focus:ring-brand dark:bg-zinc-800 dark:text-zinc-100"
+                className="w-full truncate rounded border border-[var(--whale-ink)] bg-[var(--whale-card)] px-1 text-sm font-semibold text-[var(--whale-ink)] outline-none focus:ring-1 focus:ring-[var(--whale-ink)]"
               />
             ) : (
-              <h3 className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              <h3 className="truncate text-sm font-semibold text-[var(--whale-ink)]">
                 {resume.title}
               </h3>
             )}
-            <div className="mt-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-[var(--whale-ink-muted)]">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--whale-mint-deep)]" />
               {resume.updatedAt
                 ? t('dashboard.lastEdited', {
                     date: new Date(resume.updatedAt).toLocaleDateString(),
@@ -118,10 +152,10 @@ export function ResumeCard({ resume, onDelete, onDuplicate, onRename }: ResumeCa
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="cursor-pointer rounded-md p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              className="cursor-pointer rounded-md p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[var(--whale-cream-soft)]"
               onClick={(e) => e.stopPropagation()}
             >
-              <MoreVertical className="h-4 w-4 text-zinc-400" />
+              <MoreVertical className="h-4 w-4 text-[var(--whale-ink-muted)]" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onCloseAutoFocus={(e) => { if (renamingRef.current) e.preventDefault(); }}>
               <DropdownMenuItem

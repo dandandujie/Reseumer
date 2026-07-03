@@ -17,6 +17,8 @@ i18n
     supportedLngs: ['zh', 'en'],
     interpolation: {
       escapeValue: false,
+      prefix: '{',
+      suffix: '}',
     },
     detection: {
       order: ['path', 'localStorage', 'navigator'],

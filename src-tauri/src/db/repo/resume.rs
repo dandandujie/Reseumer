@@ -39,6 +39,18 @@ pub struct ResumeWithSections {
     pub sections: Vec<ResumeSection>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ResumeVersion {
+    pub id: String,
+    pub resume_id: String,
+    pub user_id: String,
+    pub event: String,
+    pub resume_title: String,
+    pub snapshot: Value,
+    pub created_at: i64,
+}
+
 pub fn find_all_by_user_id(conn: &Connection, user_id: &str) -> Result<Vec<Resume>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT id, user_id, title, template, theme_config, is_default, language, created_at, updated_at
@@ -203,6 +215,72 @@ pub fn duplicate(conn: &Connection, id: &str, user_id: &str) -> Result<String, r
         }
         None => Err(rusqlite::Error::QueryReturnedNoRows),
     }
+}
+
+pub fn create_version_snapshot(
+    conn: &Connection,
+    resume_id: &str,
+    user_id: &str,
+    event: &str,
+) -> Result<String, rusqlite::Error> {
+    let Some(resume) = find_by_id(conn, resume_id, user_id)? else {
+        return Err(rusqlite::Error::QueryReturnedNoRows);
+    };
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let snapshot = serde_json::to_value(&resume).unwrap_or_default();
+    conn.execute(
+        "INSERT INTO resume_versions (id, resume_id, user_id, event, resume_title, snapshot)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![
+            id,
+            resume_id,
+            user_id,
+            event,
+            resume.resume.title,
+            serde_json::to_string(&snapshot).unwrap_or_default()
+        ],
+    )?;
+
+    Ok(id)
+}
+
+pub fn list_versions_by_user_id(
+    conn: &Connection,
+    user_id: &str,
+    resume_id: Option<&str>,
+) -> Result<Vec<ResumeVersion>, rusqlite::Error> {
+    let (sql, query_params): (&str, Vec<&str>) = match resume_id {
+        Some(rid) => (
+            "SELECT id, resume_id, user_id, event, resume_title, snapshot, created_at
+             FROM resume_versions
+             WHERE user_id = ?1 AND resume_id = ?2
+             ORDER BY created_at DESC, rowid DESC",
+            vec![user_id, rid],
+        ),
+        None => (
+            "SELECT id, resume_id, user_id, event, resume_title, snapshot, created_at
+             FROM resume_versions
+             WHERE user_id = ?1
+             ORDER BY created_at DESC, rowid DESC",
+            vec![user_id],
+        ),
+    };
+
+    let mut stmt = conn.prepare(sql)?;
+    let rows = stmt.query_map(rusqlite::params_from_iter(query_params), |row| {
+        Ok(ResumeVersion {
+            id: row.get(0)?,
+            resume_id: row.get(1)?,
+            user_id: row.get(2)?,
+            event: row.get(3)?,
+            resume_title: row.get(4)?,
+            snapshot: serde_json::from_str::<Value>(&row.get::<_, String>(5)?).unwrap_or_default(),
+            created_at: row.get(6)?,
+        })
+    })?;
+
+    rows.collect()
 }
 
 pub fn create_section(

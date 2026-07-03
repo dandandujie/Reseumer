@@ -13,3 +13,9 @@ dist/
 /FEATURE-IDEAS.md
 /README.zh-CN.md
 /docs/
+.ace-tool/
+
+# 构建产物与本地工具缓存
+tsconfig.tsbuildinfo
+.playwright-cli/
+format-prompt.txt

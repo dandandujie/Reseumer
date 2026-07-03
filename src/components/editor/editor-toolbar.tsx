@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/routing';
-import { ArrowLeft, Undo2, Redo2, Download, Upload, Settings, Palette, Save, FileSearch, Languages, FileText, SpellCheck, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Undo2, Redo2, Download, Upload, Settings, Palette, Save, Languages, SpellCheck, BookOpenCheck, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -16,17 +16,13 @@ import { useResumeStore } from '@/stores/resume-store';
 import { useUIStore } from '@/stores/ui-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { LocaleSwitcher } from '@/components/layout/locale-switcher';
-import { SmartFitButton } from '@/components/editor/smart-fit-button';
+import { cn } from '@/lib/utils';
 
-interface EditorToolbarProps {
-  resumeId: string;
-}
-
-export function EditorToolbar({ resumeId }: EditorToolbarProps) {
+export function EditorToolbar() {
   const t = useTranslations('editor.toolbar');
   const router = useRouter();
   const { toggleThemeEditor, showThemeEditor, undo, redo, undoStack, redoStack } = useEditorStore();
-  const { isSaving, isDirty, currentResume, sections, reorderSections, flushPendingSave } = useResumeStore();
+  const { isSaving, isDirty, currentResume, reorderSections, flushPendingSave } = useResumeStore();
   const { openModal } = useUIStore();
   const autoSave = useSettingsStore((s) => s.autoSave);
 
@@ -36,36 +32,39 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
   };
 
   const handleUndo = () => {
-    const snapshot = undo();
+    const snapshot = undo(useResumeStore.getState().sections);
     if (snapshot) {
       reorderSections(snapshot.sections);
     }
   };
 
   const handleRedo = () => {
-    const snapshot = redo();
+    const snapshot = redo(useResumeStore.getState().sections);
     if (snapshot) {
       reorderSections(snapshot.sections);
     }
   };
 
   return (
-    <div className="flex h-12 items-center justify-between gap-2 border-b bg-white px-2 sm:px-3 dark:bg-background dark:border-zinc-800">
+    <div
+      data-tauri-drag-region
+      className="flex h-12 items-center justify-between gap-2 border-b border-[var(--whale-divider)] bg-[var(--whale-sidebar)] pl-20 pr-2 sm:pr-3"
+    >
       <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => void handleBack()}
-          className="h-8 w-8 shrink-0 cursor-pointer text-zinc-600"
+          className="h-8 w-8 shrink-0 cursor-pointer text-[var(--whale-ink-soft)] hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)]"
           disabled={isSaving}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <Separator orientation="vertical" className="hidden h-6 sm:block" />
-        <span className="min-w-0 max-w-[8rem] truncate text-sm font-medium text-zinc-900 sm:max-w-48 dark:text-zinc-100">
+        <Separator orientation="vertical" className="hidden h-6 bg-[var(--whale-divider)] sm:block" />
+        <span className="min-w-0 max-w-[8rem] truncate text-sm font-semibold text-[var(--whale-ink)] sm:max-w-48">
           {currentResume?.title || ''}
         </span>
-        <span className="hidden text-xs text-zinc-400 sm:inline">
+        <span className="hidden text-xs text-[var(--whale-ink-muted)] sm:inline">
           {isSaving ? t('saving') : isDirty ? t('unsaved') : autoSave ? t('autoSaved') : ''}
         </span>
       </div>
@@ -77,7 +76,7 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
           size="icon"
           onClick={handleUndo}
           disabled={undoStack.length === 0}
-          className="h-8 w-8 cursor-pointer"
+          className="h-8 w-8 cursor-pointer text-[var(--whale-ink-soft)] hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)] disabled:opacity-40"
           title={t('undo')}
         >
           <Undo2 className="h-4 w-4" />
@@ -87,94 +86,44 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
           size="icon"
           onClick={handleRedo}
           disabled={redoStack.length === 0}
-          className="h-8 w-8 cursor-pointer"
+          className="h-8 w-8 cursor-pointer text-[var(--whale-ink-soft)] hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)] disabled:opacity-40"
           title={t('redo')}
         >
           <Redo2 className="h-4 w-4" />
         </Button>
         {currentResume && (
           <Button
-            variant={isDirty ? 'outline' : 'ghost'}
+            variant="ghost"
             size="sm"
             onClick={() => void flushPendingSave()}
             disabled={!isDirty || isSaving}
-            className="shrink-0 cursor-pointer gap-1"
+            className={cn(
+              'shrink-0 cursor-pointer gap-1 transition-colors',
+              isDirty
+                ? 'border border-[var(--whale-ink)] bg-[var(--whale-ink)] text-[var(--whale-cream)] hover:bg-[var(--whale-ink-soft)] hover:text-[var(--whale-cream)]'
+                : 'text-[var(--whale-ink-muted)]'
+            )}
             title={t('save')}
           >
             <Save className="h-3.5 w-3.5" />
             <span className="hidden text-xs sm:inline">{t('save')}</span>
           </Button>
         )}
-        <Separator orientation="vertical" className="hidden h-6 sm:block" />
+        <Separator orientation="vertical" className="hidden h-6 bg-[var(--whale-divider)] sm:block" />
 
         {/* Desktop: show all secondary buttons */}
         <div className="hidden items-center gap-1 md:flex">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => openModal('export')}
-            className="cursor-pointer"
-            title={t('exportPdf')}
-          >
-            <Download className="h-4 w-4" />
-            <span className="ml-1 text-xs hidden sm:inline">{t('exportPdf')}</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => openModal('import')}
-            className="cursor-pointer"
-            title={t('import')}
-          >
-            <Upload className="h-4 w-4" />
-            <span className="ml-1 text-xs hidden sm:inline">{t('import')}</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => openModal('jd-analysis')}
-            className="cursor-pointer"
-            title={t('jdAnalysis')}
-          >
-            <FileSearch className="h-4 w-4" />
-            <span className="ml-1 text-xs hidden sm:inline">{t('jdAnalysis')}</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => openModal('translate')}
-            className="cursor-pointer"
-            title={t('translate')}
-          >
-            <Languages className="h-4 w-4" />
-            <span className="ml-1 text-xs hidden sm:inline">{t('translate')}</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => openModal('cover-letter')}
-            className="cursor-pointer"
-            title={t('coverLetter')}
-          >
-            <FileText className="h-4 w-4" />
-            <span className="ml-1 text-xs hidden sm:inline">{t('coverLetter')}</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => openModal('grammar-check')}
-            className="cursor-pointer"
-            title={t('grammarCheck')}
-          >
-            <SpellCheck className="h-4 w-4" />
-            <span className="ml-1 text-xs hidden sm:inline">{t('grammarCheck')}</span>
-          </Button>
-          <Separator orientation="vertical" className="h-6" />
+          <ToolbarSecondary onClick={() => openModal('export')} title={t('exportPdf')} icon={Download} label={t('exportPdf')} />
+          <ToolbarSecondary onClick={() => openModal('import')} title={t('import')} icon={Upload} label={t('import')} />
+          <ToolbarSecondary onClick={() => openModal('translate')} title={t('translate')} icon={Languages} label={t('translate')} />
+          <ToolbarSecondary onClick={() => openModal('grammar-check')} title={t('grammarCheck')} icon={SpellCheck} label={t('grammarCheck')} />
+          <ToolbarSecondary onClick={() => openModal('journal')} title={t('journal')} icon={BookOpenCheck} label={t('journal')} />
+          <Separator orientation="vertical" className="h-6 bg-[var(--whale-divider)]" />
           <Button
             variant="ghost"
             size="sm"
             onClick={() => openModal('settings')}
-            className="cursor-pointer"
+            className="cursor-pointer text-[var(--whale-ink-soft)] hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)]"
             title={t('settings')}
           >
             <Settings className="h-4 w-4" />
@@ -185,7 +134,7 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
         <div className="md:hidden">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-[var(--whale-ink-soft)]">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -204,21 +153,17 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
                 <Upload className="mr-2 h-4 w-4" />
                 {t('import')}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openModal('jd-analysis')}>
-                <FileSearch className="mr-2 h-4 w-4" />
-                {t('jdAnalysis')}
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => openModal('translate')}>
                 <Languages className="mr-2 h-4 w-4" />
                 {t('translate')}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openModal('cover-letter')}>
-                <FileText className="mr-2 h-4 w-4" />
-                {t('coverLetter')}
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => openModal('grammar-check')}>
                 <SpellCheck className="mr-2 h-4 w-4" />
                 {t('grammarCheck')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openModal('journal')}>
+                <BookOpenCheck className="mr-2 h-4 w-4" />
+                {t('journal')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => openModal('settings')}>
                 <Settings className="mr-2 h-4 w-4" />
@@ -228,24 +173,52 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
           </DropdownMenu>
         </div>
 
-        <Separator orientation="vertical" className="hidden h-6 sm:block" />
-        <SmartFitButton />
+        <Separator orientation="vertical" className="hidden h-6 bg-[var(--whale-divider)] sm:block" />
 
         {/* Primary: theme toggle — always visible */}
-        <Separator orientation="vertical" className="hidden h-6 sm:block" />
         <Button
-          variant={showThemeEditor ? 'secondary' : 'ghost'}
+          variant="ghost"
           size="icon"
           onClick={toggleThemeEditor}
-          className="h-8 w-8 cursor-pointer sm:w-auto sm:px-3"
+          className={cn(
+            'h-8 w-8 cursor-pointer transition-colors sm:w-auto sm:px-3',
+            showThemeEditor
+              ? 'bg-[var(--whale-mint)]/50 text-[var(--whale-ink)] hover:bg-[var(--whale-mint)]/60'
+              : 'text-[var(--whale-ink-soft)] hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)]'
+          )}
           title={t('theme')}
         >
           <Palette className="h-4 w-4" />
           <span className="ml-1 hidden text-xs sm:inline">{t('theme')}</span>
         </Button>
-        <Separator orientation="vertical" className="hidden h-6 sm:block" />
+        <Separator orientation="vertical" className="hidden h-6 bg-[var(--whale-divider)] sm:block" />
         <LocaleSwitcher />
       </div>
     </div>
+  );
+}
+
+function ToolbarSecondary({
+  onClick,
+  title,
+  icon: Icon,
+  label,
+}: {
+  onClick: () => void;
+  title: string;
+  icon: React.ElementType;
+  label: string;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onClick}
+      className="cursor-pointer text-[var(--whale-ink-soft)] hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)]"
+      title={title}
+    >
+      <Icon className="h-4 w-4" />
+      <span className="ml-1 text-xs hidden sm:inline">{label}</span>
+    </Button>
   );
 }

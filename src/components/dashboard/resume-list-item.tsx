@@ -75,7 +75,7 @@ export function ResumeListItem({ resume, onDelete, onDuplicate, onRename }: Resu
   }, []);
   return (
     <div
-      className={`group flex items-center gap-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 transition-all duration-200 dark:border-zinc-700/60 dark:bg-card ${isRenaming ? '' : 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'}`}
+      className={`group flex items-center gap-4 rounded-2xl border border-[var(--whale-divider)] bg-[var(--whale-card)] px-4 py-3 transition-all duration-200 ${isRenaming ? '' : 'cursor-pointer hover:-translate-y-0.5 hover:border-[var(--whale-ink)]/30 hover:shadow-[0_8px_24px_-12px_rgba(28,26,23,0.18)]'}`}
       onClick={() => { if (!renamingRef.current) router.push(`/editor/${resume.id}`); }}
     >
       {/* Title */}
@@ -92,16 +92,16 @@ export function ResumeListItem({ resume, onDelete, onDuplicate, onRename }: Resu
             }}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            className="w-full truncate rounded border border-brand bg-white px-1 text-sm font-semibold text-zinc-900 outline-none focus:ring-1 focus:ring-brand dark:bg-zinc-800 dark:text-zinc-100"
+            className="w-full truncate rounded border border-[var(--whale-ink)] bg-[var(--whale-cream)] px-1 text-sm font-semibold text-[var(--whale-ink)] outline-none focus:ring-1 focus:ring-[var(--whale-ink)]"
           />
         ) : (
-          <h3 className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          <h3 className="truncate text-sm font-semibold text-[var(--whale-ink)]">
             {resume.title}
           </h3>
         )}
       </div>
       {/* Last edited */}
-      <span className="hidden shrink-0 text-[12px] text-zinc-400 sm:inline dark:text-zinc-500">
+      <span className="hidden shrink-0 text-[12px] text-[var(--whale-ink-muted)] sm:inline">
         {resume.updatedAt
           ? t('dashboard.lastEdited', {
               date: new Date(resume.updatedAt).toLocaleDateString(),
@@ -112,10 +112,10 @@ export function ResumeListItem({ resume, onDelete, onDuplicate, onRename }: Resu
       {/* Actions */}
       <DropdownMenu>
         <DropdownMenuTrigger
-          className="cursor-pointer rounded-md p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          className="cursor-pointer rounded-md p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[var(--whale-cream-soft)]"
           onClick={(e) => e.stopPropagation()}
         >
-          <MoreVertical className="h-4 w-4 text-zinc-400" />
+          <MoreVertical className="h-4 w-4 text-[var(--whale-ink-muted)]" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" onCloseAutoFocus={(e) => { if (renamingRef.current) e.preventDefault(); }}>
           <DropdownMenuItem

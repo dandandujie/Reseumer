@@ -105,7 +105,7 @@ packaging/homebrew/         macOS Homebrew Cask 模板
 ## 说明与限制
 
 - 当前运行时只保留 `classic` 一个模板。
-- 所有导出都由 Tauri 命令完成，不再依赖本机 Chrome / Chromium。
+- DOCX / HTML / TXT / JSON 导出完全由 Tauri 命令完成；PDF 导出会调用本机已安装的 Chromium 系浏览器（Chrome / Edge / Brave / Vivaldi / Opera / Arc 均可）进行渲染，若未安装可先导出 HTML 再用浏览器打印为 PDF。
 - GitHub Actions 只构建 `aarch64-apple-darwin` 和 `x86_64-pc-windows-msvc`。Intel Mac、Linux 与 Windows ARM 需要本地自行构建。
 - 简历数据保存在本地 SQLite 中，卸载应用会带走数据；换设备前请先用 **导出 JSON** 做备份。
 

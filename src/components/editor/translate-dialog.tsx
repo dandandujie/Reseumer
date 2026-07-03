@@ -137,7 +137,7 @@ export function TranslateDialog({ open, onOpenChange, resumeId }: TranslateDialo
           {state === 'idle' && (
             <>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                <label className="text-sm font-medium text-[var(--whale-ink-soft)]">
                   {t('targetLanguage')}
                 </label>
                 <LanguageSelect value={targetLanguage} onValueChange={(v) => setTargetLanguage(v as 'zh' | 'en')} />
@@ -155,25 +155,25 @@ export function TranslateDialog({ open, onOpenChange, resumeId }: TranslateDialo
                       className={cn(
                         'relative flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 text-center transition-all cursor-pointer',
                         active
-                          ? 'border-brand bg-brand-muted dark:bg-brand-muted dark:border-brand'
-                          : 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800/50 dark:hover:border-zinc-600'
+                          ? 'border-brand bg-brand-muted'
+                          : 'border-border bg-card hover:border-[var(--whale-ink-muted)]'
                       )}
                     >
                       <span className={cn(
                         'flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
                         active
                           ? 'bg-brand text-white'
-                          : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400'
+                          : 'bg-muted text-muted-foreground'
                       )}>
                         {opt.icon}
                       </span>
                       <span className={cn(
                         'text-sm font-semibold',
-                        active ? 'text-brand dark:text-brand' : 'text-zinc-700 dark:text-zinc-300'
+                        active ? 'text-brand' : 'text-[var(--whale-ink-soft)]'
                       )}>
                         {opt.label}
                       </span>
-                      <span className="text-[11px] leading-tight text-zinc-400 dark:text-zinc-500">
+                      <span className="text-[11px] leading-tight text-muted-foreground">
                         {opt.desc}
                       </span>
                     </button>
@@ -187,14 +187,14 @@ export function TranslateDialog({ open, onOpenChange, resumeId }: TranslateDialo
           {state === 'translating' && (
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <Loader2 className="h-8 w-8 animate-spin text-brand mb-3" />
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+              <p className="text-sm font-medium text-[var(--whale-ink-soft)] mb-3">
                 {progress.total > 0
                   ? t('progress', { completed: progress.completed, total: progress.total })
                   : t('translating')}
               </p>
               {progress.total > 0 && (
                 <div className="w-full max-w-xs">
-                  <div className="h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                  <div className="h-2 bg-[var(--whale-cream-deep)] rounded-full overflow-hidden">
                     <div
                       className="h-full bg-brand rounded-full transition-all duration-300 ease-out"
                       style={{ width: `${progressPercent}%` }}
@@ -209,7 +209,7 @@ export function TranslateDialog({ open, onOpenChange, resumeId }: TranslateDialo
           {state === 'success' && (
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <CheckCircle2 className="h-8 w-8 text-green-500 mb-3" />
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <p className="text-sm font-medium text-[var(--whale-ink-soft)]">
                 {failedCount > 0
                   ? t('partialSuccess', { failed: failedCount })
                   : t('success')}
@@ -221,7 +221,7 @@ export function TranslateDialog({ open, onOpenChange, resumeId }: TranslateDialo
           {state === 'error' && (
             <div className="flex flex-col items-center justify-center py-4 text-center">
               <AlertCircle className="h-8 w-8 text-red-500 mb-3" />
-              <p className="text-sm font-medium text-red-600 dark:text-red-400">
+              <p className="text-sm font-medium text-red-600">
                 {errorMessage || t('error')}
               </p>
             </div>
@@ -229,7 +229,7 @@ export function TranslateDialog({ open, onOpenChange, resumeId }: TranslateDialo
         </div>
 
         {/* Footer */}
-        <DialogFooter className="border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
+        <DialogFooter className="border-t border-border px-6 py-4">
           {state === 'idle' && (
             <>
               <Button

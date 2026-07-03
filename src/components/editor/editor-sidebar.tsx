@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, GripVertical, User, FileText, Briefcase, GraduationCap, Wrench, FolderKanban, Award, Languages, LayoutList, Pencil, Github, QrCode } from 'lucide-react';
-import { generateId } from '@/lib/utils';
+import { generateId, cn } from '@/lib/utils';
 import {
   DndContext,
   closestCenter,
@@ -101,14 +101,20 @@ function SortableSidebarItem({
       ref={setNodeRef}
       style={style}
       className={`group/item flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors duration-150 ${
-        isDragging ? 'shadow-md ring-1 ring-brand/20 bg-white dark:bg-zinc-800 cursor-grabbing' :
+        isDragging ? 'shadow-md ring-1 ring-[var(--whale-mint)]/40 bg-[var(--whale-card)] cursor-grabbing' :
         isSelected
-          ? 'bg-brand-muted text-brand dark:bg-brand-muted dark:text-brand'
-          : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800'
+          ? 'bg-[var(--whale-ink)] text-[var(--whale-cream)]'
+          : 'text-[var(--whale-ink-soft)] hover:bg-[var(--whale-cream-deep)]'
       }`}
     >
       <GripVertical
-        className={`h-3 w-3 shrink-0 text-zinc-300 ${isDragging ? 'cursor-grabbing text-brand' : 'cursor-grab active:cursor-grabbing'}`}
+        className={`h-3 w-3 shrink-0 ${
+          isDragging
+            ? 'cursor-grabbing text-[var(--whale-mint-deep)]'
+            : isSelected
+              ? 'text-[var(--whale-cream)]/50 cursor-grab active:cursor-grabbing'
+              : 'text-[var(--whale-ink-muted)]/50 cursor-grab active:cursor-grabbing'
+        }`}
         {...attributes}
         {...listeners}
       />
@@ -129,7 +135,7 @@ function SortableSidebarItem({
               if (e.key === 'Escape') { setRenameValue(section.title); setIsRenaming(false); }
             }}
             onClick={(e) => e.stopPropagation()}
-            className="h-5 w-full min-w-0 rounded border border-brand bg-transparent px-1 text-sm outline-none"
+            className="h-5 w-full min-w-0 rounded border border-[var(--whale-ink)] bg-[var(--whale-card)] px-1 text-sm text-[var(--whale-ink)] outline-none"
           />
         ) : (
           <span className="truncate">{section.title}</span>
@@ -138,7 +144,10 @@ function SortableSidebarItem({
       {isRenamable && !isRenaming && (
         <button
           type="button"
-          className="hidden shrink-0 cursor-pointer rounded p-0.5 text-zinc-300 hover:text-zinc-600 group-hover/item:block dark:hover:text-zinc-200"
+          className={cn(
+            'hidden shrink-0 cursor-pointer rounded p-0.5 group-hover/item:block',
+            isSelected ? 'text-[var(--whale-cream)]/60 hover:text-[var(--whale-cream)]' : 'text-[var(--whale-ink-muted)]/60 hover:text-[var(--whale-ink)]'
+          )}
           onClick={(e) => { e.stopPropagation(); setRenameValue(section.title); setIsRenaming(true); }}
         >
           <Pencil className="h-3 w-3" />
@@ -242,9 +251,9 @@ export function EditorSidebar({ sections, onAddSection, onReorderSections }: Edi
   };
 
   return (
-    <div className="w-56 shrink-0 border-r bg-white dark:bg-zinc-900 dark:border-zinc-800 max-md:w-full max-md:border-r-0">
+    <div className="w-56 shrink-0 border-r border-[var(--whale-divider)] bg-[var(--whale-sidebar)] max-md:w-full max-md:border-r-0">
       <div className="p-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+        <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--whale-ink-muted)]">
           {t('sidebar.sections')}
         </h3>
       </div>
@@ -276,10 +285,10 @@ export function EditorSidebar({ sections, onAddSection, onReorderSections }: Edi
             </SortableContext>
             <DragOverlay>
               {activeSection && ActiveIcon && (
-                <div className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm shadow-xl ring-1 ring-brand/30 bg-white dark:bg-zinc-800 cursor-grabbing opacity-95">
-                  <GripVertical className="h-3 w-3 shrink-0 text-brand" />
-                  <ActiveIcon className="h-4 w-4 shrink-0 text-brand" />
-                  <span className="truncate text-zinc-900 dark:text-zinc-100">{activeSection.title}</span>
+                <div className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm shadow-xl ring-1 ring-[var(--whale-mint)]/40 bg-[var(--whale-card)] cursor-grabbing opacity-95">
+                  <GripVertical className="h-3 w-3 shrink-0 text-[var(--whale-mint-deep)]" />
+                  <ActiveIcon className="h-4 w-4 shrink-0 text-[var(--whale-ink)]" />
+                  <span className="truncate text-[var(--whale-ink)]">{activeSection.title}</span>
                 </div>
               )}
             </DragOverlay>
@@ -288,9 +297,9 @@ export function EditorSidebar({ sections, onAddSection, onReorderSections }: Edi
 
         {availableTypes.length > 0 && (
           <>
-            <Separator className="my-3" />
+            <Separator className="my-3 bg-[var(--whale-divider)]" />
             <div className="px-2 pb-4">
-              <p className="mb-2 px-2 text-xs text-zinc-400">{t('sidebar.addSection')}</p>
+              <p className="mb-2 px-2 text-xs text-[var(--whale-ink-muted)]">{t('sidebar.addSection')}</p>
               <div className="space-y-0.5">
                 {availableTypes.map((type) => {
                   const Icon = sectionIcons[type] || LayoutList;
@@ -298,7 +307,7 @@ export function EditorSidebar({ sections, onAddSection, onReorderSections }: Edi
                     <button
                       key={type}
                       type="button"
-                      className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-zinc-500 transition-colors duration-150 hover:bg-zinc-50 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                      className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-[var(--whale-ink-muted)] transition-colors duration-150 hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)]"
                       onClick={() => handleAddSection(type)}
                     >
                       <Plus className="h-3 w-3 shrink-0" />

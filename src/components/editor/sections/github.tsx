@@ -118,8 +118,8 @@ export function GitHubSection({ section, onUpdate }: Props) {
           {index > 0 && <Separator className="mb-4" />}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-zinc-400">#{index + 1}</span>
-              <Button variant="ghost" size="sm" className="h-7 cursor-pointer p-1 text-zinc-400 hover:text-red-500" onClick={() => removeItem(index)}>
+              <span className="text-xs font-medium text-[var(--whale-ink-muted)]">#{index + 1}</span>
+              <Button variant="ghost" size="sm" className="h-7 cursor-pointer p-1 text-[var(--whale-ink-muted)] hover:text-red-500" onClick={() => removeItem(index)}>
                 <X className="h-3.5 w-3.5" />
               </Button>
             </div>
@@ -130,12 +130,12 @@ export function GitHubSection({ section, onUpdate }: Props) {
                 onChange={(v) => handleUrlChange(index, v)}
               />
               {loadingIds.has(item.id) && (
-                <Loader2 className="absolute right-2 top-7 h-4 w-4 animate-spin text-zinc-400" />
+                <Loader2 className="absolute right-2 top-7 h-4 w-4 animate-spin text-[var(--whale-ink-muted)]" />
               )}
             </div>
             {item.name && (
-              <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-                <span className="font-medium text-zinc-700 dark:text-zinc-300">{item.name}</span>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--whale-ink-soft)]">
+                <span className="font-medium text-[var(--whale-ink)]">{item.name}</span>
                 {item.stars > 0 && (
                   <span className="inline-flex items-center gap-0.5">
                     <Star className="h-3 w-3 text-amber-500" />
@@ -150,7 +150,7 @@ export function GitHubSection({ section, onUpdate }: Props) {
                 )}
                 <button
                   type="button"
-                  className="inline-flex cursor-pointer items-center gap-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                  className="inline-flex cursor-pointer items-center gap-0.5 text-[var(--whale-ink-muted)] hover:text-[var(--whale-ink)]"
                   onClick={() => fetchRepo(index, item.repoUrl)}
                   disabled={loadingIds.has(item.id)}
                 >

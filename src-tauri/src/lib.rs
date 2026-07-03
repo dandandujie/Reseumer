@@ -32,16 +32,15 @@ pub fn run() {
             commands::resume::get_resume,
             commands::resume::create_resume,
             commands::resume::update_resume,
+            commands::resume::list_resume_versions,
+            commands::resume::create_resume_version_snapshot,
             commands::resume::delete_resume,
             commands::resume::duplicate_resume,
-            commands::user::get_user,
             commands::user::ensure_user,
-            commands::user::update_user,
             commands::user::get_settings,
             commands::user::update_settings,
             commands::ai::ai_list_models,
             commands::ai::ai_test_connection,
-            commands::ai::ai_cover_letter,
             commands::ai::ai_grammar_check,
             commands::ai::ai_jd_analysis,
             commands::ai::ai_translate,
@@ -64,8 +63,8 @@ pub fn run() {
             commands::export::export_txt,
             commands::export::export_json,
             commands::export::export_docx,
-            commands::export::generate_qrcode,
             commands::ai::parse_resume_file,
+            commands::global_agent::global_agent_chat,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

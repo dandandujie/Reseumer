@@ -6,17 +6,6 @@ import * as api from '@/lib/tauri-api';
 import { useResumeStore } from '@/stores/resume-store';
 import { listen } from '@tauri-apps/api/event';
 
-interface CoverLetterParams {
-  resumeId: string;
-  jobDescription: string;
-  tone?: string;
-  language?: string;
-}
-
-export async function generateCoverLetter(params: CoverLetterParams) {
-  return api.aiCoverLetter(params);
-}
-
 interface GrammarCheckParams {
   resumeId: string;
   language?: string;

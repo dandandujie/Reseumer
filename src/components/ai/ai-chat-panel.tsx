@@ -13,6 +13,7 @@ import { useAIChat } from '@/hooks/use-ai-chat';
 import { useMessagePagination } from '@/hooks/use-message-pagination';
 import { AIMessage } from './ai-message';
 import { AIInput } from './ai-input';
+import type { AIProviderId, AIProviderOption } from '@/lib/tauri-api';
 
 interface ChatSession {
   id: string;
@@ -40,9 +41,9 @@ function formatTime(date: Date | number | null) {
 export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
   const t = useTranslations('ai');
   const [models, setModels] = useState<string[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string | undefined>(
-    () => useSettingsStore.getState().aiModel || undefined
-  );
+  const [providerOptions, setProviderOptions] = useState<AIProviderOption[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<AIProviderId | undefined>();
+  const [selectedModel, setSelectedModel] = useState<string | undefined>();
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
 
@@ -60,31 +61,35 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
   const settingsApiKey = useSettingsStore((s) => s.aiApiKey);
   const hydrated = useSettingsStore((s) => s._hydrated);
 
-  // Sync selectedModel when settings hydrate or user changes default model
+  const effectiveProvider = selectedProvider || settingsProvider;
+  const effectiveProviderOption = providerOptions.find((provider) => provider.id === effectiveProvider);
+  const effectiveModel = selectedModel || effectiveProviderOption?.model || settingsModel;
+
   useEffect(() => {
-    if (hydrated && settingsModel) {
-      setSelectedModel(settingsModel);
+    if (hydrated) {
+      import('@/lib/tauri-api')
+        .then((api) => setProviderOptions(api.listAIProviderOptions()));
     }
-  }, [hydrated, settingsModel]);
+  }, [hydrated, settingsProvider, settingsBaseURL, settingsApiKey, settingsModel]);
 
   // Fetch models from API — re-fetch when provider/key/baseURL/model changes
   useEffect(() => {
     if (!hydrated) return;
     import('@/lib/tauri-api')
-      .then((api) => api.aiListModels())
+      .then((api) => api.aiListModelsForSelection({ provider: selectedProvider, model: selectedModel }))
       .then((models: { id: string }[]) => {
         const ids = (models || []).map((m) => m.id);
-        if (settingsModel && !ids.includes(settingsModel)) {
-          ids.unshift(settingsModel);
+        if (effectiveModel && !ids.includes(effectiveModel)) {
+          ids.unshift(effectiveModel);
         }
         setModels(ids);
       })
       .catch(() => {
-        if (settingsModel) {
-          setModels([settingsModel]);
+        if (effectiveModel) {
+          setModels([effectiveModel]);
         }
       });
-  }, [hydrated, settingsProvider, settingsBaseURL, settingsApiKey, settingsModel]);
+  }, [hydrated, settingsProvider, settingsBaseURL, settingsApiKey, settingsModel, selectedProvider, selectedModel, effectiveModel]);
 
   // Fetch sessions on mount
   useEffect(() => {
@@ -164,6 +169,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     resumeId,
     sessionId: activeSessionId,
     initialMessages,
+    selectedProvider,
     selectedModel,
   });
 
@@ -244,7 +250,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
         {!hideTitle && (
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-brand" />
-            <h3 className="text-sm font-semibold text-zinc-900">{t('panelTitle')}</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t('panelTitle')}</h3>
           </div>
         )}
         <div className="flex items-center gap-1">
@@ -264,20 +270,20 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
                 {sessions.map((session) => (
                   <div
                     key={session.id}
-                    className="group flex cursor-pointer items-start gap-3 border-b border-zinc-100 px-4 py-3 last:border-b-0 hover:bg-zinc-50"
+                    className="group flex cursor-pointer items-start gap-3 border-b border-border px-4 py-3 last:border-b-0 hover:bg-muted"
                     onClick={() => switchSession(session.id)}
                   >
-                    <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
+                    <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-zinc-800">
+                      <p className="truncate text-sm font-medium text-foreground">
                         {session.title}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-zinc-400">
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {formatTime(session.updatedAt)}
                       </p>
                     </div>
                     <button
-                      className="mt-0.5 hidden shrink-0 rounded p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 group-hover:block"
+                      className="mt-0.5 hidden shrink-0 rounded p-1 text-muted-foreground hover:bg-[var(--whale-cream-deep)] hover:text-foreground group-hover:block"
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteSession(session.id);
@@ -288,7 +294,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
                   </div>
                 ))}
                 {sessions.length === 0 && (
-                  <div className="px-4 py-6 text-center text-xs text-zinc-400">
+                  <div className="px-4 py-6 text-center text-xs text-muted-foreground">
                     {t('defaultGreeting')}
                   </div>
                 )}
@@ -313,28 +319,41 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
         <div className="space-y-4">
           {/* Loading more indicator */}
           {isLoadingMore && (
-            <div className="py-2 text-center text-xs text-zinc-400">
+            <div className="py-2 text-center text-xs text-muted-foreground">
               {t('loadingMore')}
             </div>
           )}
           {hasMore && !isLoadingMore && (
             <button
-              className="w-full py-2 text-center text-xs text-zinc-400 hover:text-zinc-600"
+              className="w-full py-2 text-center text-xs text-muted-foreground hover:text-foreground"
               onClick={() => loadMore(scrollRef)}
             >
               {t('loadMore')}
             </button>
           )}
           {displayMessages.length === 0 && (
-            <div className="rounded-xl bg-gradient-to-br from-brand-muted to-brand-muted p-3 text-[13px] text-brand">
-              {t('defaultGreeting')}
+            <div className="relative overflow-hidden rounded-2xl border border-[var(--whale-divider)] bg-gradient-to-br from-[var(--whale-mint)]/30 via-[var(--whale-cream-soft)] to-[var(--whale-cream)] p-4 text-[13px] leading-relaxed text-[var(--whale-ink-soft)]">
+              <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-[var(--whale-mint)]/40 blur-2xl" />
+              <div className="pointer-events-none absolute -bottom-8 -left-4 h-16 w-16 rounded-full bg-[var(--whale-mint-deep)]/10 blur-2xl" />
+              <div className="relative flex items-start gap-2">
+                <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--whale-mint-deep)]" />
+                <span>{t('defaultGreeting')}</span>
+              </div>
             </div>
           )}
-          {displayMessages.map((message) => (
-            <AIMessage key={message.id} message={message} />
+          {displayMessages.map((message, i) => (
+            <AIMessage
+              key={message.id}
+              message={message}
+              isStreaming={
+                status === 'streaming' &&
+                message.role === 'assistant' &&
+                i === displayMessages.length - 1
+              }
+            />
           ))}
           {status === 'submitted' && (
-            <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="flex gap-1">
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand [animation-delay:0ms]" />
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand [animation-delay:150ms]" />
@@ -357,7 +376,15 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
         onSubmit={handleSubmit}
         isLoading={isLoading}
         models={models}
+        providers={providerOptions}
+        selectedProvider={selectedProvider}
+        effectiveProvider={effectiveProvider as AIProviderId}
+        onProviderChange={(provider) => {
+          setSelectedProvider(provider);
+          setSelectedModel(undefined);
+        }}
         selectedModel={selectedModel}
+        effectiveModel={effectiveModel}
         onModelChange={setSelectedModel}
       />
     </>
@@ -369,7 +396,7 @@ export function AIChatPanel({ resumeId }: { resumeId: string }) {
   const { toggleAiChat } = useEditorStore();
 
   return (
-    <div className="flex w-80 shrink-0 flex-col overflow-hidden border-l bg-white">
+    <div className="flex w-80 shrink-0 flex-col overflow-hidden border-l bg-card">
       <AIChatContent resumeId={resumeId} />
       {/* Close button overlaid on the header */}
       <Button

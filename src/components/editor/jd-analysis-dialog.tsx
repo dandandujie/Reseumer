@@ -106,7 +106,7 @@ function ScoreCircle({ score, label, size = 'lg' }: { score: number; label: stri
           </span>
         </div>
       </div>
-      {!isSm && <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</span>}
+      {!isSm && <span className="text-xs font-medium text-muted-foreground">{label}</span>}
     </div>
   );
 }
@@ -116,7 +116,7 @@ function ScoreTrend({ current, previous }: { current: number; previous?: number 
   const diff = current - previous;
   if (diff > 0) return <ArrowUp className="h-3.5 w-3.5 text-emerald-500" />;
   if (diff < 0) return <ArrowDown className="h-3.5 w-3.5 text-red-500" />;
-  return <Minus className="h-3.5 w-3.5 text-zinc-400" />;
+  return <Minus className="h-3.5 w-3.5 text-muted-foreground" />;
 }
 
 function formatDate(value: string | number): string {
@@ -132,21 +132,21 @@ function JdAnalysisResultView({ result, jobDescription, t }: { result: JdAnalysi
     <div className="px-6 py-4 space-y-6">
       {/* Job Description */}
       {jobDescription && (
-        <div className="rounded-lg border border-zinc-100 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/50">
+        <div className="rounded-lg border border-border bg-muted/50">
           <button
             type="button"
             onClick={() => setJdExpanded(!jdExpanded)}
             className="flex w-full items-center gap-1.5 px-3.5 py-2.5 text-left cursor-pointer"
           >
-            <Briefcase className="h-4 w-4 text-zinc-400 shrink-0" />
-            <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex-1 truncate">
+            <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-sm font-semibold text-foreground flex-1 truncate">
               {t('jobDescriptionLabel')}
             </span>
-            <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform ${jdExpanded ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${jdExpanded ? 'rotate-180' : ''}`} />
           </button>
           {jdExpanded && (
-            <div className="border-t border-zinc-100 px-3.5 py-3 dark:border-zinc-800">
-              <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">
+            <div className="border-t border-border px-3.5 py-3">
+              <p className="text-sm leading-relaxed text-[var(--whale-ink-soft)] whitespace-pre-wrap">
                 {jobDescription}
               </p>
             </div>
@@ -155,18 +155,18 @@ function JdAnalysisResultView({ result, jobDescription, t }: { result: JdAnalysi
       )}
 
       {/* Score Dashboard */}
-      <div className="flex items-center justify-center gap-10 rounded-xl border border-zinc-100 bg-zinc-50/50 py-5 dark:border-zinc-800 dark:bg-zinc-900/50">
+      <div className="flex items-center justify-center gap-10 rounded-xl border border-border bg-muted/50 py-5">
         <ScoreCircle score={result.overallScore} label={t('overallScore')} />
         <ScoreCircle score={result.atsScore} label={t('atsScore')} />
       </div>
 
       {/* Summary */}
       <div className="space-y-2">
-        <h4 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-          <Target className="h-4 w-4 text-zinc-400" />
+        <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <Target className="h-4 w-4 text-muted-foreground" />
           {t('summary')}
         </h4>
-        <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm leading-relaxed text-[var(--whale-ink-soft)]">
           {result.summary}
         </p>
       </div>
@@ -174,7 +174,7 @@ function JdAnalysisResultView({ result, jobDescription, t }: { result: JdAnalysi
       {/* Keyword Matches */}
       {result.keywordMatches.length > 0 && (
         <div className="space-y-2">
-          <h4 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+          <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
             <ShieldCheck className="h-4 w-4 text-emerald-500" />
             {t('keywordMatches')}
           </h4>
@@ -182,7 +182,7 @@ function JdAnalysisResultView({ result, jobDescription, t }: { result: JdAnalysi
             {result.keywordMatches.map((keyword) => (
               <Badge
                 key={keyword}
-                className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                className="bg-emerald-50 text-emerald-700 border-emerald-200"
               >
                 {keyword}
               </Badge>
@@ -194,7 +194,7 @@ function JdAnalysisResultView({ result, jobDescription, t }: { result: JdAnalysi
       {/* Missing Keywords */}
       {result.missingKeywords.length > 0 && (
         <div className="space-y-2">
-          <h4 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+          <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
             <AlertTriangle className="h-4 w-4 text-orange-500" />
             {t('missingKeywords')}
           </h4>
@@ -202,7 +202,7 @@ function JdAnalysisResultView({ result, jobDescription, t }: { result: JdAnalysi
             {result.missingKeywords.map((keyword) => (
               <Badge
                 key={keyword}
-                className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800"
+                className="bg-orange-50 text-orange-700 border-orange-200"
               >
                 {keyword}
               </Badge>
@@ -214,7 +214,7 @@ function JdAnalysisResultView({ result, jobDescription, t }: { result: JdAnalysi
       {/* Suggestions */}
       {result.suggestions.length > 0 && (
         <div className="space-y-3">
-          <h4 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+          <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
             <Lightbulb className="h-4 w-4 text-yellow-500" />
             {t('suggestions')}
           </h4>
@@ -222,17 +222,17 @@ function JdAnalysisResultView({ result, jobDescription, t }: { result: JdAnalysi
             {result.suggestions.map((suggestion, idx) => (
               <div
                 key={idx}
-                className="rounded-lg border border-zinc-150 bg-white p-3.5 space-y-2 dark:border-zinc-800 dark:bg-zinc-900"
+                className="rounded-lg border border-border bg-card p-3.5 space-y-2"
               >
                 <Badge variant="secondary" className="text-xs font-medium">
                   {suggestion.section}
                 </Badge>
                 <div className="space-y-1.5">
                   <div>
-                    <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                    <span className="text-xs font-medium text-muted-foreground">
                       {t('currentState')}
                     </span>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-[var(--whale-ink-soft)]">
                       {suggestion.current}
                     </p>
                   </div>
@@ -240,7 +240,7 @@ function JdAnalysisResultView({ result, jobDescription, t }: { result: JdAnalysi
                     <span className="text-xs font-medium text-brand">
                       {t('suggestedChange')}
                     </span>
-                    <p className="text-sm text-zinc-800 dark:text-zinc-200">
+                    <p className="text-sm text-foreground">
                       {suggestion.suggested}
                     </p>
                   </div>
@@ -256,7 +256,7 @@ function JdAnalysisResultView({ result, jobDescription, t }: { result: JdAnalysi
         result.keywordMatches.length === 0 &&
         result.missingKeywords.length === 0 &&
         result.suggestions.length === 0 && (
-          <p className="py-8 text-center text-sm text-zinc-400">
+          <p className="py-8 text-center text-sm text-muted-foreground">
             {t('noResults')}
           </p>
         )}
@@ -404,7 +404,7 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
                 />
 
                 {error && (
-                  <div className="flex items-center gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
+                  <div className="flex items-center gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     {error}
                   </div>
@@ -435,7 +435,7 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   <JdAnalysisResultView result={result} jobDescription={jobDescription} t={t} />
                 </div>
-                <div className="flex justify-end gap-2 border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
+                <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
                   <Button variant="outline" onClick={handleClose} className="cursor-pointer">
                     {t('close')}
                   </Button>
@@ -464,7 +464,7 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
                     variant="ghost"
                     size="sm"
                     onClick={() => { setHistoryDetail(null); setHistoryDetailJd(''); }}
-                    className="cursor-pointer gap-1 text-zinc-500 -ml-2"
+                    className="cursor-pointer gap-1 text-muted-foreground -ml-2"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     {t('historyTab')}
@@ -473,7 +473,7 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   <JdAnalysisResultView result={historyDetail} jobDescription={historyDetailJd} t={t} />
                 </div>
-                <div className="flex justify-end gap-2 border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
+                <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
                   <Button variant="outline" onClick={handleClose} className="cursor-pointer">
                     {t('close')}
                   </Button>
@@ -482,13 +482,13 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
             ) : historyLoading ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-brand mb-2" />
-                <p className="text-sm text-zinc-500">{t('loadingHistory')}</p>
+                <p className="text-sm text-muted-foreground">{t('loadingHistory')}</p>
               </div>
             ) : history.length === 0 ? (
               /* Empty State */
               <div className="flex flex-col items-center justify-center py-12 px-6">
-                <FileSearch className="h-12 w-12 text-zinc-300 dark:text-zinc-600 mb-3" />
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">{t('noHistory')}</p>
+                <FileSearch className="h-12 w-12 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">{t('noHistory')}</p>
               </div>
             ) : (
               /* History List */
@@ -500,7 +500,7 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
                       return (
                         <div
                           key={item.id}
-                          className="group flex items-center gap-3 rounded-lg border border-zinc-100 bg-white p-3 transition-colors hover:border-zinc-200 hover:bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/50 cursor-pointer"
+                          className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/50 cursor-pointer"
                           onClick={async () => {
                             setHistoryDetailLoading(true);
                             try {
@@ -523,14 +523,14 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
                           {/* Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                              <span className="text-xs text-muted-foreground">
                                 {formatDate(item.createdAt)}
                               </span>
                               <Badge variant="secondary" className="text-xs">
                                 ATS {item.atsScore}
                               </Badge>
                             </div>
-                            <p className="text-sm text-zinc-600 dark:text-zinc-400 truncate mt-0.5">
+                            <p className="text-sm text-[var(--whale-ink-soft)] truncate mt-0.5">
                               {item.jobDescription}
                             </p>
                           </div>
@@ -541,7 +541,7 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
                               e.stopPropagation();
                               setDeleteToConfirm(item.id);
                             }}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all cursor-pointer"
+                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -550,7 +550,7 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
                     })}
                   </div>
                 </div>
-                <div className="flex justify-end gap-2 border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
+                <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
                   <Button variant="outline" onClick={handleClose} className="cursor-pointer">
                     {t('close')}
                   </Button>
@@ -558,7 +558,7 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
               </>
             )}
             {historyDetailLoading && !historyDetail && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-950/50">
+              <div className="absolute inset-0 flex items-center justify-center bg-card/50">
                 <Loader2 className="h-6 w-6 animate-spin text-brand" />
               </div>
             )}

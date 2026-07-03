@@ -83,6 +83,7 @@ pub async fn ai_chat(
     messages: Vec<ChatInputMessage>,
     resume_id: Option<String>,
     session_id: Option<String>,
+    journal_context: Option<String>,
 ) -> Result<Value, CommandError> {
     let cfg = cfg_from(config);
 
@@ -111,7 +112,19 @@ pub async fn ai_chat(
         String::new()
     };
 
-    let system_prompt = prompts::get_system_prompt(&resume_context);
+    let mut system_prompt = prompts::with_response_format(
+        prompts::get_system_prompt(&resume_context),
+        &cfg.model,
+    );
+    if let Some(jc) = &journal_context {
+        let trimmed = jc.trim();
+        if !trimmed.is_empty() {
+            system_prompt.push_str(&format!(
+                "\n\n## Resume Journal (user-recorded job-hunt context — optional reference)\n{}",
+                trimmed
+            ));
+        }
+    }
     let tool_specs = tools::tool_specs();
 
     // Truncate messages to last N rounds

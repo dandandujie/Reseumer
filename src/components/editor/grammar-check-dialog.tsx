@@ -109,7 +109,7 @@ function ScoreCircle({ score, label, size = 'lg' }: { score: number; label: stri
           </span>
         </div>
       </div>
-      {!isSm && <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</span>}
+      {!isSm && <span className="text-xs font-medium text-muted-foreground">{label}</span>}
     </div>
   );
 }
@@ -119,7 +119,7 @@ function ScoreTrend({ current, previous }: { current: number; previous?: number 
   const diff = current - previous;
   if (diff > 0) return <ArrowUp className="h-3.5 w-3.5 text-emerald-500" />;
   if (diff < 0) return <ArrowDown className="h-3.5 w-3.5 text-red-500" />;
-  return <Minus className="h-3.5 w-3.5 text-zinc-400" />;
+  return <Minus className="h-3.5 w-3.5 text-muted-foreground" />;
 }
 
 function formatDate(value: string | number): string {
@@ -129,9 +129,9 @@ function formatDate(value: string | number): string {
 
 function SeverityBadge({ severity, t }: { severity: GrammarIssue['severity']; t: any }) {
   const styles = {
-    high: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800',
-    medium: 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-300 dark:border-yellow-800',
-    low: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
+    high: 'bg-red-50 text-red-700 border-red-200',
+    medium: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    low: 'bg-blue-50 text-blue-700 border-blue-200',
   };
   const labels = {
     high: t('severityHigh'),
@@ -161,16 +161,16 @@ function GrammarCheckResultView({ result, t }: { result: GrammarCheckResult; t: 
   return (
     <div className="px-6 py-4 space-y-6">
       {/* Score */}
-      <div className="flex items-center justify-center rounded-xl border border-zinc-100 bg-zinc-50/50 py-5 dark:border-zinc-800 dark:bg-zinc-900/50">
+      <div className="flex items-center justify-center rounded-xl border border-border bg-muted/50 py-5">
         <ScoreCircle score={result.score} label={t('score')} />
       </div>
 
       {/* Summary */}
       <div className="space-y-2">
-        <h4 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+        <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
           {t('summary')}
         </h4>
-        <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm leading-relaxed text-[var(--whale-ink-soft)]">
           {result.summary}
         </p>
       </div>
@@ -178,14 +178,14 @@ function GrammarCheckResultView({ result, t }: { result: GrammarCheckResult; t: 
       {/* Issues */}
       {result.issues.length > 0 ? (
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+          <h4 className="text-sm font-semibold text-foreground">
             {t('issues')} ({result.issues.length})
           </h4>
           <div className="space-y-2.5">
             {result.issues.map((issue, idx) => (
               <div
                 key={idx}
-                className="rounded-lg border border-zinc-150 bg-white p-3.5 space-y-2 dark:border-zinc-800 dark:bg-zinc-900"
+                className="rounded-lg border border-border bg-card p-3.5 space-y-2"
               >
                 <div className="flex flex-wrap items-center gap-1.5">
                   <Badge variant="secondary" className="text-xs font-medium">
@@ -196,10 +196,10 @@ function GrammarCheckResultView({ result, t }: { result: GrammarCheckResult; t: 
                 </div>
                 <div className="space-y-1.5">
                   <div>
-                    <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                    <span className="text-xs font-medium text-muted-foreground">
                       {t('original')}
                     </span>
-                    <p className="text-sm text-zinc-500 line-through dark:text-zinc-500">
+                    <p className="text-sm text-muted-foreground line-through">
                       {issue.original}
                     </p>
                   </div>
@@ -207,7 +207,7 @@ function GrammarCheckResultView({ result, t }: { result: GrammarCheckResult; t: 
                     <span className="text-xs font-medium text-brand">
                       {t('suggestion')}
                     </span>
-                    <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                    <p className="text-sm font-medium text-foreground">
                       {issue.suggestion}
                     </p>
                   </div>
@@ -218,7 +218,7 @@ function GrammarCheckResultView({ result, t }: { result: GrammarCheckResult; t: 
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-6 text-center">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm text-muted-foreground">
             {t('noIssues')}
           </p>
         </div>
@@ -348,8 +348,8 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
               <div className="px-6 py-4 space-y-4">
                 {!isChecking && !error && (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <SpellCheck className="h-12 w-12 text-zinc-300 dark:text-zinc-600 mb-4" />
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    <SpellCheck className="h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-sm text-muted-foreground">
                       {t('description')}
                     </p>
                   </div>
@@ -358,14 +358,14 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
                 {isChecking && (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Loader2 className="h-8 w-8 animate-spin text-brand mb-3" />
-                    <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    <p className="text-sm font-medium text-[var(--whale-ink-soft)]">
                       {t('checking')}
                     </p>
                   </div>
                 )}
 
                 {error && (
-                  <div className="flex items-center gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
+                  <div className="flex items-center gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     {error}
                   </div>
@@ -396,7 +396,7 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   <GrammarCheckResultView result={result} t={t} />
                 </div>
-                <div className="flex justify-end gap-2 border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
+                <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
                   <Button variant="outline" onClick={handleClose} className="cursor-pointer">
                     {t('close')}
                   </Button>
@@ -424,7 +424,7 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
                     variant="ghost"
                     size="sm"
                     onClick={() => setHistoryDetail(null)}
-                    className="cursor-pointer gap-1 text-zinc-500 -ml-2"
+                    className="cursor-pointer gap-1 text-muted-foreground -ml-2"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     {t('historyTab')}
@@ -433,7 +433,7 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   <GrammarCheckResultView result={historyDetail} t={t} />
                 </div>
-                <div className="flex justify-end gap-2 border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
+                <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
                   <Button variant="outline" onClick={handleClose} className="cursor-pointer">
                     {t('close')}
                   </Button>
@@ -442,12 +442,12 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
             ) : historyLoading ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-brand mb-2" />
-                <p className="text-sm text-zinc-500">{t('loadingHistory')}</p>
+                <p className="text-sm text-muted-foreground">{t('loadingHistory')}</p>
               </div>
             ) : history.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 px-6">
-                <SpellCheck className="h-12 w-12 text-zinc-300 dark:text-zinc-600 mb-3" />
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">{t('noHistory')}</p>
+                <SpellCheck className="h-12 w-12 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">{t('noHistory')}</p>
               </div>
             ) : (
               <>
@@ -458,7 +458,7 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
                       return (
                         <div
                           key={item.id}
-                          className="group flex items-center gap-3 rounded-lg border border-zinc-100 bg-white p-3 transition-colors hover:border-zinc-200 hover:bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/50 cursor-pointer"
+                          className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/50 cursor-pointer"
                           onClick={async () => {
                             setHistoryDetailLoading(true);
                             try {
@@ -478,7 +478,7 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                              <span className="text-xs text-muted-foreground">
                                 {formatDate(item.createdAt)}
                               </span>
                               <Badge variant="secondary" className="text-xs">
@@ -492,7 +492,7 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
                               e.stopPropagation();
                               setDeleteToConfirm(item.id);
                             }}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all cursor-pointer"
+                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -501,7 +501,7 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
                     })}
                   </div>
                 </div>
-                <div className="flex justify-end gap-2 border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
+                <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
                   <Button variant="outline" onClick={handleClose} className="cursor-pointer">
                     {t('close')}
                   </Button>
@@ -509,7 +509,7 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
               </>
             )}
             {historyDetailLoading && !historyDetail && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-950/50">
+              <div className="absolute inset-0 flex items-center justify-center bg-card/50">
                 <Loader2 className="h-6 w-6 animate-spin text-brand" />
               </div>
             )}

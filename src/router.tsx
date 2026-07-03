@@ -1,15 +1,27 @@
 import { Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
 import { useEffect } from 'react';
 import i18n from '@/i18n';
+import { locales } from '@/i18n/config';
+import { useDesignAttribute } from '@/hooks/use-design-attribute';
+import { startWindowDrag } from '@/lib/window-drag';
 
 // Layouts
-import { Header } from '@/components/layout/header';
+import { WhaleDashboardShell } from '@/components/layout/whale-dashboard-shell';
 
 // Pages (lazy imports not needed for desktop app)
-import { LandingPage } from '@/components/landing/landing-page';
 import DashboardPage from '@/pages/dashboard';
+import InsightsOverviewPage from '@/pages/insights-overview';
+import InsightsManagePage from '@/pages/insights-manage';
+import AgentPage from '@/pages/agent';
 import EditorPage from '@/pages/editor';
 import PreviewPage from '@/pages/preview';
+
+// Resolve the user's preferred locale (persisted by i18next) instead of
+// hardcoding zh, so English users land on English routes after a restart.
+function preferredLocale(): string {
+  const lang = (i18n.language || 'zh').split('-')[0];
+  return (locales as readonly string[]).includes(lang) ? lang : 'zh';
+}
 
 function LocaleProvider() {
   const { locale } = useParams<{ locale: string }>();
@@ -23,20 +35,18 @@ function LocaleProvider() {
   return <Outlet />;
 }
 
-function DashboardLayout() {
-  return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-background">
-      <Header />
-      <main className="mx-auto max-w-7xl px-4 py-8">
-        <Outlet />
-      </main>
-    </div>
-  );
-}
-
 function EditorLayout() {
+  useDesignAttribute('whale');
   return (
-    <div className="h-screen overflow-hidden bg-zinc-50">
+    <div data-design="whale" className="relative h-screen overflow-hidden bg-[var(--whale-cream)] text-[var(--whale-ink)]">
+      <div
+        data-tauri-drag-region
+        className="fixed inset-x-0 top-0 z-[100] h-5 cursor-default"
+        aria-hidden
+        onMouseDown={(event) => {
+          if (event.button === 0) startWindowDrag();
+        }}
+      />
       <Outlet />
     </div>
   );
@@ -45,17 +55,19 @@ function EditorLayout() {
 export function AppRouter() {
   return (
     <Routes>
-      {/* Default redirect to dashboard */}
-      <Route path="/" element={<Navigate to="/zh/dashboard" replace />} />
+      {/* Default redirect to dashboard in the preferred locale */}
+      <Route path="/" element={<Navigate to={`/${preferredLocale()}/dashboard`} replace />} />
 
       {/* Locale-scoped routes */}
       <Route path="/:locale" element={<LocaleProvider />}>
-        {/* Landing page */}
-        <Route index element={<LandingPage />} />
+        <Route index element={<Navigate to="dashboard" replace />} />
 
-        {/* Dashboard */}
-        <Route element={<DashboardLayout />}>
+        {/* Dashboard + Insights — share the Whale shell */}
+        <Route element={<WhaleDashboardShell />}>
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="insights" element={<InsightsOverviewPage />} />
+          <Route path="insights/:type" element={<InsightsManagePage />} />
+          <Route path="agent" element={<AgentPage />} />
         </Route>
 
         {/* Editor */}
@@ -68,7 +80,7 @@ export function AppRouter() {
       </Route>
 
       {/* Catch-all */}
-      <Route path="*" element={<Navigate to="/zh/dashboard" replace />} />
+      <Route path="*" element={<Navigate to={`/${preferredLocale()}/dashboard`} replace />} />
     </Routes>
   );
 }

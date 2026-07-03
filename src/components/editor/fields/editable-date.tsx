@@ -45,7 +45,7 @@ export function EditableDate({ label, value, onChange }: EditableDateProps) {
 
   return (
     <div className="space-y-1">
-      <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</label>
+      <label className="text-xs font-medium text-[var(--whale-ink-muted)]">{label}</label>
       <Popover open={open} onOpenChange={(v) => {
         setOpen(v);
         if (v) {
@@ -57,11 +57,11 @@ export function EditableDate({ label, value, onChange }: EditableDateProps) {
             variant="outline"
             className="h-8 w-full cursor-pointer justify-start text-sm font-normal"
           >
-            <CalendarDays className="mr-2 h-3.5 w-3.5 text-zinc-400" />
+            <CalendarDays className="mr-2 h-3.5 w-3.5 text-[var(--whale-ink-muted)]" />
             {displayText ? (
               <span>{displayText}</span>
             ) : (
-              <span className="text-zinc-400">{label}</span>
+              <span className="text-[var(--whale-ink-muted)]">{label}</span>
             )}
           </Button>
         </PopoverTrigger>
@@ -99,7 +99,7 @@ export function EditableDate({ label, value, onChange }: EditableDateProps) {
                     size="sm"
                     className={`h-8 cursor-pointer text-xs ${
                       isSelected
-                        ? 'bg-brand-muted text-brand hover:bg-brand-muted dark:bg-brand-muted dark:text-brand dark:hover:bg-brand-muted'
+                        ? 'bg-brand-muted text-brand hover:bg-brand-muted'
                         : ''
                     }`}
                     onClick={() => handleMonthClick(m)}
@@ -115,7 +115,7 @@ export function EditableDate({ label, value, onChange }: EditableDateProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-full cursor-pointer text-xs text-zinc-400"
+                className="h-7 w-full cursor-pointer text-xs text-[var(--whale-ink-muted)]"
                 onClick={handleClear}
               >
                 {t('clear')}

@@ -6,6 +6,7 @@ import { X, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEditorStore } from '@/stores/editor-store';
 import { useResumeStore } from '@/stores/resume-store';
+import { useUIStore } from '@/stores/ui-store';
 import type { ResumeSection, SectionContent } from '@/types/resume';
 import { PersonalInfoSection } from './sections/personal-info';
 import { SummarySection } from './sections/summary';
@@ -41,8 +42,9 @@ const sectionComponents: Record<string, React.ComponentType<{ section: ResumeSec
 
 export function SectionWrapper({ section, onUpdate, onRemove }: SectionWrapperProps) {
   const t = useTranslations('editor');
-  const { selectedSectionId, selectSection, showAiChat, toggleAiChat } = useEditorStore();
+  const { selectedSectionId, selectSection, setRightPaneTab } = useEditorStore();
   const { toggleSectionVisibility, updateSectionTitle } = useResumeStore();
+  const { setPendingAiMessage } = useUIStore();
   const isSelected = selectedSectionId === section.id;
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(section.title);
@@ -70,12 +72,12 @@ export function SectionWrapper({ section, onUpdate, onRemove }: SectionWrapperPr
 
   return (
     <div
-      className={`rounded-xl border bg-white shadow-sm transition-all duration-200 dark:bg-zinc-900 ${
-        isSelected ? 'border-brand shadow-brand-muted/50 dark:shadow-brand/20' : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600'
+      className={`rounded-xl border bg-card shadow-sm transition-all duration-200 ${
+        isSelected ? 'border-brand shadow-brand-muted/50' : 'border-border hover:border-[var(--whale-ink)]/30'
       } ${!section.visible ? 'opacity-50' : ''}`}
       onClick={() => selectSection(section.id)}
     >
-      <div className="flex flex-row items-center justify-between border-b border-zinc-100 px-3 py-2.5 md:px-4 dark:border-zinc-800">
+      <div className="flex flex-row items-center justify-between border-b border-border px-3 py-2.5 md:px-4">
         <div className="flex items-center gap-2">
           {isRenaming ? (
             <input
@@ -87,12 +89,12 @@ export function SectionWrapper({ section, onUpdate, onRemove }: SectionWrapperPr
                 if (e.key === 'Enter') commitRename();
                 if (e.key === 'Escape') { setRenameValue(section.title); setIsRenaming(false); }
               }}
-              className="h-6 w-32 rounded border border-brand bg-transparent px-1 text-sm font-semibold text-zinc-700 outline-none dark:text-zinc-200"
+              className="h-6 w-32 rounded border border-brand bg-transparent px-1 text-sm font-semibold text-[var(--whale-ink-soft)] outline-none"
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
             <h3
-              className={`text-sm font-semibold text-zinc-700 dark:text-zinc-200 ${isRenamable ? 'cursor-text rounded px-1 -mx-1 hover:bg-zinc-100 dark:hover:bg-zinc-700' : ''}`}
+              className={`text-sm font-semibold text-[var(--whale-ink-soft)] ${isRenamable ? 'cursor-text rounded px-1 -mx-1 hover:bg-muted' : ''}`}
               onDoubleClick={isRenamable ? (e) => { e.stopPropagation(); setRenameValue(section.title); setIsRenaming(true); } : undefined}
             >
               {section.title}
@@ -107,7 +109,9 @@ export function SectionWrapper({ section, onUpdate, onRemove }: SectionWrapperPr
             title={t('aiPolish')}
             onClick={(e) => {
               e.stopPropagation();
-              if (!showAiChat) toggleAiChat();
+              // Route to AI assistant tab + seed with a polish prompt
+              setRightPaneTab('ai');
+              setPendingAiMessage(`请帮我润色「${section.title}」这个模块的内容`);
             }}
           >
             <Sparkles className="h-3.5 w-3.5" />
@@ -122,15 +126,15 @@ export function SectionWrapper({ section, onUpdate, onRemove }: SectionWrapperPr
             }}
           >
             {section.visible ? (
-              <Eye className="h-3.5 w-3.5 text-zinc-400" />
+              <Eye className="h-3.5 w-3.5 text-muted-foreground" />
             ) : (
-              <EyeOff className="h-3.5 w-3.5 text-zinc-400" />
+              <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
             )}
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-7 cursor-pointer p-0 text-zinc-400 hover:text-red-500"
+            className="h-7 w-7 cursor-pointer p-0 text-muted-foreground hover:text-red-500"
             onClick={(e) => {
               e.stopPropagation();
               onRemove();
@@ -146,7 +150,7 @@ export function SectionWrapper({ section, onUpdate, onRemove }: SectionWrapperPr
         ) : SectionComponent ? (
           <SectionComponent section={section} onUpdate={onUpdate} />
         ) : (
-          <p className="text-sm text-zinc-400">Unknown section type: {section.type}</p>
+          <p className="text-sm text-muted-foreground">Unknown section type: {section.type}</p>
         )}
       </div>
     </div>

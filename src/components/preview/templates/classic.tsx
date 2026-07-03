@@ -1,7 +1,10 @@
 'use client';
 
+import { useCallback, useMemo } from 'react';
+import { GripVertical } from 'lucide-react';
 import type {
   Resume,
+  ResumeSection,
   PersonalInfoContent,
   SummaryContent,
   WorkExperienceContent,
@@ -17,8 +20,26 @@ import { isSectionEmpty, md } from '../utils';
 import { AvatarImage } from '../avatar-image';
 import { QrCodesPreview } from '../qr-codes-preview';
 import { useEditorStore } from '@/stores/editor-store';
+import { useProposalsStore } from '@/stores/proposals-store';
+import { PreviewProposalOverlay } from '../preview-proposal-overlay';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 function getDateRange(startDate?: string, endDate?: string | null, presentLabel = 'Present') {
   if (!startDate) return '';
@@ -38,10 +59,37 @@ function EmptySectionPlaceholder({ lang }: { lang?: string }) {
   );
 }
 
-export function ClassicTemplate({ resume, interactive }: { resume: Resume; interactive?: boolean }) {
+export function ClassicTemplate({ resume, interactive, onReorderSections }: { resume: Resume; interactive?: boolean; onReorderSections?: (sections: ResumeSection[]) => void }) {
   const personalInfo = resume.sections.find((s) => s.type === 'personal_info');
   const pi = (personalInfo?.content || {}) as PersonalInfoContent;
   const { selectedSectionId, selectSection } = useEditorStore();
+  const pendingProposals = useProposalsStore((s) =>
+    interactive ? s.proposals : null
+  );
+
+  /** sectionId → 'added' | 'modified' | 'removed' for any pending proposal */
+  const pendingSectionChanges = useMemo(() => {
+    const map = new Map<string, 'added' | 'modified' | 'removed'>();
+    if (!pendingProposals || pendingProposals.length === 0) return map;
+    for (const p of pendingProposals) {
+      const beforeMap = new Map(p.beforeSections.map((s) => [s.id, s]));
+      const afterMap = new Map(p.afterSections.map((s) => [s.id, s]));
+      for (const a of p.afterSections) {
+        const b = beforeMap.get(a.id);
+        if (!b) {
+          map.set(a.id, 'added');
+        } else if (JSON.stringify(b.content) !== JSON.stringify(a.content) || b.title !== a.title) {
+          if (map.get(a.id) !== 'added') map.set(a.id, 'modified');
+        }
+      }
+      for (const b of p.beforeSections) {
+        if (!afterMap.has(b.id)) {
+          map.set(b.id, 'removed');
+        }
+      }
+    }
+    return map;
+  }, [pendingProposals]);
 
   const getSectionProps = (sectionId: string) => {
     if (!interactive) return {};
@@ -54,6 +102,44 @@ export function ClassicTemplate({ resume, interactive }: { resume: Resume; inter
       )
     };
   };
+
+  const displayedSections = resume.sections.filter(
+    (s) => s.visible && s.type !== 'personal_info' && (interactive || !isSectionEmpty(s))
+  );
+
+  const dndEnabled = !!(interactive && onReorderSections);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id || !onReorderSections) return;
+      const oldIndex = resume.sections.findIndex((s) => s.id === active.id);
+      const newIndex = resume.sections.findIndex((s) => s.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const newSections = [...resume.sections];
+      const [removed] = newSections.splice(oldIndex, 1);
+      newSections.splice(newIndex, 0, removed);
+      onReorderSections(newSections.map((s, i) => ({ ...s, sortOrder: i })));
+    },
+    [resume.sections, onReorderSections]
+  );
+
+  const renderSection = (section: ResumeSection) => (
+    <PreviewSection
+      key={section.id}
+      section={section}
+      dndEnabled={dndEnabled}
+      interactive={interactive}
+      sectionProps={getSectionProps(section.id)}
+      lang={resume.language}
+      pendingChange={pendingSectionChanges.get(section.id)}
+    />
+  );
 
   return (
     <div className="mx-auto max-w-[210mm] bg-white shadow-lg">
@@ -88,28 +174,100 @@ export function ClassicTemplate({ resume, interactive }: { resume: Resume; inter
       </div>
 
       {/* Sections */}
-      {resume.sections
-        .filter((s) => s.visible && s.type !== 'personal_info' && (interactive || !isSectionEmpty(s)))
-        .map((section) => {
-          const Comp = interactive ? motion.div : 'div';
-          return (
-            <Comp 
-              key={section.id} 
-              className="mb-5" 
-              data-section
-              layout={interactive ? "position" : false}
-              transition={interactive ? { type: 'spring', stiffness: 300, damping: 30 } : undefined}
-            >
-              <div {...getSectionProps(section.id)}>
-                <h2 className="mb-2 border-b border-zinc-300 pb-1 text-sm font-bold uppercase tracking-wider text-zinc-800">
-                  {section.title}
-                </h2>
-                <SectionContent section={section} lang={resume.language} interactive={interactive} />
-              </div>
-            </Comp>
-          );
-        })}
+      {dndEnabled ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={displayedSections.map((s) => s.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {displayedSections.map(renderSection)}
+          </SortableContext>
+        </DndContext>
+      ) : (
+        displayedSections.map(renderSection)
+      )}
     </div>
+  );
+}
+
+function PreviewSection({
+  section,
+  dndEnabled,
+  interactive,
+  sectionProps,
+  lang,
+  pendingChange,
+}: {
+  section: ResumeSection;
+  dndEnabled: boolean;
+  interactive?: boolean;
+  sectionProps: Record<string, any>;
+  lang?: string;
+  pendingChange?: 'added' | 'modified' | 'removed';
+}) {
+  const sortable = useSortable({ id: section.id, disabled: !dndEnabled });
+  const style = dndEnabled
+    ? {
+        transform: CSS.Transform.toString(sortable.transform),
+        transition: sortable.transition,
+        opacity: sortable.isDragging ? 0.6 : 1,
+        zIndex: sortable.isDragging ? 50 : undefined,
+        position: sortable.isDragging ? ('relative' as const) : undefined,
+      }
+    : undefined;
+
+  const pendingRingClass =
+    pendingChange === 'added'
+      ? 'rounded-lg ring-1 ring-[var(--whale-mint-deep)]/30'
+      : pendingChange === 'removed'
+        ? 'rounded-lg ring-1 ring-red-300/60'
+        : pendingChange === 'modified'
+          ? 'rounded-lg ring-1 ring-amber-300/60'
+          : '';
+
+  const content = (
+    <div className={cn('group/section relative', pendingRingClass && `p-2 -mx-2 ${pendingRingClass}`)} {...sectionProps}>
+      {pendingChange && <PreviewProposalOverlay sectionId={section.id} />}
+      {dndEnabled && (
+        <button
+          type="button"
+          aria-label="Drag to reorder"
+          className="absolute -left-7 top-1/2 -translate-y-1/2 hidden cursor-grab rounded p-1 text-zinc-300 hover:text-brand active:cursor-grabbing group-hover/section:flex"
+          {...sortable.attributes}
+          {...sortable.listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      )}
+      <h2 className="mb-2 border-b border-zinc-300 pb-1 text-sm font-bold uppercase tracking-wider text-zinc-800">
+        {section.title}
+      </h2>
+      <SectionContent section={section} lang={lang} interactive={interactive} />
+    </div>
+  );
+
+  if (dndEnabled) {
+    return (
+      <div ref={sortable.setNodeRef} style={style} className="mb-5" data-section-id={section.id}>
+        {content}
+      </div>
+    );
+  }
+
+  const Comp = interactive ? motion.div : 'div';
+  return (
+    <Comp
+      className="mb-5"
+      data-section-id={section.id}
+      layout={interactive ? 'position' : false}
+      transition={interactive ? { type: 'spring', stiffness: 300, damping: 30 } : undefined}
+    >
+      {content}
+    </Comp>
   );
 }
 

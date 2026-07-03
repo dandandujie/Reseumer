@@ -4,6 +4,7 @@ import type { Resume, ResumeSection, SectionContent, ThemeConfig } from '@/types
 import { AUTOSAVE_DELAY } from '@/lib/constants';
 import { generateId } from '@/lib/utils';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useProposalsStore } from '@/stores/proposals-store';
 
 interface ResumeStore {
   currentResume: Resume | null;
@@ -38,6 +39,9 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
     // Cancel any pending autosave to prevent stale data overwriting server changes (e.g., from AI tool calls)
     const { _saveTimeout } = get();
     if (_saveTimeout) clearTimeout(_saveTimeout);
+
+    // Clear proposals that don't belong to this resume
+    useProposalsStore.getState().scopeTo(resume.id);
 
     // Normalize: ensure all items/categories in section content have id fields
     const sections = (resume.sections || []).map((s) => {
@@ -195,6 +199,12 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
       set({ isDirty: false });
     } catch (error) {
       console.error('Failed to save resume:', error);
+      // Import toast dynamically to avoid circular dependencies
+      import('sonner').then(({ toast }) => {
+        toast.error('保存失败', {
+          description: '简历保存失败，请检查网络连接后重试',
+        });
+      });
     } finally {
       set({ isSaving: false });
     }

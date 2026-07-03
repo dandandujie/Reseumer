@@ -76,6 +76,9 @@ pub struct GenerateRequest<'a> {
 #[derive(Debug, Clone, Default)]
 pub struct GenerateResponse {
     pub text: String,
+    // Populated by all provider parsers for wire-format parity; only the
+    // streaming path consumes tool calls today.
+    #[allow(dead_code)]
     pub tool_calls: Vec<ToolCall>,
 }
 

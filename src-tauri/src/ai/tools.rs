@@ -33,6 +33,17 @@ pub fn tool_specs() -> Vec<ToolSpec> {
             }),
         },
         ToolSpec {
+            name: "removeSection".into(),
+            description: "Remove a section from the resume by its ID.".into(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "sectionId": { "type": "string", "description": "The ID of the section to remove" },
+                },
+                "required": ["sectionId"]
+            }),
+        },
+        ToolSpec {
             name: "rewriteText".into(),
             description: "Rewrite a text field to improve impact and clarity.".into(),
             parameters: json!({
@@ -55,6 +66,26 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                     "category": { "type": "string" },
                 },
                 "required": ["skills", "category"]
+            }),
+        },
+        ToolSpec {
+            name: "analyzeJdMatch".into(),
+            description: "Analyze how well the resume matches a job description. Returns match score, keyword analysis, and improvement suggestions.".into(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "jobDescription": { "type": "string", "description": "The full job description text to analyze against" },
+                },
+                "required": ["jobDescription"]
+            }),
+        },
+        ToolSpec {
+            name: "checkGrammar".into(),
+            description: "Check the resume for grammar, spelling, and clarity issues. Returns a list of issues with suggestions.".into(),
+            parameters: json!({
+                "type": "object",
+                "properties": {},
+                "required": []
             }),
         },
     ]
@@ -253,10 +284,28 @@ pub fn exec_suggest_skills(conn: &Connection, resume_id: &str, args: &Value) -> 
     Ok(json!({ "success": true, "category": category, "skills": skills, "sectionId": skills_section.id }))
 }
 
+pub fn exec_remove_section(conn: &Connection, resume_id: &str, args: &Value) -> Result<Value, String> {
+    let section_id = args.get("sectionId").and_then(|v| v.as_str()).ok_or("sectionId required")?;
+
+    let resume = resume_repo::find_by_id_any(conn, resume_id)
+        .map_err(|e| e.to_string())?
+        .ok_or("Resume not found")?;
+
+    // Verify the section exists
+    let _section = resume.sections.iter().find(|s| s.id == section_id)
+        .ok_or("Section not found")?;
+
+    resume_repo::delete_section(conn, section_id)
+        .map_err(|e| e.to_string())?;
+
+    Ok(json!({ "success": true, "sectionId": section_id }))
+}
+
 pub fn execute_tool(conn: &Connection, resume_id: &str, name: &str, args: &Value) -> Value {
     let result = match name {
         "updateSection" => exec_update_section(conn, resume_id, args),
         "addSection" => exec_add_section(conn, resume_id, args),
+        "removeSection" => exec_remove_section(conn, resume_id, args),
         "rewriteText" => exec_rewrite_text(conn, resume_id, args),
         "suggestSkills" => exec_suggest_skills(conn, resume_id, args),
         _ => Err(format!("Unknown tool: {}", name)),

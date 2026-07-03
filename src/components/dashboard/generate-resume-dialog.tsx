@@ -110,7 +110,7 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
               {/* Row 1: Job Title + Years + Industry */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <label className="text-sm font-medium text-[var(--whale-ink-soft)]">
                     {t('jobTitle')} *
                   </label>
                   <Input
@@ -120,7 +120,7 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <label className="text-sm font-medium text-[var(--whale-ink-soft)]">
                     {t('yearsOfExperience')}
                   </label>
                   <Input
@@ -133,7 +133,7 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <label className="text-sm font-medium text-[var(--whale-ink-soft)]">
                     {t('industry')}
                   </label>
                   <Input
@@ -146,7 +146,7 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
 
               {/* Skills */}
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                <label className="text-sm font-medium text-[var(--whale-ink-soft)]">
                   {t('skills')}
                 </label>
                 <Input
@@ -158,7 +158,7 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
 
               {/* Work Experience */}
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                <label className="text-sm font-medium text-[var(--whale-ink-soft)]">
                   {t('experience')}
                 </label>
                 <Textarea
@@ -171,7 +171,7 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                <label className="text-sm font-medium text-[var(--whale-ink-soft)]">
                   {t('language')}
                 </label>
                 <LanguageSelect value={language} onValueChange={setLanguage} />
@@ -182,7 +182,7 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
           {state === 'generating' && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Loader2 className="h-8 w-8 animate-spin text-brand mb-3" />
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <p className="text-sm font-medium text-[var(--whale-ink-soft)]">
                 {t('generating')}
               </p>
             </div>
@@ -191,10 +191,10 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
           {state === 'success' && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CheckCircle2 className="h-8 w-8 text-green-500 mb-3" />
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <p className="text-sm font-medium text-[var(--whale-ink-soft)]">
                 {t('success')}
               </p>
-              <p className="text-xs text-zinc-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {t('successDescription')}
               </p>
             </div>
@@ -203,7 +203,7 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
           {state === 'error' && (
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <AlertTriangle className="h-8 w-8 text-red-500 mb-3" />
-              <p className="text-sm font-medium text-red-600 dark:text-red-400">
+              <p className="text-sm font-medium text-red-600">
                 {error || t('error')}
               </p>
             </div>
@@ -211,7 +211,7 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
+        <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
           {state === 'form' && (
             <>
               <Button

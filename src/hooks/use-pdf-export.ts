@@ -1,4 +1,6 @@
 import { useState, useCallback } from 'react';
+import { toast } from 'sonner';
+import i18n from '@/i18n';
 import * as api from '@/lib/tauri-api';
 import { generateHtml } from '@/lib/export/builders';
 import { getResume } from '@/lib/tauri-api';
@@ -15,9 +17,14 @@ export function usePdfExport() {
       const html = await generateHtml(resume, true);
       const filename = `${title || resume.title || 'resume'}.pdf`;
       await api.exportPdf(resumeId, html, filename);
-    } catch (error) {
+    } catch (error: any) {
+      // Surface the failure to the user — callers fire-and-forget this promise.
+      const raw = String(error?.message || error || '');
+      const description = raw.includes('CHROME_NOT_FOUND')
+        ? i18n.t('export.chromeMissing')
+        : raw.slice(0, 180);
+      toast.error(i18n.t('export.error'), { description });
       console.error('Failed to export PDF:', error);
-      throw error;
     } finally {
       setIsExporting(false);
     }

@@ -6,21 +6,9 @@ use crate::db::repo::user as repo;
 use super::CommandError;
 
 #[tauri::command]
-pub fn get_user(db: State<AppDb>, user_id: String) -> Result<Option<repo::User>, CommandError> {
-    let conn = db.conn.lock().map_err(|e| CommandError { message: e.to_string() })?;
-    repo::find_by_id(&conn, &user_id).map_err(Into::into)
-}
-
-#[tauri::command]
 pub fn ensure_user(db: State<AppDb>, fingerprint: String) -> Result<repo::User, CommandError> {
     let conn = db.conn.lock().map_err(|e| CommandError { message: e.to_string() })?;
     repo::upsert_by_fingerprint(&conn, &fingerprint).map_err(Into::into)
-}
-
-#[tauri::command]
-pub fn update_user(db: State<AppDb>, user_id: String, name: Option<String>, avatar_url: Option<String>) -> Result<(), CommandError> {
-    let conn = db.conn.lock().map_err(|e| CommandError { message: e.to_string() })?;
-    repo::update(&conn, &user_id, name.as_deref(), avatar_url.as_deref()).map_err(Into::into)
 }
 
 #[tauri::command]

@@ -33,7 +33,7 @@ export function LocaleSwitcher() {
   return (
     <Select value={locale} onValueChange={onValueChange}>
       <SelectTrigger className="w-auto gap-1.5 border-none bg-transparent px-2 text-sm shadow-none">
-        <Globe className="h-4 w-4 text-zinc-500" />
+        <Globe className="h-4 w-4 text-muted-foreground" />
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

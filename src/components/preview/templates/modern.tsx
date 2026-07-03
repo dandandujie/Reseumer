@@ -1,0 +1,366 @@
+'use client';
+
+import { useCallback, useMemo } from 'react';
+import { GripVertical } from 'lucide-react';
+import type {
+  Resume,
+  ResumeSection,
+  PersonalInfoContent,
+  SummaryContent,
+  WorkExperienceContent,
+  EducationContent,
+  SkillsContent,
+  ProjectsContent,
+  CertificationsContent,
+  LanguagesContent,
+  CustomContent,
+  GitHubContent,
+} from '@/types/resume';
+import { isSectionEmpty, md } from '../utils';
+import { AvatarImage } from '../avatar-image';
+import { QrCodesPreview } from '../qr-codes-preview';
+import { useEditorStore } from '@/stores/editor-store';
+import { useProposalsStore } from '@/stores/proposals-store';
+import { PreviewProposalOverlay } from '../preview-proposal-overlay';
+import { cn } from '@/lib/utils';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+function getDateRange(startDate?: string, endDate?: string | null, presentLabel = 'Present') {
+  if (!startDate) return '';
+  const tail = endDate || presentLabel;
+  return tail ? `${startDate} - ${tail}` : startDate;
+}
+
+function EmptySectionPlaceholder({ lang }: { lang?: string }) {
+  return (
+    <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-3 py-4">
+      <div className="h-2.5 w-24 rounded-full bg-zinc-200/80" />
+      <div className="mt-2 h-2.5 w-full max-w-[16rem] rounded-full bg-zinc-100" />
+      <p className="mt-3 text-xs text-zinc-400">
+        {lang === 'zh' ? '填写后会显示在这里' : 'Content will appear here'}
+      </p>
+    </div>
+  );
+}
+
+export function ModernTemplate({ resume, interactive, onReorderSections }: { resume: Resume; interactive?: boolean; onReorderSections?: (sections: ResumeSection[]) => void }) {
+  const personalInfo = resume.sections.find((s) => s.type === 'personal_info');
+  const pi = (personalInfo?.content || {}) as PersonalInfoContent;
+  const { selectedSectionId, selectSection } = useEditorStore();
+  const pendingProposals = useProposalsStore((s) =>
+    interactive ? s.proposals : null
+  );
+
+  const pendingSectionChanges = useMemo(() => {
+    const map = new Map<string, 'added' | 'modified' | 'removed'>();
+    if (!pendingProposals || pendingProposals.length === 0) return map;
+    for (const p of pendingProposals) {
+      const beforeMap = new Map(p.beforeSections.map((s) => [s.id, s]));
+      const afterMap = new Map(p.afterSections.map((s) => [s.id, s]));
+      for (const a of p.afterSections) {
+        const b = beforeMap.get(a.id);
+        if (!b) {
+          map.set(a.id, 'added');
+        } else if (JSON.stringify(b.content) !== JSON.stringify(a.content) || b.title !== a.title) {
+          if (map.get(a.id) !== 'added') map.set(a.id, 'modified');
+        }
+      }
+      for (const b of p.beforeSections) {
+        if (!afterMap.has(b.id)) {
+          map.set(b.id, 'removed');
+        }
+      }
+    }
+    return map;
+  }, [pendingProposals]);
+
+  const getSectionProps = (sectionId: string) => {
+    if (!interactive) return {};
+    const isSelected = selectedSectionId === sectionId;
+    return {
+      onClick: () => selectSection(sectionId),
+      className: cn(
+        'transition-all duration-200 cursor-pointer p-2 -mx-2 rounded-lg',
+        isSelected ? 'bg-brand/5 ring-1 ring-brand/20' : 'hover:bg-zinc-50'
+      )
+    };
+  };
+
+  // Modern template: left sidebar for personal + skills/languages, main content for work/edu/projects
+  const leftSidebarTypes = new Set(['skills', 'languages', 'certifications', 'qr-codes']);
+  const leftSections = resume.sections.filter((s) => s.visible && leftSidebarTypes.has(s.type) && (interactive || !isSectionEmpty(s)));
+  const mainSections = resume.sections.filter((s) => s.visible && s.type !== 'personal_info' && !leftSidebarTypes.has(s.type) && (interactive || !isSectionEmpty(s)));
+
+  const dndEnabled = !!(interactive && onReorderSections);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id || !onReorderSections) return;
+      const oldIndex = resume.sections.findIndex((s) => s.id === active.id);
+      const newIndex = resume.sections.findIndex((s) => s.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const newSections = [...resume.sections];
+      const [removed] = newSections.splice(oldIndex, 1);
+      newSections.splice(newIndex, 0, removed);
+      onReorderSections(newSections.map((s, i) => ({ ...s, sortOrder: i })));
+    },
+    [resume.sections, onReorderSections]
+  );
+
+  const renderSection = (section: ResumeSection, compact = false) => (
+    <PreviewSection
+      key={section.id}
+      section={section}
+      dndEnabled={dndEnabled}
+      interactive={interactive}
+      sectionProps={getSectionProps(section.id)}
+      lang={resume.language}
+      pendingChange={pendingSectionChanges.get(section.id)}
+      compact={compact}
+    />
+  );
+
+  return (
+    <div className="mx-auto max-w-[210mm] bg-white shadow-lg">
+      <div className="grid grid-cols-[35%_65%] gap-0">
+        {/* Left Sidebar - Personal Info + Skills/Languages */}
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 text-white">
+          {/* Avatar + Name */}
+          <div {...(personalInfo ? getSectionProps(personalInfo.id) : {})} className="text-center">
+            {pi.avatar && (
+              <div className="mx-auto mb-4 h-28 w-28 overflow-hidden rounded-full ring-4 ring-white/20">
+                <AvatarImage src={pi.avatar} size={112} avatarStyle="circle" />
+              </div>
+            )}
+            <h1 className="mb-1 text-2xl font-bold tracking-tight">{pi.fullName || 'Your Name'}</h1>
+            {pi.jobTitle && <p className="text-sm font-medium text-slate-300">{pi.jobTitle}</p>}
+          </div>
+
+          {/* Contact Info */}
+          <div className="mt-6 space-y-2 text-xs text-slate-300">
+            {pi.email && <div className="flex items-center gap-2"><span className="opacity-70">✉</span> {pi.email}</div>}
+            {pi.phone && <div className="flex items-center gap-2"><span className="opacity-70">☎</span> {pi.phone}</div>}
+            {pi.location && <div className="flex items-center gap-2"><span className="opacity-70">📍</span> {pi.location}</div>}
+            {pi.website && <div className="flex items-center gap-2"><span className="opacity-70">🌐</span> {pi.website}</div>}
+            {pi.linkedin && <div className="flex items-center gap-2"><span className="opacity-70">in</span> {pi.linkedin}</div>}
+            {pi.github && <div className="flex items-center gap-2"><span className="opacity-70">⚡</span> {pi.github}</div>}
+          </div>
+
+          {/* Left Sidebar Sections */}
+          <div className="mt-8 space-y-6">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={leftSections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                {leftSections.map((s) => renderSection(s, true))}
+              </SortableContext>
+            </DndContext>
+          </div>
+        </div>
+
+        {/* Main Content - Summary + Work + Education + Projects */}
+        <div className="p-8">
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={mainSections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-6">
+                {mainSections.map((s) => renderSection(s))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Reuse the PreviewSection component from classic (needs to be extracted to shared file, but for now inline a simplified version)
+function PreviewSection({
+  section,
+  dndEnabled,
+  interactive,
+  sectionProps,
+  lang,
+  pendingChange,
+  compact = false,
+}: {
+  section: ResumeSection;
+  dndEnabled?: boolean;
+  interactive?: boolean;
+  sectionProps?: any;
+  lang?: string;
+  pendingChange?: 'added' | 'modified' | 'removed';
+  compact?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: section.id,
+    disabled: !dndEnabled,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const content = section.content as any;
+  const pendingProposals = useProposalsStore((s) => s.proposals.filter((p) => p.afterSections.some((a) => a.id === section.id)));
+
+  const sectionClasses = cn(
+    'relative group',
+    compact && 'text-sm',
+    pendingChange === 'added' && 'ring-2 ring-green-400',
+    pendingChange === 'modified' && 'ring-2 ring-blue-400',
+    pendingChange === 'removed' && 'opacity-50 ring-2 ring-red-400'
+  );
+
+  const inner = (
+    <div className={sectionClasses} {...sectionProps}>
+      {interactive && dndEnabled && (
+        <button
+          {...attributes}
+          {...listeners}
+          className="absolute -left-6 top-0 hidden cursor-grab p-1 text-zinc-400 hover:text-zinc-600 group-hover:block active:cursor-grabbing"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      )}
+
+      <h3 className={cn("font-bold uppercase tracking-wide", compact ? "text-xs mb-2 text-white/90" : "text-sm mb-3 text-zinc-800 border-b-2 border-zinc-300 pb-1")}>
+        {section.title}
+      </h3>
+
+      {isSectionEmpty(section) && interactive ? (
+        <EmptySectionPlaceholder lang={lang} />
+      ) : (
+        <div className={compact ? "text-white/80 space-y-2" : "space-y-3"}>
+          {section.type === 'summary' && (
+            <div className="text-sm leading-relaxed text-zinc-700" dangerouslySetInnerHTML={{ __html: md((content as SummaryContent).text || '') }} />
+          )}
+          {section.type === 'work_experience' && (
+            (content as WorkExperienceContent).items?.map((item: any) => (
+              <div key={item.id} className={compact ? "space-y-0.5" : "space-y-1"}>
+                <div className="flex items-baseline justify-between">
+                  <span className="font-semibold">{item.position}</span>
+                  <span className={cn("text-xs", compact ? "text-white/60" : "text-zinc-500")}>{getDateRange(item.startDate, item.endDate, item.current ? (lang === 'zh' ? '至今' : 'Present') : undefined)}</span>
+                </div>
+                <div className={cn("text-xs", compact ? "text-white/70" : "text-zinc-600")}>{item.company}{item.location && ` · ${item.location}`}</div>
+                {item.description && <div className="text-xs text-zinc-500" dangerouslySetInnerHTML={{ __html: md(item.description) }} />}
+                {item.highlights && item.highlights.length > 0 && (
+                  <ul className="ml-4 list-disc space-y-0.5 text-xs text-zinc-600">
+                    {item.highlights.map((h: string, i: number) => <li key={i} dangerouslySetInnerHTML={{ __html: md(h) }} />)}
+                  </ul>
+                )}
+              </div>
+            ))
+          )}
+          {section.type === 'education' && (
+            (content as EducationContent).items?.map((item: any) => (
+              <div key={item.id} className="space-y-0.5">
+                <div className="flex items-baseline justify-between">
+                  <span className="font-semibold text-sm">{item.degree}</span>
+                  <span className={cn("text-xs", compact ? "text-white/60" : "text-zinc-500")}>{getDateRange(item.startDate, item.endDate)}</span>
+                </div>
+                <div className={cn("text-xs", compact ? "text-white/70" : "text-zinc-600")}>{item.institution}{item.field && ` · ${item.field}`}</div>
+              </div>
+            ))
+          )}
+          {section.type === 'skills' && (
+            (content as SkillsContent).categories?.map((cat: any) => (
+              <div key={cat.id} className="space-y-1">
+                <div className={cn("font-semibold text-xs", compact ? "text-white/90" : "text-zinc-700")}>{cat.name}</div>
+                <div className={cn("flex flex-wrap gap-1.5", compact && "text-xs")}>
+                  {cat.skills?.map((skill: string, i: number) => (
+                    <span key={i} className={cn("rounded px-2 py-0.5 text-xs font-medium", compact ? "bg-white/10 text-white/80" : "bg-zinc-100 text-zinc-700")}>
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+          {section.type === 'projects' && (
+            (content as ProjectsContent).items?.map((item: any) => (
+              <div key={item.id} className="space-y-1">
+                <div className="font-semibold text-sm">{item.name}</div>
+                {item.description && <div className="text-xs text-zinc-600" dangerouslySetInnerHTML={{ __html: md(item.description) }} />}
+                {item.technologies && item.technologies.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {item.technologies.map((tech: string, i: number) => (
+                      <span key={i} className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600">{tech}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+          {section.type === 'languages' && (
+            (content as LanguagesContent).items?.map((item: any) => (
+              <div key={item.id} className="flex items-baseline justify-between text-xs">
+                <span className="font-medium">{item.language}</span>
+                <span className={compact ? "text-white/60" : "text-zinc-500"}>{item.proficiency}</span>
+              </div>
+            ))
+          )}
+          {section.type === 'certifications' && (
+            (content as CertificationsContent).items?.map((item: any) => (
+              <div key={item.id} className="space-y-0.5">
+                <div className="font-semibold text-sm">{item.name}</div>
+                <div className={cn("text-xs", compact ? "text-white/70" : "text-zinc-600")}>{item.issuer}{item.date && ` · ${item.date}`}</div>
+              </div>
+            ))
+          )}
+          {section.type === 'custom' && (
+            (content as CustomContent).items?.map((item: any) => (
+              <div key={item.id} className="space-y-1">
+                <div className="font-semibold text-sm">{item.title}</div>
+                {item.subtitle && <div className="text-xs text-zinc-600">{item.subtitle}</div>}
+                {item.description && <div className="text-sm text-zinc-700" dangerouslySetInnerHTML={{ __html: md(item.description) }} />}
+              </div>
+            ))
+          )}
+          {section.type === 'qr-codes' && <QrCodesPreview items={(content as any).items || []} />}
+          {section.type === 'github' && (
+            <div className="space-y-2">
+              {(content as GitHubContent).items?.map((repo: any) => (
+                <div key={repo.id} className="space-y-1">
+                  <div className="font-semibold text-sm">{repo.name}</div>
+                  {repo.description && <div className="text-xs text-zinc-600">{repo.description}</div>}
+                  <div className="flex items-center gap-3 text-[10px] text-zinc-500">
+                    {repo.language && <span>● {repo.language}</span>}
+                    {repo.stars != null && <span>⭐ {repo.stars}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {pendingProposals.length > 0 && <PreviewProposalOverlay sectionId={section.id} />}
+    </div>
+  );
+
+  if (dndEnabled) {
+    return <div ref={setNodeRef} style={style}>{inner}</div>;
+  }
+  return inner;
+}

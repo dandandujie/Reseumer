@@ -82,17 +82,17 @@ export function PersonalInfoSection({ section, onUpdate }: Props) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-zinc-300 bg-zinc-50 transition-colors hover:border-zinc-400 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:border-zinc-500 dark:hover:bg-zinc-700"
+          className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-[var(--whale-divider)] bg-muted transition-colors hover:border-[var(--whale-ink)]/30 hover:bg-[var(--whale-cream-deep)]"
         >
           {content.avatar ? (
             <img src={content.avatar} alt="Avatar" className="h-full w-full object-cover" />
           ) : (
-            <Camera className="h-6 w-6 text-zinc-400" />
+            <Camera className="h-6 w-6 text-[var(--whale-ink-muted)]" />
           )}
         </button>
         <div className="flex flex-col gap-2">
           {/* Segmented shape toggle */}
-          <div className="inline-flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+          <div className="inline-flex rounded-lg bg-[var(--whale-cream-deep)] p-0.5">
             {([
               { value: 'circle' as const, icon: Circle, label: tTheme('avatarCircle') },
               { value: 'oneInch' as const, icon: RectangleVertical, label: tTheme('avatarOneInch') },
@@ -103,8 +103,8 @@ export function PersonalInfoSection({ section, onUpdate }: Props) {
                 onClick={() => updateAvatarStyle(value)}
                 className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition-all duration-200 ${
                   avatarStyle === value
-                    ? 'bg-white font-medium text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
-                    : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
+                    ? 'bg-card font-medium text-[var(--whale-ink)] shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <Icon className="h-3 w-3" />
@@ -117,7 +117,7 @@ export function PersonalInfoSection({ section, onUpdate }: Props) {
             <button
               type="button"
               onClick={() => onUpdate({ avatar: '' })}
-              className="inline-flex w-fit cursor-pointer items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+              className="inline-flex w-fit cursor-pointer items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-[var(--whale-ink-muted)] transition-colors hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)]"
             >
               <X className="h-3 w-3" />
               {t('clear')}

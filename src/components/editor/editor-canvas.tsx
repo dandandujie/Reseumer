@@ -21,7 +21,7 @@ export function EditorCanvas({
   const displaySection = sections.find((s) => s.id === selectedSectionId) || sections[0];
 
   return (
-    <div className="h-full min-w-0 overflow-hidden border-l bg-zinc-50 dark:bg-zinc-950 dark:border-zinc-800">
+    <div className="h-full min-w-0 overflow-hidden border-l border-[var(--whale-divider)] bg-[var(--whale-card)]">
       <ScrollArea className="h-full">
         <div className="mx-auto max-w-3xl px-3 py-4 md:px-6 md:py-8">
           {displaySection ? (
@@ -31,7 +31,7 @@ export function EditorCanvas({
               onRemove={() => onRemoveSection(displaySection.id)}
             />
           ) : (
-            <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-zinc-300 text-zinc-500">
+            <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-[var(--whale-divider)] text-sm text-[var(--whale-ink-muted)]">
               请选择或添加一个模块
             </div>
           )}

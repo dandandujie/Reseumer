@@ -41,18 +41,18 @@ export function SmartFitButton() {
   };
 
   return (
-    <Button 
-      onClick={handleSmartFit} 
-      variant="ghost" 
-      size="sm" 
-      className="cursor-pointer text-brand hover:text-brand hover:bg-brand-muted"
+    <Button
+      onClick={handleSmartFit}
+      variant="ghost"
+      size="sm"
+      className="cursor-pointer gap-1 text-[var(--whale-ink-soft)] hover:bg-[var(--whale-mint)]/40 hover:text-[var(--whale-ink)]"
       disabled={isCalculating}
       title="一键智能单页"
     >
       {isCalculating ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
-        <Sparkles className="h-4 w-4" />
+        <Sparkles className="h-4 w-4 text-[var(--whale-ink)]" />
       )}
       <span className="ml-1 text-xs hidden sm:inline">智能排版</span>
     </Button>

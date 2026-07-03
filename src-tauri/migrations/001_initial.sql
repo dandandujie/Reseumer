@@ -69,3 +69,19 @@ CREATE TABLE IF NOT EXISTS grammar_checks (
     issue_count INTEGER NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
+
+CREATE TABLE IF NOT EXISTS resume_versions (
+    id TEXT PRIMARY KEY,
+    resume_id TEXT NOT NULL REFERENCES resumes(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    event TEXT NOT NULL CHECK (event IN ('save', 'ai_accept', 'ai_reject')),
+    resume_title TEXT NOT NULL,
+    snapshot TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE INDEX IF NOT EXISTS idx_resume_versions_user_created
+    ON resume_versions(user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_resume_versions_resume_created
+    ON resume_versions(resume_id, created_at DESC);

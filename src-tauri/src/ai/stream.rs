@@ -12,7 +12,6 @@ pub enum StreamEvent {
     ToolCallStart { id: String, name: String },
     ToolCallArgs { id: String, args: Value },
     ToolResult { id: String, name: String, result: Value },
-    StepComplete,
     Finish { final_text: String },
     Error { message: String },
 }
@@ -286,25 +285,124 @@ async fn stream_gemini(
     messages: &[ChatMessage],
     tools: Option<&[ToolSpec]>,
 ) -> Result<ChatStreamResult, ProviderError> {
-    // Gemini streaming response parsing is complex — fallback to non-streaming and emit all at once
-    let req = super::provider::GenerateRequest {
-        config,
-        system: if system.is_empty() { None } else { Some(system) },
-        messages,
-        tools,
-        json_mode: false,
-        max_tokens: Some(4096),
+    let client = super::provider::http_client();
+    let base = config.base_url.trim_end_matches('/');
+    let url = format!(
+        "{}/models/{}:streamGenerateContent?alt=sse&key={}",
+        base,
+        config.model,
+        urlencoding::encode(&config.api_key)
+    );
+
+    let mut contents: Vec<Value> = Vec::new();
+    for m in messages {
+        let role = if m.role == "assistant" { "model" } else { "user" };
+        contents.push(json!({ "role": role, "parts": [{ "text": m.content }] }));
+    }
+
+    let mut body = json!({ "contents": contents });
+    if !system.is_empty() {
+        body["systemInstruction"] = json!({ "parts": [{ "text": system }] });
+    }
+    body["generationConfig"] = json!({ "maxOutputTokens": 4096 });
+    if let Some(ts) = tools {
+        if !ts.is_empty() {
+            body["tools"] = json!([{
+                "functionDeclarations": ts.iter().map(|t| json!({
+                    "name": t.name,
+                    "description": t.description,
+                    "parameters": t.parameters,
+                })).collect::<Vec<_>>()
+            }]);
+        }
+    }
+
+    let res = client
+        .post(&url)
+        .header("Accept", "text/event-stream")
+        .json(&body)
+        .send()
+        .await?;
+
+    if !res.status().is_success() {
+        let status = res.status();
+        let txt = res.text().await.unwrap_or_default();
+        eprintln!("[gemini stream] HTTP {} body={}", status, txt);
+        return Err(ProviderError::Api(format!("{} {}", status, txt)));
+    }
+
+    let mut stream = res.bytes_stream();
+    let mut buffer = String::new();
+    let mut text_out = String::new();
+    let mut tool_calls: Vec<super::provider::ToolCall> = Vec::new();
+    let mut chunk_count = 0u32;
+
+    // Line-based SSE parser — robust to \n vs \r\n vs missing trailing newline.
+    let process_data = |data: &str,
+                            text_out: &mut String,
+                            tool_calls: &mut Vec<super::provider::ToolCall>| {
+        let data = data.trim();
+        if data.is_empty() || data == "[DONE]" {
+            return;
+        }
+        let Ok(v) = serde_json::from_str::<Value>(data) else {
+            eprintln!("[gemini stream] failed to parse JSON: {}", &data[..data.len().min(200)]);
+            return;
+        };
+        if let Some(parts) = v.pointer("/candidates/0/content/parts").and_then(|p| p.as_array()) {
+            for part in parts {
+                if let Some(t) = part.get("text").and_then(|v| v.as_str()) {
+                    if !t.is_empty() {
+                        text_out.push_str(t);
+                        emit(app, stream_id, StreamEvent::TextDelta { text: t.to_string() });
+                    }
+                }
+                if let Some(fc) = part.get("functionCall") {
+                    let name = fc.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    let arguments = fc.get("args").cloned().unwrap_or(Value::Object(Default::default()));
+                    let id = uuid::Uuid::new_v4().to_string();
+                    emit(app, stream_id, StreamEvent::ToolCallStart { id: id.clone(), name: name.clone() });
+                    emit(app, stream_id, StreamEvent::ToolCallArgs { id: id.clone(), args: arguments.clone() });
+                    tool_calls.push(super::provider::ToolCall { id, name, arguments });
+                }
+            }
+        }
     };
-    let res = super::provider::generate(req).await?;
-    if !res.text.is_empty() {
-        emit(app, stream_id, StreamEvent::TextDelta { text: res.text.clone() });
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        let s = String::from_utf8_lossy(&chunk);
+        buffer.push_str(&s);
+        chunk_count += 1;
+        if chunk_count <= 2 {
+            eprintln!("[gemini stream] chunk #{} len={} preview={:?}", chunk_count, s.len(), &s[..s.len().min(160)]);
+        }
+
+        // Process every complete line in the buffer.
+        loop {
+            let Some(nl) = buffer.find('\n') else { break };
+            let line = buffer[..nl].trim_end_matches('\r').to_string();
+            buffer.drain(..nl + 1);
+            if let Some(data) = line.strip_prefix("data: ").or_else(|| line.strip_prefix("data:")) {
+                process_data(data, &mut text_out, &mut tool_calls);
+            }
+        }
     }
-    for tc in &res.tool_calls {
-        emit(app, stream_id, StreamEvent::ToolCallStart { id: tc.id.clone(), name: tc.name.clone() });
-        emit(app, stream_id, StreamEvent::ToolCallArgs { id: tc.id.clone(), args: tc.arguments.clone() });
+
+    // Tail: handle any remaining buffer that didn't end with a newline.
+    if !buffer.is_empty() {
+        let line = buffer.trim_end_matches('\r');
+        if let Some(data) = line.strip_prefix("data: ").or_else(|| line.strip_prefix("data:")) {
+            process_data(data, &mut text_out, &mut tool_calls);
+        }
     }
+
+    if text_out.is_empty() && tool_calls.is_empty() {
+        eprintln!("[gemini stream] empty result after {} chunks", chunk_count);
+    }
+
     Ok(ChatStreamResult {
-        text: res.text,
-        tool_calls: res.tool_calls,
+        text: text_out,
+        tool_calls,
     })
 }

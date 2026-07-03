@@ -547,7 +547,7 @@ export function estimateClassicPages(pretext: PretextModule, resume: Resume): Cl
   );
 
   for (const section of sections) {
-    let contentHeight = 0;
+    let contentHeight: number;
 
     if (section.type === 'summary') {
       const summary = section.content as SummaryContent;

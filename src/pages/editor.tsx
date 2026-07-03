@@ -6,15 +6,13 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useEditor } from '@/hooks/use-editor';
-import { useFingerprint } from '@/hooks/use-fingerprint';
 import { useIsMobile } from '@/hooks/use-media-query';
 import { EditorToolbar } from '@/components/editor/editor-toolbar';
 import { EditorSidebar } from '@/components/editor/editor-sidebar';
-import { EditorCanvas } from '@/components/editor/editor-canvas';
+import { EditorRightPane } from '@/components/editor/editor-right-pane';
 import { ThemeEditor } from '@/components/editor/theme-editor';
 import { EditorPreviewPanel } from '@/components/editor/editor-preview-panel';
 import { EditorMobileTabBar } from '@/components/editor/editor-mobile-tab-bar';
-import { AIChatBubble } from '@/components/ai/ai-chat-bubble';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { List } from "lucide-react";
 import { SettingsDialog } from '@/components/settings/settings-dialog';
@@ -22,9 +20,10 @@ import { JdAnalysisDialog } from '@/components/editor/jd-analysis-dialog';
 import { TranslateDialog } from '@/components/editor/translate-dialog';
 import { ExportDialog } from '@/components/editor/export-dialog';
 import { ImportDialog } from '@/components/editor/import-dialog';
-import { CoverLetterDialog } from '@/components/editor/cover-letter-dialog';
 import { GrammarCheckDialog } from '@/components/editor/grammar-check-dialog';
+import { JournalDialog } from '@/components/editor/journal-dialog';
 import { useEditorStore } from '@/stores/editor-store';
+import { useResumeStore } from '@/stores/resume-store';
 import { useUIStore } from '@/stores/ui-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -32,7 +31,6 @@ import { cn } from '@/lib/utils';
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
-  const { isLoading: fpLoading } = useFingerprint();
   const { resume, sections, updateSection, addSection, removeSection, reorderSections } = useEditor(id!);
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -43,6 +41,35 @@ export default function EditorPage() {
   useEffect(() => {
     if (!_hydrated) hydrate();
   }, [_hydrated, hydrate]);
+
+  // Keyboard shortcuts: Cmd/Ctrl+S save, Cmd/Ctrl+Z undo, Cmd/Ctrl+Shift+Z redo.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const key = e.key.toLowerCase();
+      if (key === 's') {
+        e.preventDefault();
+        void useResumeStore.getState().flushPendingSave();
+        return;
+      }
+      if (key !== 'z') return;
+      // Leave native text-level undo alone while typing in a field.
+      const target = e.target as HTMLElement | null;
+      const isEditable =
+        !!target &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+      if (isEditable) return;
+      e.preventDefault();
+      const editor = useEditorStore.getState();
+      const resumeStore = useResumeStore.getState();
+      const snapshot = e.shiftKey
+        ? editor.redo(resumeStore.sections)
+        : editor.undo(resumeStore.sections);
+      if (snapshot) resumeStore.reorderSections(snapshot.sections);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   useEffect(() => {
     const handler = (e: PromiseRejectionEvent) => {
@@ -58,7 +85,7 @@ export default function EditorPage() {
     return () => window.removeEventListener('unhandledrejection', handler);
   }, []);
 
-  if (fpLoading || !resume) {
+  if (!resume) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="space-y-4 w-64">
@@ -72,7 +99,7 @@ export default function EditorPage() {
 
   return (
     <div className="flex h-screen flex-col">
-      <EditorToolbar resumeId={id!} />
+      <EditorToolbar />
       <EditorMobileTabBar />
 
       <div className="flex flex-1 overflow-hidden">
@@ -87,31 +114,30 @@ export default function EditorPage() {
         {showThemeEditor && <ThemeEditor />}
 
         <div className={cn("min-w-0 flex-1 overflow-hidden md:flex-[4]", isMobile && mobileActiveTab !== "edit" && "hidden")}>
-          <EditorCanvas sections={sections} onUpdateSection={updateSection} onRemoveSection={removeSection} />
+          <EditorRightPane resumeId={id!} sections={sections} onUpdateSection={updateSection} onRemoveSection={removeSection} />
         </div>
       </div>
 
-      <button onClick={() => setSidebarOpen(true)} className="fixed bottom-20 left-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white shadow-lg transition-transform hover:scale-105 active:scale-95 md:hidden" aria-label="Open sections">
+      <button onClick={() => setSidebarOpen(true)} className="fixed bottom-20 left-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--whale-ink)] text-[var(--whale-cream)] shadow-lg transition-transform hover:scale-105 active:scale-95 md:hidden" aria-label="Open sections">
         <List className="h-5 w-5" />
       </button>
 
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="w-72 p-0">
-          <SheetHeader className="border-b px-4 py-3">
-            <SheetTitle className="text-sm font-semibold">Sections</SheetTitle>
+        <SheetContent side="left" className="w-72 border-r border-[var(--whale-divider)] bg-[var(--whale-sidebar)] p-0">
+          <SheetHeader className="border-b border-[var(--whale-divider)] px-4 py-3">
+            <SheetTitle className="text-sm font-semibold text-[var(--whale-ink)]">Sections</SheetTitle>
           </SheetHeader>
           <EditorSidebar sections={sections} onAddSection={(s) => { addSection(s); setSidebarOpen(false); }} onReorderSections={reorderSections} />
         </SheetContent>
       </Sheet>
 
-      <AIChatBubble resumeId={id!} />
       <SettingsDialog />
       <JdAnalysisDialog open={activeModal === 'jd-analysis'} onOpenChange={(open) => open ? openModal('jd-analysis') : closeModal()} resumeId={id!} />
       <TranslateDialog open={activeModal === 'translate'} onOpenChange={(open) => open ? openModal('translate') : closeModal()} resumeId={id!} />
       <ExportDialog open={activeModal === 'export'} onOpenChange={(open) => open ? openModal('export') : closeModal()} resumeId={id!} />
       <ImportDialog open={activeModal === 'import'} onOpenChange={(open) => open ? openModal('import') : closeModal()} resumeId={id!} />
-      <CoverLetterDialog open={activeModal === 'cover-letter'} onOpenChange={(open) => open ? openModal('cover-letter') : closeModal()} resumeId={id!} />
       <GrammarCheckDialog open={activeModal === 'grammar-check'} onOpenChange={(open) => open ? openModal('grammar-check') : closeModal()} resumeId={id!} />
+      <JournalDialog open={activeModal === 'journal'} onOpenChange={(open) => open ? openModal('journal') : closeModal()} resumeId={id!} />
     </div>
   );
 }

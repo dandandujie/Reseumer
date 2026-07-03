@@ -19,7 +19,7 @@ import { Upload, FileText, Image, X, Loader2 } from 'lucide-react';
 interface CreateResumeDialogProps {
   open: boolean;
   onClose: () => void;
-  onCreate: (data: { title?: string; language?: string }) => Promise<any>;
+  onCreate: (data: { title?: string; language?: string; template?: string }) => Promise<any>;
 }
 
 type Tab = 'blank' | 'upload';
@@ -31,6 +31,7 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('blank');
   const [title, setTitle] = useState('');
+  const [template, setTemplate] = useState<string>('classic');
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState('');
 
@@ -45,7 +46,7 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
     setIsCreating(true);
     setCreateError('');
     try {
-      const resume = await onCreate({ title: title || undefined });
+      const resume = await onCreate({ title: title || undefined, template });
       if (!resume) {
         throw new Error(t('dashboard.createFailed'));
       }
@@ -91,6 +92,7 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
   const resetAndClose = () => {
     onClose();
     setTitle('');
+    setTemplate('classic');
     setTab('blank');
     setFile(null);
     setCreateError('');
@@ -126,14 +128,14 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
         </DialogHeader>
 
         {/* Tabs */}
-        <div className="mx-6 mt-4 flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
+        <div className="mx-6 mt-4 flex gap-1 rounded-lg bg-muted p-1">
           <button
             type="button"
             className={cn(
               'flex-1 cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
               tab === 'blank'
-                ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
-                : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             )}
             onClick={() => setTab('blank')}
           >
@@ -144,8 +146,8 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
             className={cn(
               'flex-1 cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
               tab === 'upload'
-                ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
-                : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             )}
             onClick={() => setTab('upload')}
           >
@@ -157,15 +159,65 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
           {tab === 'blank' ? (
             <div className="space-y-4">
               <Input
-                placeholder={t('editor.fields.fullName')}
+                placeholder={t('dashboard.titlePlaceholder')}
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
                   if (createError) setCreateError('');
                 }}
               />
+
+              {/* Template selector */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[var(--whale-ink-soft)]">
+                  {t('editor.toolbar.template') || 'Template'}
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    className={cn(
+                      'cursor-pointer rounded-lg border-2 p-4 text-left transition-all',
+                      template === 'classic'
+                        ? 'border-brand bg-brand-muted'
+                        : 'border-border hover:border-[var(--whale-ink-muted)]'
+                    )}
+                    onClick={() => setTemplate('classic')}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-foreground">Classic</span>
+                      {template === 'classic' && (
+                        <span className="text-brand">✓</span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t('dashboard.templateClassicDesc') || 'Traditional professional layout'}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      'cursor-pointer rounded-lg border-2 p-4 text-left transition-all',
+                      template === 'modern'
+                        ? 'border-brand bg-brand-muted'
+                        : 'border-border hover:border-[var(--whale-ink-muted)]'
+                    )}
+                    onClick={() => setTemplate('modern')}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-foreground">Modern</span>
+                      {template === 'modern' && (
+                        <span className="text-brand">✓</span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t('dashboard.templateModernDesc') || 'Contemporary design with accent colors'}
+                    </p>
+                  </button>
+                </div>
+              </div>
+
               {createError ? (
-                <p className="text-sm text-red-600 dark:text-red-400">{createError}</p>
+                <p className="text-sm text-red-600">{createError}</p>
               ) : null}
             </div>
           ) : (
@@ -175,10 +227,10 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
                 className={cn(
                   'relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 transition-colors',
                   isDragging
-                    ? 'border-brand bg-brand-muted dark:bg-brand-muted'
+                    ? 'border-brand bg-brand-muted'
                     : file
-                      ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-950/20'
-                      : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-600 dark:hover:border-zinc-500'
+                      ? 'border-green-300 bg-green-50'
+                      : 'border-border hover:border-[var(--whale-ink-muted)]'
                 )}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
@@ -186,16 +238,16 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
               >
                 {file ? (
                   <div className="flex items-center gap-3">
-                    <FileIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
+                    <FileIcon className="h-8 w-8 text-green-600" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">{file.name}</p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      <p className="truncate text-sm font-medium text-[var(--whale-ink-soft)]">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">
                         {(file.size / 1024).toFixed(0)} KB
                       </p>
                     </div>
                     <button
                       type="button"
-                      className="cursor-pointer rounded-full p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 dark:hover:bg-zinc-700"
+                      className="cursor-pointer rounded-full p-1 text-muted-foreground hover:bg-[var(--whale-cream-deep)] hover:text-foreground"
                       onClick={() => setFile(null)}
                     >
                       <X className="h-4 w-4" />
@@ -203,12 +255,12 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
                   </div>
                 ) : (
                   <>
-                    <Upload className="mb-2 h-8 w-8 text-zinc-400" />
-                    <p className="text-sm text-zinc-600 dark:text-zinc-300">{t('dashboard.upload.dropzone')}</p>
-                    <p className="mt-1 text-xs text-zinc-400">{t('dashboard.upload.acceptedTypes')}</p>
+                    <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
+                    <p className="text-sm text-[var(--whale-ink-soft)]">{t('dashboard.upload.dropzone')}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t('dashboard.upload.acceptedTypes')}</p>
                     <button
                       type="button"
-                      className="mt-3 cursor-pointer rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                      className="mt-3 cursor-pointer rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-[var(--whale-ink-soft)] hover:bg-[var(--whale-cream-deep)]"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       {t('dashboard.upload.browse')}
@@ -237,7 +289,7 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 border-t border-zinc-100 px-6 py-4 dark:border-zinc-800">
+        <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
           <Button variant="outline" onClick={resetAndClose} className="cursor-pointer">
             {t('common.cancel')}
           </Button>

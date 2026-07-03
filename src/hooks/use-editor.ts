@@ -1,15 +1,18 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import * as api from '@/lib/tauri-api';
 import { useResumeStore } from '@/stores/resume-store';
 import { useEditorStore } from '@/stores/editor-store';
 import type { ResumeSection } from '@/types/resume';
+import { toast } from 'sonner';
 
 export function useEditor(resumeId: string) {
   const { setResume, sections, currentResume, updateSection, addSection, removeSection, reorderSections, reset: resetResume } = useResumeStore();
   const { pushSnapshot, reset: resetEditor, selectSection } = useEditorStore();
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadResume = useCallback(async () => {
     try {
+      setIsLoading(true);
       const data = await api.getResume(resumeId);
       if (data) {
         setResume({
@@ -22,6 +25,11 @@ export function useEditor(resumeId: string) {
       }
     } catch (error) {
       console.error('Failed to load resume:', error);
+      toast.error('加载失败', {
+        description: '简历加载失败，请刷新页面重试',
+      });
+    } finally {
+      setIsLoading(false);
     }
   }, [resumeId, setResume]);
 
