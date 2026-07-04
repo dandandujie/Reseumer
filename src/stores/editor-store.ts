@@ -3,13 +3,21 @@ import type { ResumeSection } from '@/types/resume';
 import type { ResumeSnapshot } from '@/types/editor';
 import { MAX_UNDO_STACK } from '@/lib/constants';
 
+/** A queued instruction for the AI chat panel. When resumeId is set, only the
+ *  editor of that resume may consume it (cross-navigation handoff, e.g. derive
+ *  tailored copy); a mismatching editor discards it to avoid misfires. */
+export interface PendingAiMessage {
+  text: string;
+  resumeId?: string | null;
+}
+
 interface EditorStore {
   selectedSectionId: string | null;
   showAiChat: boolean;
   showThemeEditor: boolean;
   undoStack: ResumeSnapshot[];
   redoStack: ResumeSnapshot[];
-  pendingAiMessage: string | null;
+  pendingAiMessage: PendingAiMessage | null;
   mobileActiveTab: "edit" | "preview";
   rightPaneTab: "edit" | "ai";
 
@@ -20,7 +28,7 @@ interface EditorStore {
   pushSnapshot: (sections: ResumeSection[]) => void;
   undo: (current: ResumeSection[]) => ResumeSnapshot | null;
   redo: (current: ResumeSection[]) => ResumeSnapshot | null;
-  setPendingAiMessage: (message: string | null) => void;
+  setPendingAiMessage: (message: PendingAiMessage | null) => void;
   setMobileActiveTab: (tab: "edit" | "preview") => void;
   setRightPaneTab: (tab: "edit" | "ai") => void;
   reset: () => void;
@@ -80,6 +88,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   setMobileActiveTab: (tab) => set({ mobileActiveTab: tab }),
   setRightPaneTab: (tab) => set({ rightPaneTab: tab }),
 
+  // GOTCHA: reset() runs on editor unmount (including resume switches). It must
+  // NOT clear pendingAiMessage / rightPaneTab — they carry cross-navigation
+  // handoffs (e.g. "derive tailored copy" sets a pending AI instruction, then
+  // navigates to the new copy's editor, which consumes it after mount).
   reset: () =>
     set({
       selectedSectionId: null,
@@ -87,8 +99,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       showThemeEditor: false,
       undoStack: [],
       redoStack: [],
-      pendingAiMessage: null,
       mobileActiveTab: "edit",
-      rightPaneTab: "edit",
     }),
 }));

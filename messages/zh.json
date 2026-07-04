@@ -254,7 +254,18 @@
     },
     "templateClassicDesc": "经典单栏排版，稳重通用",
     "templateModernDesc": "现代双栏排版，带强调色",
-    "titlePlaceholder": "简历标题（可选，默认「未命名简历」）"
+    "titlePlaceholder": "简历标题（可选，默认「未命名简历」）",
+    "globalAgentHistory": "历史会话",
+    "globalAgentNewChat": "新会话",
+    "cardEmptyTitle": "内容待填写",
+    "cardEmptyHint": "点击进入编辑器开始填写",
+    "cardNoName": "未填姓名",
+    "emptyPathBlank": "空白创建",
+    "emptyPathBlankDesc": "从零开始，逐模块填写",
+    "emptyPathAi": "AI 生成",
+    "emptyPathAiDesc": "描述你的经历，AI 生成完整初稿",
+    "emptyPathUpload": "导入已有简历",
+    "emptyPathUploadDesc": "上传 PDF / 图片，解析为可编辑内容"
   },
   "editor": {
     "edit": "编辑",
@@ -280,7 +291,8 @@
       "share": "分享",
       "import": "导入",
       "smartFitSuccess": "已为您智能排版至单页最优状态",
-      "smartFitFailed": "内容过多，建议删减工作经历或项目细节"
+      "smartFitFailed": "内容过多，建议删减工作经历或项目细节",
+      "coverLetter": "求职文案"
     },
     "aiPolish": "AI 润色",
     "invalidSectionContent": "该模块数据异常，请使用 AI 重新生成内容",
@@ -417,7 +429,8 @@
     "followSettings": "跟随设置",
     "service": "服务",
     "model": "模型",
-    "notConfigured": "未配置"
+    "notConfigured": "未配置",
+    "stopGenerate": "停止生成"
   },
   "pdf": {
     "exporting": "正在生成 PDF...",
@@ -460,6 +473,34 @@
       "autoSaveInterval": "自动保存间隔",
       "restartTour": "新手引导",
       "restartTourDescription": "重新开始编辑器引导教程"
+    },
+    "browser": {
+      "title": "浏览器驱动",
+      "description": "通过油猴（Tampermonkey）脚本把招聘网站和公司官网申请页连接到 Resumer：AI 可读取 JD 做匹配分析、自动填写冗长的官网申请表（读取表单→从简历和记忆映射答案→逐字段填写，提交永远由你确认）。全部通信仅在本机 127.0.0.1 进行。",
+      "status": "连接状态",
+      "refresh": "刷新",
+      "listening": "本地服务运行中（端口 {port}），等待浏览器标签接入",
+      "noTabs": "暂无已连接的标签页——安装脚本后打开 Boss直聘 / 猎聘等网站即可自动连接。",
+      "notLoaded": "驱动状态不可用（可能端口被占用）。",
+      "installTitle": "安装步骤",
+      "step1": "在浏览器中安装 Tampermonkey（油猴）扩展",
+      "step2": "点击下方按钮复制驱动脚本，在 Tampermonkey 中「添加新脚本」并粘贴保存",
+      "step3": "打开招聘网站或官网申请页（已覆盖 Boss/猎聘/智联/前程无忧及 Moka、北森、Workday 等主流 ATS），回到本页刷新即可看到已连接标签；未覆盖的公司官网可在脚本里照格式补一行 @match",
+      "copyScript": "复制驱动脚本",
+      "copied": "脚本已复制，去 Tampermonkey 粘贴保存即可",
+      "copyFailed": "复制失败",
+      "privacyNote": "安全说明：AI 只读取页面和填写表单，绝不代替你点击发送、提交、投递等不可逆按钮；身份证号等高敏信息建议手填，AI 不经手；脚本仅在声明的域名下生效。"
+    },
+    "webSearch": {
+      "title": "联网搜索",
+      "off": "关闭",
+      "native": "模型内建联网",
+      "free": "免费引擎（DuckDuckGo）",
+      "tavily": "Tavily（自备 Key）",
+      "offHint": "AI 仅使用本地知识回答，不联网。",
+      "nativeHint": "使用模型服务商自带的联网能力（Gemini / Claude 支持；OpenAI 兼容端点视服务商而定）。个别 Gemini 版本不支持联网与工具混用，报错时请改用搜索引擎模式。",
+      "freeHint": "通过 DuckDuckGo 免费搜索（无需配置，偶有限流）。AI 会在需要实时信息时自动调用 webSearch 工具。",
+      "tavilyHint": "使用 Tavily 搜索 API（质量更高，需在 tavily.com 免费注册获取 Key，Key 仅存本机）。"
     }
   },
   "themeEditor": {
@@ -529,7 +570,10 @@
     "jdPreview": "JD 摘要",
     "viewDetail": "查看详情",
     "loadingHistory": "加载历史...",
-    "jobDescriptionLabel": "职位描述"
+    "jobDescriptionLabel": "职位描述",
+    "deriveTailored": "派生定制简历",
+    "deriveTailoredHint": "复制一份简历并针对该 JD 定向优化，主简历不受影响",
+    "deriveFailed": "派生定制简历失败"
   },
   "translate": {
     "title": "AI 简历翻译",
@@ -673,7 +717,17 @@
     "formatVideo": "视频",
     "formatOnsite": "现场",
     "formatTakeHome": "笔试",
-    "knowledgeBaseHint": "已记录的条目会作为 AI 助手对话的上下文（仅限本简历）。"
+    "knowledgeBaseHint": "已记录的条目会作为 AI 助手对话的上下文（仅限本简历）。",
+    "statusUpdated": "状态已更新",
+    "stageApplied": "投递",
+    "stageInterview": "面试",
+    "stageOutcome": "结果",
+    "fieldNextFollowUp": "下次跟进",
+    "followUpOverdue": "⚠ 逾期跟进",
+    "followUpDue": "跟进",
+    "boardClosed": "已关闭",
+    "viewBoard": "看板视图",
+    "viewList": "列表视图"
   },
   "export": {
     "title": "导出简历",
@@ -713,5 +767,25 @@
     "invalidFormat": "文件格式无效，请选择包含 sections 数据的有效 JSON 文件。",
     "importBtn": "导入",
     "cancel": "取消"
+  },
+  "coverLetter": {
+    "title": "求职文案",
+    "description": "基于当前简历生成投递沟通文案，提供 JD 可显著提升针对性",
+    "styleBoss": "Boss 开场白",
+    "styleBossDesc": "直聊打招呼语，100-140 字",
+    "styleEmail": "邮件求职信",
+    "styleEmailDesc": "含主题行的正式求职邮件",
+    "styleIntro": "自我介绍",
+    "styleIntroDesc": "一分钟面试口语稿",
+    "jdLabel": "目标 JD（可选）",
+    "jdPlaceholder": "粘贴目标职位描述，生成更精准的定向文案…",
+    "generate": "生成文案",
+    "generating": "生成中…",
+    "regenerate": "重新生成",
+    "copy": "复制文案",
+    "copied": "已复制到剪贴板",
+    "copyFailed": "复制失败",
+    "error": "生成失败，请检查 AI 配置后重试",
+    "close": "关闭"
   }
 }

@@ -19,36 +19,61 @@ interface ResumeCardProps {
   onRename: (title: string) => void;
 }
 
-function MiniResumeThumb({ langCode }: { langCode: string }) {
+/** Real content preview — name/role, latest experience, skill chips. */
+function ResumeContentPreview({ resume }: { resume: Resume }) {
+  const t = useTranslations('dashboard');
+  const s = resume.summary;
+  const hasIdentity = !!(s?.fullName || s?.jobTitle);
+  const hasExperience = !!(s?.latestCompany || s?.latestPosition);
+  const isEmpty = !hasIdentity && !hasExperience && !(s?.skills?.length);
+
   return (
-    <div className="relative h-28 w-full overflow-hidden rounded-xl bg-[var(--whale-card)] ring-1 ring-[var(--whale-divider)] transition-transform duration-300 ease-out group-hover:scale-[1.02]">
-      <div className="absolute inset-0 p-3">
-        {/* Header block (avatar circle + name lines) */}
-        <div className="flex items-center gap-1.5">
-          <div className="h-3.5 w-3.5 rounded-full bg-[var(--whale-ink)]" />
-          <div className="flex-1 space-y-0.5">
-            <div className="h-1.5 w-3/5 rounded-full bg-[var(--whale-ink)]/80" />
-            <div className="h-1 w-2/5 rounded-full bg-[var(--whale-ink-muted)]/40" />
+    <div className="relative h-28 w-full overflow-hidden rounded-xl bg-[var(--whale-card)] ring-1 ring-[var(--whale-divider)]">
+      {isEmpty ? (
+        <div className="flex h-full flex-col items-center justify-center gap-1 px-3 text-center">
+          <p className="text-xs font-medium text-[var(--whale-ink-muted)]">{t('cardEmptyTitle')}</p>
+          <p className="text-[11px] text-[var(--whale-ink-muted)]/70">{t('cardEmptyHint')}</p>
+        </div>
+      ) : (
+        <div className="flex h-full flex-col p-3">
+          {/* Identity line */}
+          <div className="flex min-w-0 items-baseline gap-1.5 pr-8">
+            <span className="truncate text-[13px] font-semibold text-[var(--whale-ink)]">
+              {s?.fullName || t('cardNoName')}
+            </span>
+            {s?.jobTitle && (
+              <span className="truncate text-[11px] text-[var(--whale-ink-muted)]">{s.jobTitle}</span>
+            )}
           </div>
+          {/* Latest experience */}
+          {hasExperience && (
+            <p className="mt-1 truncate text-[11px] text-[var(--whale-ink-soft)]">
+              {[s?.latestCompany, s?.latestPosition].filter(Boolean).join(' · ')}
+            </p>
+          )}
+          {/* Skill chips */}
+          {!!s?.skills?.length && (
+            <div className="mt-auto flex flex-wrap gap-1 overflow-hidden" style={{ maxHeight: 38 }}>
+              {s.skills.slice(0, 4).map((skill) => (
+                <span
+                  key={skill}
+                  className="inline-block max-w-[7rem] truncate rounded-full bg-[var(--whale-mint)]/30 px-1.5 py-0.5 text-[10px] font-medium text-[var(--whale-ink)]"
+                >
+                  {skill}
+                </span>
+              ))}
+              {s.skills.length > 4 && (
+                <span className="inline-block rounded-full bg-[var(--whale-cream-deep)] px-1.5 py-0.5 text-[10px] text-[var(--whale-ink-muted)]">
+                  +{s.skills.length - 4}
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        {/* divider */}
-        <div className="mt-2 h-px w-full bg-[var(--whale-divider)]" />
-        {/* paragraph lines */}
-        <div className="mt-1.5 space-y-1">
-          <div className="h-[3px] w-full rounded-full bg-[var(--whale-cream-deep)]" />
-          <div className="h-[3px] w-11/12 rounded-full bg-[var(--whale-cream-deep)]" />
-          <div className="h-[3px] w-8/12 rounded-full bg-[var(--whale-cream-deep)]" />
-        </div>
-        {/* skills bar */}
-        <div className="mt-2 flex gap-1">
-          <div className="h-1.5 w-6 rounded-full bg-[var(--whale-mint)]" />
-          <div className="h-1.5 w-4 rounded-full bg-[var(--whale-cream-deep)]" />
-          <div className="h-1.5 w-5 rounded-full bg-[var(--whale-cream-deep)]" />
-        </div>
-      </div>
+      )}
       {/* Language badge */}
       <span className="absolute right-2 top-2 rounded-full bg-[var(--whale-ink)] px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-[var(--whale-cream)]">
-        {langCode.toUpperCase()}
+        {(resume.language || 'zh').toUpperCase()}
       </span>
     </div>
   );
@@ -114,8 +139,8 @@ export function ResumeCard({ resume, onDelete, onDuplicate, onRename }: ResumeCa
       className={`group relative overflow-hidden rounded-2xl border border-[var(--whale-divider)] bg-[var(--whale-card)] transition-all duration-200 ${isRenaming ? '' : 'cursor-pointer hover:-translate-y-0.5 hover:border-[var(--whale-ink)]/30 hover:shadow-[0_12px_32px_-12px_rgba(28,26,23,0.18)]'}`}
       onClick={() => { if (!renamingRef.current) router.push(`/editor/${resume.id}`); }}
     >
-      <div className="border-b border-[var(--whale-divider)] bg-[var(--whale-cream-soft)] p-4">
-        <MiniResumeThumb langCode={resume.language || 'en'} />
+      <div className="bg-[var(--whale-cream-soft)] p-4">
+        <ResumeContentPreview resume={resume} />
       </div>
 
       {/* Info section */}

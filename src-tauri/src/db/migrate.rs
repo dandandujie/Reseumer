@@ -3,6 +3,8 @@ use rusqlite::Connection;
 const MIGRATIONS: &[&str] = &[
     include_str!("../../migrations/001_initial.sql"),
     include_str!("../../migrations/002_resume_versions.sql"),
+    include_str!("../../migrations/003_agent_memory.sql"),
+    include_str!("../../migrations/004_session_archive.sql"),
 ];
 
 pub fn run(conn: &Connection) -> Result<(), rusqlite::Error> {

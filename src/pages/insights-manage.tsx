@@ -6,6 +6,8 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
+  Columns3,
+  List,
   Search,
   Pencil,
   Trash2,
@@ -57,6 +59,8 @@ import {
   InterviewForm,
   OutcomeForm,
   DebriefForm,
+  StatusQuickPill,
+  FollowUpBadge,
 } from '@/components/editor/journal-dialog';
 import { cn } from '@/lib/utils';
 import * as api from '@/lib/tauri-api';
@@ -105,6 +109,7 @@ export default function InsightsManagePage() {
     (searchParams.get('status') as ApplicationStatus) || 'all'
   );
   const [eventFilter, setEventFilter] = useState<ResumeVersionEvent | 'all'>('all');
+  const [appView, setAppView] = useState<'board' | 'list'>('board');
   const [resumeFilter, setResumeFilter] = useState<string>('all');
   const [versions, setVersions] = useState<ResumeVersion[]>([]);
 
@@ -246,6 +251,32 @@ export default function InsightsManagePage() {
               </SelectContent>
             </Select>
           )}
+          {type === 'application' && (
+            <div className="flex items-center rounded-full bg-[var(--whale-card)] p-0.5">
+              <button
+                type="button"
+                onClick={() => setAppView('board')}
+                className={cn(
+                  'cursor-pointer rounded-full px-2.5 py-1 transition-colors',
+                  appView === 'board' ? 'bg-[var(--whale-ink)] text-[var(--whale-cream)]' : 'text-[var(--whale-ink-muted)] hover:text-[var(--whale-ink)]'
+                )}
+                title={tJournal('viewBoard')}
+              >
+                <Columns3 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setAppView('list')}
+                className={cn(
+                  'cursor-pointer rounded-full px-2.5 py-1 transition-colors',
+                  appView === 'list' ? 'bg-[var(--whale-ink)] text-[var(--whale-cream)]' : 'text-[var(--whale-ink-muted)] hover:text-[var(--whale-ink)]'
+                )}
+                title={tJournal('viewList')}
+              >
+                <List className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
           {type === 'evolution' && (
             <Select value={eventFilter} onValueChange={(v) => setEventFilter(v as ResumeVersionEvent | 'all')}>
               <SelectTrigger size="sm" className="h-8 cursor-pointer border-transparent bg-[var(--whale-card)] text-[12px]">
@@ -275,6 +306,8 @@ export default function InsightsManagePage() {
               <p className="text-[13px] text-[var(--whale-ink-muted)]">{tJournal(meta.emptyKey)}</p>
               <p className="mt-2 text-[11px] text-[var(--whale-ink-muted)]">{t('insightsHowToAdd')}</p>
             </div>
+          ) : type === 'application' && appView === 'board' ? (
+            <ApplicationBoard entries={filtered as ApplicationEntry[]} onEdit={setEditingId} />
           ) : (
             <Table type={type as JournalEntryType} entries={filtered} resumeMap={resumeMap} onEdit={setEditingId} onDelete={setPendingDelete} />
           )}
@@ -664,4 +697,72 @@ function entryToSearchString(e: JournalEntry): string {
 
 function cap(s: string): string {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+
+
+/* ── Application pipeline board — Huntr/Teal-style stage columns ── */
+
+const BOARD_COLUMNS: { key: string; statuses: ApplicationStatus[]; labelKey: string }[] = [
+  { key: 'submitted', statuses: ['submitted'], labelKey: 'statusSubmitted' },
+  { key: 'screening', statuses: ['screening'], labelKey: 'statusScreening' },
+  { key: 'interview', statuses: ['interview'], labelKey: 'statusInterview' },
+  { key: 'offer', statuses: ['offer'], labelKey: 'statusOffer' },
+  { key: 'closed', statuses: ['rejected', 'declined', 'ghosted'], labelKey: 'boardClosed' },
+];
+
+function ApplicationBoard({
+  entries,
+  onEdit,
+}: {
+  entries: ApplicationEntry[];
+  onEdit: (id: string) => void;
+}) {
+  const tJournal = useTranslations('journal');
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+      {BOARD_COLUMNS.map((col) => {
+        const items = entries.filter((e) => col.statuses.includes(e.status));
+        return (
+          <div key={col.key} className="flex min-h-40 flex-col rounded-2xl bg-[var(--whale-cream-soft)] p-2">
+            <div className="flex items-center justify-between px-1.5 pb-1.5 pt-0.5">
+              <span className="text-[11px] font-semibold text-[var(--whale-ink-soft)]">{tJournal(col.labelKey)}</span>
+              <span className="text-[10px] tabular-nums text-[var(--whale-ink-muted)]">{items.length}</span>
+            </div>
+            <div className="space-y-2">
+              {items.map((e) => (
+                <div
+                  key={e.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onEdit(e.id)}
+                  onKeyDown={(ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ') {
+                      ev.preventDefault();
+                      onEdit(e.id);
+                    }
+                  }}
+                  className="cursor-pointer rounded-xl bg-[var(--whale-card)] p-2.5 shadow-sm ring-1 ring-[var(--whale-divider)]/60 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <p className="truncate text-[12px] font-semibold text-[var(--whale-ink)]">{e.company || '—'}</p>
+                  <p className="truncate text-[11px] text-[var(--whale-ink-muted)]">{e.role || '—'}</p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                    <StatusQuickPill entry={e} />
+                    <FollowUpBadge entry={e} />
+                  </div>
+                  {(e.channel || e.date) && (
+                    <p className="mt-1 truncate text-[10px] text-[var(--whale-ink-muted)]">
+                      {[e.channel, e.date].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                </div>
+              ))}
+              {items.length === 0 && (
+                <p className="px-1.5 py-4 text-center text-[10px] text-[var(--whale-ink-muted)]/50">—</p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }

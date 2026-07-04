@@ -199,7 +199,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
           )}
         </div>
 
-        <DialogFooter className="border-t border-border px-6 py-4">
+        <DialogFooter className="px-6 pb-5 pt-3">
           {(state === 'idle' || state === 'error') && (
             <>
               <Button

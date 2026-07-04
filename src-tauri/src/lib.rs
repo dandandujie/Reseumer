@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod ai;
+mod browser_driver;
 mod export;
 
 use db::AppDb;
@@ -8,7 +9,10 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    env_logger::init();
+    env_logger::Builder::from_env(
+        env_logger::Env::default().default_filter_or("reseumer_lib=info"),
+    )
+    .init();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -24,6 +28,21 @@ pub fn run() {
             let db_path = app_data_dir.join("reseumer.db");
             let db = AppDb::new(&db_path).expect("failed to initialize database");
             app.manage(db);
+
+            // SOP skill memory — seed built-in job-market profiles/SOPs.
+            let skills_dir = app_data_dir.join("skills");
+            ai::skills::ensure_seed_skills(&skills_dir);
+            app.manage(ai::skills::SkillsDir(skills_dir));
+
+            // L2 global facts live under app_data/memory.
+            let memory_dir = app_data_dir.join("memory");
+            std::fs::create_dir_all(&memory_dir).ok();
+            app.manage(ai::memory::MemoryDir(memory_dir));
+
+            // Browser driver — local WS server for userscript-connected tabs.
+            let driver = browser_driver::BrowserDriver::new();
+            driver.start();
+            app.manage(driver);
 
             Ok(())
         })
@@ -42,6 +61,7 @@ pub fn run() {
             commands::ai::ai_list_models,
             commands::ai::ai_test_connection,
             commands::ai::ai_grammar_check,
+            commands::ai::ai_cover_letter,
             commands::ai::ai_jd_analysis,
             commands::ai::ai_translate,
             commands::ai::ai_generate_resume,
@@ -58,6 +78,8 @@ pub fn run() {
             commands::chat::create_chat_session,
             commands::chat::delete_chat_session,
             commands::chat::ai_chat,
+            commands::chat::cancel_ai_stream,
+            commands::chat::truncate_chat_messages,
             commands::export::export_pdf,
             commands::export::export_html,
             commands::export::export_txt,
@@ -65,6 +87,8 @@ pub fn run() {
             commands::export::export_docx,
             commands::ai::parse_resume_file,
             commands::global_agent::global_agent_chat,
+            commands::browser::browser_driver_info,
+            commands::browser::browser_driver_userscript,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

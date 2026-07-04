@@ -1,6 +1,6 @@
 'use client';
 
-import { Bot, User, AlertTriangle, Settings, Wand2 } from 'lucide-react';
+import { Bot, User, AlertTriangle, Settings, Wand2, Brain, ChevronDown, Pencil, RotateCcw, Scissors } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -10,6 +10,7 @@ import type { UIMessage, MessagePart } from '@/types/chat';
 import { useUIStore } from '@/stores/ui-store';
 import { useProposalsStore, isMutationTool } from '@/stores/proposals-store';
 import { AIProposalCard } from './ai-proposal-card';
+import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
 
 interface AIMessageProps {
@@ -17,6 +18,19 @@ interface AIMessageProps {
   /** True for the assistant message currently being streamed.
    *  Skips markdown rendering (uses plain &lt;pre&gt;) to keep re-render cost low. */
   isStreaming?: boolean;
+  /** CherryStudio-style message actions (optional per host). */
+  onEditResend?: (messageId: string, text: string) => void;
+  onRollback?: (messageId: string) => void;
+  onRegenerate?: (messageId: string) => void;
+}
+
+/** An assistant message with no renderable content yet (waiting for the first
+ *  token) — skip the bubble entirely; the typing indicator covers this state. */
+function hasRenderableContent(message: UIMessage): boolean {
+  return (message.parts || []).some((p) => {
+    if (p.type === 'text' || p.type === 'reasoning') return p.text.trim().length > 0;
+    return true; // tool parts always render
+  });
 }
 
 type ToolPart = Extract<MessagePart, { type: 'tool' }>;
@@ -270,8 +284,10 @@ function APIKeyMissingCard() {
   );
 }
 
-function AIMessageImpl({ message }: AIMessageProps) {
+function AIMessageImpl({ message, isStreaming, onEditResend, onRollback, onRegenerate }: AIMessageProps) {
   const isUser = message.role === 'user';
+
+  if (!isUser && !hasRenderableContent(message)) return null;
 
   const userText = isUser
     ? (message.parts || [])
@@ -280,8 +296,11 @@ function AIMessageImpl({ message }: AIMessageProps) {
         .join('')
     : '';
 
+  const rollbackDisabled = isStreaming;
+  const actionButtons = !rollbackDisabled && (isUser ? (onEditResend || onRollback) : onRegenerate);
+
   return (
-    <div className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : ''}`}>
+    <div className={`group/msg flex gap-2.5 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
         className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
           isUser
@@ -296,10 +315,10 @@ function AIMessageImpl({ message }: AIMessageProps) {
         )}
       </div>
       <div
-        className={`min-w-0 rounded-2xl px-3 py-2 text-[13px] leading-relaxed ${
+        className={`min-w-0 rounded-2xl px-3.5 py-2.5 text-[14px] leading-relaxed ${
           isUser
             ? 'max-w-[min(720px,calc(100%-2.5rem))] bg-[var(--whale-ink)] text-[var(--whale-cream)]'
-            : 'w-full max-w-[calc(100%-2.5rem)] bg-[var(--whale-cream-soft)] text-[var(--whale-ink-soft)] ring-1 ring-[var(--whale-divider)]'
+            : 'w-fit min-w-0 max-w-[calc(100%-2.5rem)] bg-[var(--whale-cream-soft)] text-[var(--whale-ink-soft)] ring-1 ring-[var(--whale-divider)]'
         }`}
       >
         {isUser ? (
@@ -326,13 +345,149 @@ function AIMessageImpl({ message }: AIMessageProps) {
                 </div>
               );
             }
+            if (part.type === 'reasoning') {
+              // Streaming = this reasoning part is the last part (answer text
+              // hasn't started yet) — show the live pulse and keep it open.
+              const isLive = !!isStreaming && i === (message.parts || []).length - 1;
+              return (
+                <ReasoningBlock
+                  key={i}
+                  text={part.text}
+                  live={isLive}
+                  startedAt={part.startedAt}
+                  endedAt={part.endedAt}
+                />
+              );
+            }
             if (isToolPart(part)) {
               return <ToolBlock key={i} part={part} />;
             }
             return null;
           })
         )}
+        {/* Hover actions — CherryStudio-style edit/rollback/regenerate */}
+        {actionButtons && (
+          <div className={`mt-1 flex items-center gap-1 opacity-0 transition-opacity group-hover/msg:opacity-100 ${isUser ? 'justify-end' : ''}`}>
+            {isUser && onEditResend && (
+              <MsgAction
+                icon={Pencil}
+                label="编辑重发"
+                onClick={() => onEditResend(message.id, userText)}
+                dark={isUser}
+              />
+            )}
+            {isUser && onRollback && (
+              <MsgAction icon={Scissors} label="回退到此前" onClick={() => onRollback(message.id)} dark={isUser} />
+            )}
+            {!isUser && onRegenerate && (
+              <MsgAction icon={RotateCcw} label="重新生成" onClick={() => onRegenerate(message.id)} dark={false} />
+            )}
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function MsgAction({
+  icon: Icon,
+  label,
+  onClick,
+  dark,
+}: {
+  icon: typeof Pencil;
+  label: string;
+  onClick: () => void;
+  dark: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] transition-colors ${
+        dark
+          ? 'text-[var(--whale-cream)]/60 hover:bg-[var(--whale-cream)]/15 hover:text-[var(--whale-cream)]'
+          : 'text-[var(--whale-ink-muted)] hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)]'
+      }`}
+    >
+      <Icon className="h-2.5 w-2.5" />
+      {label}
+    </button>
+  );
+}
+
+/** Collapsible chain-of-thought block for reasoning models (R1/QwQ/thinking). */
+function ReasoningBlock({
+  text,
+  live,
+  startedAt,
+  endedAt,
+}: {
+  text: string;
+  live: boolean;
+  startedAt?: number;
+  endedAt?: number;
+}) {
+  const [manuallyToggled, setManuallyToggled] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  // Tick once per second while thinking so the elapsed label counts up.
+  useEffect(() => {
+    if (!live) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [live]);
+  // Auto-open while thinking streams, auto-collapse when the answer starts —
+  // unless the user has toggled it themselves.
+  const effectiveOpen = manuallyToggled ? open : live;
+  if (!text.trim()) return null;
+  const elapsedSec = startedAt
+    ? Math.max(1, Math.round(((live ? now : endedAt ?? now) - startedAt) / 1000))
+    : null;
+  return (
+    <div className="mb-2.5 -mx-0.5">
+      <button
+        type="button"
+        onClick={() => {
+          setManuallyToggled(true);
+          setOpen(!effectiveOpen);
+        }}
+        className="group/think flex w-full cursor-pointer items-center gap-2 rounded-full py-0.5 text-[11.5px] text-[var(--whale-ink-muted)] transition-colors hover:text-[var(--whale-ink)]"
+      >
+        <span
+          className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors ${
+            live ? 'bg-[var(--whale-mint)]/40' : 'bg-[var(--whale-cream-deep)]/70 group-hover/think:bg-[var(--whale-cream-deep)]'
+          }`}
+        >
+          <Brain className={`h-3 w-3 ${live ? 'animate-pulse text-[var(--whale-mint-deep)]' : 'text-[var(--whale-ink-muted)]'}`} />
+        </span>
+        <span className="font-medium tracking-wide">
+          {live ? '正在思考' : '思考过程'}
+        </span>
+        {elapsedSec && (
+          <span className={`tabular-nums ${live ? 'text-[var(--whale-mint-deep)]' : 'text-[var(--whale-ink-muted)]/70'}`}>
+            {elapsedSec}s
+          </span>
+        )}
+        {live && (
+          <span className="flex gap-0.5">
+            <span className="h-1 w-1 animate-bounce rounded-full bg-[var(--whale-mint-deep)]/70 [animation-delay:0ms]" />
+            <span className="h-1 w-1 animate-bounce rounded-full bg-[var(--whale-mint-deep)]/70 [animation-delay:150ms]" />
+            <span className="h-1 w-1 animate-bounce rounded-full bg-[var(--whale-mint-deep)]/70 [animation-delay:300ms]" />
+          </span>
+        )}
+        <ChevronDown
+          className={`ml-auto h-3 w-3 opacity-40 transition-transform group-hover/think:opacity-80 ${effectiveOpen ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {effectiveOpen && (
+        <div className="relative mt-1.5 max-h-64 overflow-y-auto rounded-r-lg border-l-2 border-[var(--whale-mint)]/70 bg-gradient-to-r from-[var(--whale-cream-soft)]/80 to-transparent py-2 pl-3.5 pr-2">
+          <p className="whitespace-pre-wrap text-[12px] font-normal leading-[1.8] text-[var(--whale-ink-muted)]">
+            {text}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

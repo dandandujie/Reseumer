@@ -179,6 +179,17 @@ export interface ThemeConfig {
 export type LegacyFontSize = 'small' | 'medium' | 'large';
 export type ThemeFontSize = number | LegacyFontSize;
 
+/** Card-level highlights attached by list_resumes for real content previews. */
+export interface ResumeCardSummary {
+  fullName: string;
+  jobTitle: string;
+  latestCompany: string;
+  latestPosition: string;
+  skills: string[];
+  sectionCount: number;
+  filledSections: number;
+}
+
 export interface Resume {
   id: string;
   userId: string;
@@ -188,6 +199,7 @@ export interface Resume {
   isDefault: boolean;
   language: string;
   sections: ResumeSection[];
+  summary?: ResumeCardSummary;
   createdAt: Date;
   updatedAt: Date;
 }

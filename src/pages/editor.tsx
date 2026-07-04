@@ -21,6 +21,7 @@ import { TranslateDialog } from '@/components/editor/translate-dialog';
 import { ExportDialog } from '@/components/editor/export-dialog';
 import { ImportDialog } from '@/components/editor/import-dialog';
 import { GrammarCheckDialog } from '@/components/editor/grammar-check-dialog';
+import { CoverLetterDialog } from '@/components/editor/cover-letter-dialog';
 import { JournalDialog } from '@/components/editor/journal-dialog';
 import { useEditorStore } from '@/stores/editor-store';
 import { useResumeStore } from '@/stores/resume-store';
@@ -137,6 +138,7 @@ export default function EditorPage() {
       <ExportDialog open={activeModal === 'export'} onOpenChange={(open) => open ? openModal('export') : closeModal()} resumeId={id!} />
       <ImportDialog open={activeModal === 'import'} onOpenChange={(open) => open ? openModal('import') : closeModal()} resumeId={id!} />
       <GrammarCheckDialog open={activeModal === 'grammar-check'} onOpenChange={(open) => open ? openModal('grammar-check') : closeModal()} resumeId={id!} />
+      <CoverLetterDialog open={activeModal === 'cover-letter'} onOpenChange={(open) => open ? openModal('cover-letter') : closeModal()} resumeId={id!} />
       <JournalDialog open={activeModal === 'journal'} onOpenChange={(open) => open ? openModal('journal') : closeModal()} resumeId={id!} />
     </div>
   );

@@ -116,3 +116,121 @@ pub fn delete_session(conn: &Connection, session_id: &str) -> Result<(), rusqlit
     conn.execute("DELETE FROM chat_sessions WHERE id = ?1", params![session_id])?;
     Ok(())
 }
+
+/// Since migration 003 chat_sessions no longer FK-cascades from resumes;
+/// call this when deleting a resume.
+pub fn delete_sessions_for_resume(conn: &Connection, resume_id: &str) -> Result<(), rusqlite::Error> {
+    conn.execute("DELETE FROM chat_sessions WHERE resume_id = ?1", params![resume_id])?;
+    Ok(())
+}
+
+// ── L4 session archive ──
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionArchive {
+    pub id: String,
+    pub session_id: String,
+    pub scope: String,
+    pub title: String,
+    pub summary: String,
+    pub created_at: i64,
+}
+
+pub fn add_archive(
+    conn: &Connection,
+    session_id: &str,
+    scope: &str,
+    title: &str,
+    summary: &str,
+) -> Result<String, rusqlite::Error> {
+    let id = uuid::Uuid::new_v4().to_string()[..8].to_string();
+    conn.execute(
+        "INSERT INTO session_archives (id, session_id, scope, title, summary) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![id, session_id, scope, title, summary],
+    )?;
+    Ok(id)
+}
+
+pub fn list_recent_archives(conn: &Connection, limit: i64) -> Result<Vec<SessionArchive>, rusqlite::Error> {
+    let mut stmt = conn.prepare(
+        "SELECT id, session_id, scope, title, summary, created_at FROM session_archives ORDER BY created_at DESC LIMIT ?1",
+    )?;
+    let rows = stmt.query_map(params![limit], |row| {
+        Ok(SessionArchive {
+            id: row.get(0)?,
+            session_id: row.get(1)?,
+            scope: row.get(2)?,
+            title: row.get(3)?,
+            summary: row.get(4)?,
+            created_at: row.get(5)?,
+        })
+    })?;
+    rows.collect()
+}
+
+pub fn get_archive(conn: &Connection, id: &str) -> Result<Option<SessionArchive>, rusqlite::Error> {
+    let mut stmt = conn.prepare(
+        "SELECT id, session_id, scope, title, summary, created_at FROM session_archives WHERE id = ?1",
+    )?;
+    let mut rows = stmt.query(params![id])?;
+    if let Some(row) = rows.next()? {
+        Ok(Some(SessionArchive {
+            id: row.get(0)?,
+            session_id: row.get(1)?,
+            scope: row.get(2)?,
+            title: row.get(3)?,
+            summary: row.get(4)?,
+            created_at: row.get(5)?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Compact one-line-per-entry index for L1 injection into system prompts.
+pub fn archive_index_block(conn: &Connection, limit: i64) -> String {
+    let items = list_recent_archives(conn, limit).unwrap_or_default();
+    items
+        .iter()
+        .map(|a| {
+            let date = chrono::DateTime::from_timestamp(a.created_at, 0)
+                .map(|d| d.format("%m-%d").to_string())
+                .unwrap_or_default();
+            format!("  - [{}] {}（{}）", a.id, a.title, date)
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Delete a message and everything after it (rowid order = insertion order).
+/// Powers conversation rollback / edit-and-resend.
+pub fn truncate_from_message(conn: &Connection, session_id: &str, message_id: &str) -> Result<(), rusqlite::Error> {
+    conn.execute(
+        "DELETE FROM chat_messages
+         WHERE session_id = ?1
+           AND rowid >= (SELECT rowid FROM chat_messages WHERE id = ?2 AND session_id = ?1)",
+        params![session_id, message_id],
+    )?;
+    conn.execute(
+        "UPDATE chat_sessions SET updated_at = unixepoch() WHERE id = ?1",
+        params![session_id],
+    )?;
+    Ok(())
+}
+
+pub fn get_checkpoint(conn: &Connection, session_id: &str) -> Result<String, rusqlite::Error> {
+    conn.query_row(
+        "SELECT checkpoint FROM chat_sessions WHERE id = ?1",
+        params![session_id],
+        |row| row.get(0),
+    )
+}
+
+pub fn update_checkpoint(conn: &Connection, session_id: &str, checkpoint: &str) -> Result<(), rusqlite::Error> {
+    conn.execute(
+        "UPDATE chat_sessions SET checkpoint = ?1, updated_at = unixepoch() WHERE id = ?2",
+        params![checkpoint, session_id],
+    )?;
+    Ok(())
+}

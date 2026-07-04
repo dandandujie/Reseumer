@@ -28,7 +28,12 @@ interface AIChatContentProps {
 
 function formatTime(date: Date | number | null) {
   if (!date) return '';
-  const d = date instanceof Date ? date : new Date(date);
+  // DB timestamps are unix SECONDS; JS Date wants ms. Values below 1e12
+  // (before 2001 in ms) are second-precision and need scaling.
+  const d =
+    date instanceof Date
+      ? date
+      : new Date(typeof date === 'number' && date < 1e12 ? date * 1000 : date);
   const y = d.getFullYear();
   const m = d.getMonth() + 1;
   const day = d.getDate();
@@ -165,7 +170,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     }
   }, [activeSessionId, sessions, loadInitial, createNewSession]);
 
-  const { messages: chatMessages, input, handleInputChange, handleSubmit: originalHandleSubmit, isLoading, status, error: chatError, sendMessage } = useAIChat({
+  const { messages: chatMessages, input, handleInputChange, handleSubmit: originalHandleSubmit, isLoading, status, error: chatError, sendMessage, stop } = useAIChat({
     resumeId,
     sessionId: activeSessionId,
     initialMessages,
@@ -190,15 +195,19 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     }
   }, [chatError, t]);
 
-  // Handle pending AI message from other components (e.g. grammar check one-click fix)
+  // Handle pending AI message from other components (grammar one-click fix,
+  // JD optimize, derive-tailored-copy handoff). Targeted messages only fire in
+  // the matching resume's editor; stale mismatches are discarded.
   const pendingAiMessage = useEditorStore((s) => s.pendingAiMessage);
   const setPendingAiMessage = useEditorStore((s) => s.setPendingAiMessage);
   useEffect(() => {
     if (pendingAiMessage && sessionsLoaded && activeSessionId) {
-      sendMessage({ text: pendingAiMessage });
+      if (!pendingAiMessage.resumeId || pendingAiMessage.resumeId === resumeId) {
+        sendMessage({ text: pendingAiMessage.text });
+      }
       setPendingAiMessage(null);
     }
-  }, [pendingAiMessage, sessionsLoaded, activeSessionId, sendMessage, setPendingAiMessage]);
+  }, [pendingAiMessage, sessionsLoaded, activeSessionId, sendMessage, setPendingAiMessage, resumeId]);
 
   // Merge historical (paginated older) + chat (current session) messages, dedup by id
   const displayMessages = useMemo(() => {
@@ -386,6 +395,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
         selectedModel={selectedModel}
         effectiveModel={effectiveModel}
         onModelChange={setSelectedModel}
+        onStop={stop}
       />
     </>
   );

@@ -23,6 +23,7 @@ interface StreamEvent {
   streamId: string;
   event:
     | { type: 'textDelta'; text: string }
+    | { type: 'reasoningDelta'; text: string }
     | { type: 'toolCallStart'; id: string; name: string }
     | { type: 'toolCallArgs'; id: string; args: unknown }
     | { type: 'toolResult'; id: string; name: string; result: unknown }
@@ -39,6 +40,12 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedProvid
 
   const isLoading = status === 'streaming' || status === 'submitted';
   const streamIdRef = useRef<string | null>(null);
+
+  const stop = useCallback(() => {
+    if (streamIdRef.current) {
+      void api.cancelAiStream(streamIdRef.current);
+    }
+  }, []);
   const assistantMsgIdRef = useRef<string | null>(null);
   // Tracks pending mutation tool calls so we can snapshot before/after for proposals
   const pendingMutationsRef = useRef<
@@ -56,9 +63,34 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedProvid
   // Streaming providers can fire 100+ deltas/sec — without this each token
   // would trigger a full React re-render of the chat list.
   const textBufferRef = useRef<string>('');
+  const reasoningBufferRef = useRef<string>('');
   const flushTimerRef = useRef<number | null>(null);
 
   const flushTextBuffer = useCallback(() => {
+    // Reasoning deltas flush before text so a think block always precedes the
+    // answer it produced.
+    const reasoningChunk = reasoningBufferRef.current;
+    if (reasoningChunk) {
+      reasoningBufferRef.current = '';
+      setMessages((prev) => {
+        const msgId = assistantMsgIdRef.current;
+        if (!msgId) return prev;
+        const idx = prev.findIndex((m) => m.id === msgId);
+        if (idx === -1) return prev;
+        const msg = { ...prev[idx] };
+        const parts = [...msg.parts];
+        const lastPart = parts[parts.length - 1];
+        if (lastPart?.type === 'reasoning') {
+          parts[parts.length - 1] = { ...lastPart, text: lastPart.text + reasoningChunk };
+        } else {
+          parts.push({ type: 'reasoning', text: reasoningChunk, startedAt: Date.now() });
+        }
+        msg.parts = parts;
+        const out = [...prev];
+        out[idx] = msg;
+        return out;
+      });
+    }
     const chunk = textBufferRef.current;
     if (!chunk) return;
     textBufferRef.current = '';
@@ -73,6 +105,9 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedProvid
       if (lastPart?.type === 'text') {
         parts[parts.length - 1] = { type: 'text', text: lastPart.text + chunk };
       } else {
+        if (lastPart?.type === 'reasoning' && !lastPart.endedAt) {
+          parts[parts.length - 1] = { ...lastPart, endedAt: Date.now() };
+        }
         parts.push({ type: 'text', text: chunk });
       }
       msg.parts = parts;
@@ -122,8 +157,14 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedProvid
       // Fast path for text deltas: buffer them and schedule one flush per frame.
       // This drops re-renders from per-token to ~25fps, which the React DOM
       // can keep up with even on long responses.
-      if (payload.event.type === 'textDelta') {
-        textBufferRef.current += payload.event.text;
+      if (payload.event.type === 'textDelta' || payload.event.type === 'reasoningDelta') {
+        if (payload.event.type === 'textDelta') {
+          textBufferRef.current += payload.event.text;
+          setStatus('streaming');
+        } else {
+          reasoningBufferRef.current += payload.event.text;
+          setStatus('streaming');
+        }
         if (flushTimerRef.current === null) {
           flushTimerRef.current = window.setTimeout(() => {
             flushTimerRef.current = null;
@@ -134,7 +175,7 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedProvid
       }
 
       // Any non-text event flushes pending text first so ordering stays correct.
-      if (textBufferRef.current) {
+      if (textBufferRef.current || reasoningBufferRef.current) {
         if (flushTimerRef.current !== null) {
           clearTimeout(flushTimerRef.current);
           flushTimerRef.current = null;
@@ -353,5 +394,6 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedProvid
     error,
     clearMessages,
     sendMessage,
+    stop,
   };
 }

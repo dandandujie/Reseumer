@@ -194,9 +194,97 @@ fn sync_sections(
 }
 
 #[tauri::command]
-pub fn list_resumes(db: State<AppDb>, user_id: String) -> Result<Vec<repo::Resume>, CommandError> {
+pub fn list_resumes(db: State<AppDb>, user_id: String) -> Result<Vec<Value>, CommandError> {
     let conn = db.conn.lock().map_err(|e| CommandError { message: e.to_string() })?;
-    repo::find_all_by_user_id(&conn, &user_id).map_err(Into::into)
+    let resumes = repo::find_all_by_user_id(&conn, &user_id)?;
+
+    // Attach a lightweight content summary per resume so the dashboard cards
+    // show real information instead of a decorative placeholder.
+    let mut out = Vec::with_capacity(resumes.len());
+    for r in resumes {
+        let summary = build_card_summary(&conn, &r.id);
+        let mut v = serde_json::to_value(&r).unwrap_or_default();
+        if let Value::Object(ref mut map) = v {
+            map.insert("summary".into(), summary);
+        }
+        out.push(v);
+    }
+    Ok(out)
+}
+
+/// Extract card-level highlights: name/job title, latest experience, a few
+/// skills, and how many sections have real content.
+fn build_card_summary(conn: &rusqlite::Connection, resume_id: &str) -> Value {
+    let mut full_name = String::new();
+    let mut job_title = String::new();
+    let mut latest_company = String::new();
+    let mut latest_position = String::new();
+    let mut skills: Vec<String> = Vec::new();
+    let mut filled_sections = 0i64;
+    let mut section_count = 0i64;
+
+    let rows: Vec<(String, String)> = conn
+        .prepare("SELECT type, content FROM resume_sections WHERE resume_id = ?1 AND visible = 1 ORDER BY sort_order")
+        .and_then(|mut stmt| {
+            stmt.query_map([resume_id], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
+                .and_then(|r| r.collect())
+        })
+        .unwrap_or_default();
+
+    for (sec_type, content_str) in &rows {
+        section_count += 1;
+        let content: Value = serde_json::from_str(content_str).unwrap_or_default();
+        let has_content = match sec_type.as_str() {
+            "personal_info" => {
+                full_name = content.get("fullName").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+                job_title = content.get("jobTitle").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+                !full_name.is_empty() || !job_title.is_empty()
+            }
+            "summary" => content.get("text").and_then(|v| v.as_str()).map(|t| !t.trim().is_empty()).unwrap_or(false),
+            "work_experience" => {
+                if let Some(item) = content.get("items").and_then(|v| v.as_array()).and_then(|a| a.first()) {
+                    latest_company = item.get("company").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+                    latest_position = item.get("position").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+                }
+                !latest_company.is_empty() || !latest_position.is_empty()
+            }
+            "skills" => {
+                if let Some(cats) = content.get("categories").and_then(|v| v.as_array()) {
+                    for cat in cats {
+                        if let Some(list) = cat.get("skills").and_then(|v| v.as_array()) {
+                            for s in list {
+                                if let Some(name) = s.as_str() {
+                                    let name = name.trim();
+                                    if !name.is_empty() && skills.len() < 6 {
+                                        skills.push(name.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                !skills.is_empty()
+            }
+            _ => content
+                .get("items")
+                .and_then(|v| v.as_array())
+                .map(|a| !a.is_empty())
+                .unwrap_or(false),
+        };
+        if has_content {
+            filled_sections += 1;
+        }
+    }
+
+    serde_json::json!({
+        "fullName": full_name,
+        "jobTitle": job_title,
+        "latestCompany": latest_company,
+        "latestPosition": latest_position,
+        "skills": skills,
+        "sectionCount": section_count,
+        "filledSections": filled_sections,
+    })
 }
 
 #[tauri::command]

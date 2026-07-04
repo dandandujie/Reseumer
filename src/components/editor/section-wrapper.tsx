@@ -6,7 +6,6 @@ import { X, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEditorStore } from '@/stores/editor-store';
 import { useResumeStore } from '@/stores/resume-store';
-import { useUIStore } from '@/stores/ui-store';
 import type { ResumeSection, SectionContent } from '@/types/resume';
 import { PersonalInfoSection } from './sections/personal-info';
 import { SummarySection } from './sections/summary';
@@ -42,9 +41,8 @@ const sectionComponents: Record<string, React.ComponentType<{ section: ResumeSec
 
 export function SectionWrapper({ section, onUpdate, onRemove }: SectionWrapperProps) {
   const t = useTranslations('editor');
-  const { selectedSectionId, selectSection, setRightPaneTab } = useEditorStore();
+  const { selectedSectionId, selectSection, setRightPaneTab, setPendingAiMessage } = useEditorStore();
   const { toggleSectionVisibility, updateSectionTitle } = useResumeStore();
-  const { setPendingAiMessage } = useUIStore();
   const isSelected = selectedSectionId === section.id;
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(section.title);
@@ -111,7 +109,7 @@ export function SectionWrapper({ section, onUpdate, onRemove }: SectionWrapperPr
               e.stopPropagation();
               // Route to AI assistant tab + seed with a polish prompt
               setRightPaneTab('ai');
-              setPendingAiMessage(`请帮我润色「${section.title}」这个模块的内容`);
+              setPendingAiMessage({ text: `请帮我润色「${section.title}」这个模块的内容` });
             }}
           >
             <Sparkles className="h-3.5 w-3.5" />

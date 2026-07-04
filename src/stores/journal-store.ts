@@ -37,6 +37,8 @@ export interface ApplicationEntry extends JournalBase {
   contact?: string;
   jdSnippet?: string;
   notes?: string;
+  /** Next follow-up date (YYYY-MM-DD) — overdue entries get flagged. */
+  nextFollowUp?: string;
 }
 
 export interface InterviewEntry extends JournalBase {
@@ -176,6 +178,14 @@ export const useJournalStore = create<JournalStore>((set, get) => ({
 
 /* ─── Aggregations used by the dashboard analytics card ─── */
 
+export interface ChannelStat {
+  channel: string;
+  total: number;
+  /** applications that progressed to interview stage or beyond */
+  reachedInterview: number;
+  offers: number;
+}
+
 export interface JournalAggregate {
   totalApplications: number;
   totalInterviews: number;
@@ -186,8 +196,24 @@ export interface JournalAggregate {
   successRate: number; // offers / (offers + rejects), 0..1
   topCompanies: { company: string; count: number }[];
   byStatus: Record<ApplicationStatus, number>;
+  byChannel: ChannelStat[];
+  overdueFollowUps: number;
   recentEntries: JournalEntry[];
 }
+
+/** 国内主流投递渠道预设 — 录入时用作 datalist，归因分析时保证口径统一 */
+export const CHANNEL_PRESETS = [
+  'Boss直聘',
+  '猎聘',
+  '拉勾',
+  '智联招聘',
+  '前程无忧',
+  '内推',
+  '官网直投',
+  '脉脉',
+  '猎头',
+  '校招系统',
+] as const;
 
 export function aggregateJournal(byResume: Record<string, JournalEntry[]>): JournalAggregate {
   const all = Object.values(byResume).flat();
@@ -222,6 +248,25 @@ export function aggregateJournal(byResume: Record<string, JournalEntry[]>): Jour
   };
   for (const a of apps) byStatus[a.status]++;
 
+  // Channel attribution — which channels actually convert, not just volume.
+  const channelMap: Record<string, ChannelStat> = {};
+  for (const a of apps) {
+    const key = (a.channel || '').trim() || '未记录';
+    if (!channelMap[key]) {
+      channelMap[key] = { channel: key, total: 0, reachedInterview: 0, offers: 0 };
+    }
+    channelMap[key].total++;
+    if (a.status === 'interview' || a.status === 'offer') channelMap[key].reachedInterview++;
+    if (a.status === 'offer') channelMap[key].offers++;
+  }
+  const byChannel = Object.values(channelMap).sort((a, b) => b.total - a.total);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const OPEN_STATUSES: ApplicationStatus[] = ['submitted', 'screening', 'interview'];
+  const overdueFollowUps = apps.filter(
+    (a) => a.nextFollowUp && a.nextFollowUp < today && OPEN_STATUSES.includes(a.status)
+  ).length;
+
   const recentEntries = [...all].sort((a, b) => b.createdAt - a.createdAt).slice(0, 6);
 
   return {
@@ -235,6 +280,8 @@ export function aggregateJournal(byResume: Record<string, JournalEntry[]>): Jour
       offerCount + rejectCount > 0 ? offerCount / (offerCount + rejectCount) : 0,
     topCompanies,
     byStatus,
+    byChannel,
+    overdueFollowUps,
     recentEntries,
   };
 }

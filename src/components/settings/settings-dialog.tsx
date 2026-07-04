@@ -17,7 +17,11 @@ import {
   PlugZap,
   CheckCircle2,
   AlertCircle,
+  Globe,
+  Copy,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import * as tauriApi from '@/lib/tauri-api';
 import {
   Dialog,
   DialogContent,
@@ -40,7 +44,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useUIStore } from '@/stores/ui-store';
-import { useSettingsStore, type AIProvider } from '@/stores/settings-store';
+import { useSettingsStore, type AIProvider, type WebSearchMode } from '@/stores/settings-store';
 import { usePathname, useRouter } from '@/i18n/routing';
 import { locales, localeNames } from '@/i18n/config';
 import { cn } from '@/lib/utils';
@@ -86,11 +90,47 @@ export function SettingsDialog() {
     setAIModel,
     setAutoSave,
     setAutoSaveInterval,
+    webSearchMode,
+    tavilyApiKey,
+    setWebSearchMode,
+    setTavilyApiKey,
     hydrate,
     _hydrated,
   } = useSettingsStore();
+  const [showTavilyKey, setShowTavilyKey] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const isOpen = activeModal === 'settings';
+
+  // Browser driver tab state
+  const [driverInfo, setDriverInfo] = useState<tauriApi.BrowserDriverInfo | null>(null);
+  const [driverLoading, setDriverLoading] = useState(false);
+
+  const refreshDriverInfo = useCallback(async () => {
+    setDriverLoading(true);
+    try {
+      setDriverInfo(await tauriApi.browserDriverInfo());
+    } catch {
+      setDriverInfo(null);
+    } finally {
+      setDriverLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && settingsTab === 'browser') {
+      void refreshDriverInfo();
+    }
+  }, [isOpen, settingsTab, refreshDriverInfo]);
+
+  const copyUserscript = useCallback(async () => {
+    try {
+      const script = await tauriApi.browserDriverUserscript();
+      await navigator.clipboard.writeText(script);
+      toast.success(t('browser.copied'));
+    } catch {
+      toast.error(t('browser.copyFailed'));
+    }
+  }, [t]);
 
   // Model combobox state
   const [modelOpen, setModelOpen] = useState(false);
@@ -284,6 +324,10 @@ export function SettingsDialog() {
                 <PenTool className="h-3.5 w-3.5" />
                 {t('editorTab.title')}
               </TabsTrigger>
+              <TabsTrigger value="browser" className="flex-1 gap-1.5 cursor-pointer">
+                <Globe className="h-3.5 w-3.5" />
+                {t('browser.title')}
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -473,6 +517,52 @@ export function SettingsDialog() {
                 </div>
               )}
             </div>
+            {/* Web search */}
+            <div className="space-y-3 rounded-lg border border-border bg-muted/60 p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-[13px]">{t('webSearch.title')}</Label>
+                <Select value={webSearchMode} onValueChange={(v) => setWebSearchMode(v as WebSearchMode)}>
+                  <SelectTrigger size="sm" className="h-8 w-44 cursor-pointer">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="off" className="cursor-pointer text-xs">{t('webSearch.off')}</SelectItem>
+                    <SelectItem value="native" className="cursor-pointer text-xs">{t('webSearch.native')}</SelectItem>
+                    <SelectItem value="free" className="cursor-pointer text-xs">{t('webSearch.free')}</SelectItem>
+                    <SelectItem value="tavily" className="cursor-pointer text-xs">{t('webSearch.tavily')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {webSearchMode === 'native'
+                  ? t('webSearch.nativeHint')
+                  : webSearchMode === 'free'
+                    ? t('webSearch.freeHint')
+                    : webSearchMode === 'tavily'
+                      ? t('webSearch.tavilyHint')
+                      : t('webSearch.offHint')}
+              </p>
+              {webSearchMode === 'tavily' && (
+                <div className="relative">
+                  <Input
+                    type={showTavilyKey ? 'text' : 'password'}
+                    value={tavilyApiKey}
+                    onChange={(e) => setTavilyApiKey(e.target.value)}
+                    placeholder="tvly-..."
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowTavilyKey(!showTavilyKey)}
+                  >
+                    {showTavilyKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           {/* Appearance Tab */}
@@ -532,6 +622,75 @@ export function SettingsDialog() {
                 <span>5.0s</span>
               </div>
             </div>
+          </TabsContent>
+
+          {/* Browser Driver Tab */}
+          <TabsContent value="browser" className="px-6 pb-6 pt-4 space-y-4">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {t('browser.description')}
+            </p>
+
+            {/* Connection status */}
+            <div className="space-y-2 rounded-lg border border-border bg-muted/60 p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-[13px]">{t('browser.status')}</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void refreshDriverInfo()}
+                  disabled={driverLoading}
+                  className="h-7 cursor-pointer gap-1.5 text-xs"
+                >
+                  {driverLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  {t('browser.refresh')}
+                </Button>
+              </div>
+              {driverInfo ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    {t('browser.listening', { port: driverInfo.port })}
+                  </p>
+                  {driverInfo.tabs.length > 0 ? (
+                    <ul className="space-y-1">
+                      {driverInfo.tabs.map((tab) => (
+                        <li key={tab.tabId} className="flex items-center gap-2 rounded-md bg-card px-2.5 py-1.5 text-xs">
+                          <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--whale-mint-deep)]" />
+                          <span className="truncate font-medium text-foreground">{tab.title || tab.url}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">{t('browser.noTabs')}</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">{t('browser.notLoaded')}</p>
+              )}
+            </div>
+
+            {/* Install guide */}
+            <div className="space-y-2">
+              <Label className="text-[13px]">{t('browser.installTitle')}</Label>
+              <ol className="list-decimal space-y-1 pl-5 text-xs leading-relaxed text-[var(--whale-ink-soft)]">
+                <li>{t('browser.step1')}</li>
+                <li>{t('browser.step2')}</li>
+                <li>{t('browser.step3')}</li>
+              </ol>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void copyUserscript()}
+                className="cursor-pointer gap-1.5 bg-brand hover:bg-brand-hover"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                {t('browser.copyScript')}
+              </Button>
+            </div>
+
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {t('browser.privacyNote')}
+            </p>
           </TabsContent>
         </Tabs>
       </DialogContent>

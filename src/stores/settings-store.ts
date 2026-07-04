@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import * as api from '@/lib/tauri-api';
 
 export type AIProvider = 'openai' | 'anthropic' | 'gemini';
+export type WebSearchMode = 'off' | 'native' | 'free' | 'tavily';
 
 interface SettingsStore {
   // AI settings
@@ -9,6 +10,9 @@ interface SettingsStore {
   aiApiKey: string; // stored locally only, never sent to server
   aiBaseURL: string;
   aiModel: string;
+  // Web search
+  webSearchMode: WebSearchMode;
+  tavilyApiKey: string;
   // Editor settings
   autoSave: boolean;
   autoSaveInterval: number; // in milliseconds
@@ -22,6 +26,8 @@ interface SettingsStore {
   setAIApiKey: (key: string) => void;
   setAIBaseURL: (url: string) => void;
   setAIModel: (model: string) => void;
+  setWebSearchMode: (mode: WebSearchMode) => void;
+  setTavilyApiKey: (key: string) => void;
   setAutoSave: (enabled: boolean) => void;
   setAutoSaveInterval: (interval: number) => void;
   hydrate: () => void;
@@ -30,6 +36,19 @@ interface SettingsStore {
 const API_KEY_STORAGE_KEY = 'jade_api_key';
 const PROVIDER_CONFIGS_KEY = 'jade_provider_configs';
 const ACTIVE_PROVIDER_STORAGE_KEY = 'jade_active_provider';
+const WEB_SEARCH_MODE_KEY = 'jade_web_search_mode';
+const TAVILY_KEY_STORAGE_KEY = 'jade_tavily_key';
+
+function loadWebSearchMode(): WebSearchMode {
+  if (typeof window === 'undefined') return 'off';
+  const v = localStorage.getItem(WEB_SEARCH_MODE_KEY);
+  return v === 'native' || v === 'free' || v === 'tavily' ? v : 'off';
+}
+
+function loadTavilyKey(): string {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(TAVILY_KEY_STORAGE_KEY) || '';
+}
 
 interface ProviderConfig {
   baseURL: string;
@@ -146,6 +165,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   aiApiKey: '',
   aiBaseURL: 'https://api.openai.com/v1',
   aiModel: 'gpt-4o',
+  webSearchMode: loadWebSearchMode(),
+  tavilyApiKey: loadTavilyKey(),
   autoSave: true,
   autoSaveInterval: 500,
   _hydrated: false,
@@ -192,6 +213,19 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     set({ aiModel: model });
     syncToServer(get());
     syncProviderConfig(get());
+  },
+
+  setWebSearchMode: (mode) => {
+    set({ webSearchMode: mode });
+    try { localStorage.setItem(WEB_SEARCH_MODE_KEY, mode); } catch { /* ignore */ }
+  },
+
+  setTavilyApiKey: (key) => {
+    set({ tavilyApiKey: key });
+    try {
+      if (key) localStorage.setItem(TAVILY_KEY_STORAGE_KEY, key);
+      else localStorage.removeItem(TAVILY_KEY_STORAGE_KEY);
+    } catch { /* ignore */ }
   },
 
   setAutoSave: (enabled) => {

@@ -265,9 +265,10 @@ select,
    AI message markdown — whale-toned, compact chat typography
    ────────────────────────────────────────────────────────────── */
 .ai-markdown {
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--whale-ink-soft);
-  line-height: 1.7;
+  line-height: 1.75;
 }
 
 .ai-markdown h1 {
@@ -421,7 +422,7 @@ select,
 }
 
 .ai-markdown strong {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--whale-ink);
 }
 

@@ -230,7 +230,7 @@ function GrammarCheckResultView({ result, t }: { result: GrammarCheckResult; t: 
 export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarCheckDialogProps) {
   const t = useTranslations('grammarCheck');
   const ct = useTranslations('common');
-  const { setShowAiChat, setPendingAiMessage } = useEditorStore();
+  const { setPendingAiMessage, setRightPaneTab } = useEditorStore();
   const [isChecking, setIsChecking] = useState(false);
   const [result, setResult] = useState<GrammarCheckResult | null>(null);
   const [error, setError] = useState('');
@@ -298,8 +298,8 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
     const message = `请根据以下语法检查结果，逐一修复简历中的问题：\n\n${issueList}\n\n请使用工具直接修改对应的简历模块内容。`;
     onOpenChange(false);
     setTimeout(() => {
-      setPendingAiMessage(message);
-      setShowAiChat(true);
+      setPendingAiMessage({ text: message, resumeId });
+      setRightPaneTab('ai');
     }, 300);
   };
 
@@ -396,7 +396,7 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   <GrammarCheckResultView result={result} t={t} />
                 </div>
-                <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+                <div className="flex justify-end gap-2 px-6 pb-5 pt-3">
                   <Button variant="outline" onClick={handleClose} className="cursor-pointer">
                     {t('close')}
                   </Button>
@@ -433,7 +433,7 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   <GrammarCheckResultView result={historyDetail} t={t} />
                 </div>
-                <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+                <div className="flex justify-end gap-2 px-6 pb-5 pt-3">
                   <Button variant="outline" onClick={handleClose} className="cursor-pointer">
                     {t('close')}
                   </Button>
@@ -501,7 +501,7 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
                     })}
                   </div>
                 </div>
-                <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+                <div className="flex justify-end gap-2 px-6 pb-5 pt-3">
                   <Button variant="outline" onClick={handleClose} className="cursor-pointer">
                     {t('close')}
                   </Button>

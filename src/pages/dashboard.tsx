@@ -65,53 +65,37 @@ function sortResumes(resumes: Resume[], sort: SortOption): Resume[] {
   }
 }
 
-function EmptyHero({ onCreate, onAiGenerate, label }: { onCreate: () => void; onAiGenerate: () => void; label: string }) {
+/** Compact onboarding — three concrete paths instead of a decorative hero. */
+function EmptyHero({ onCreate, onAiGenerate }: { onCreate: () => void; onAiGenerate: () => void }) {
   const t = useTranslations('dashboard');
+  const paths: { icon: typeof Plus; title: string; desc: string; onClick: () => void; primary?: boolean }[] = [
+    { icon: Plus, title: t('emptyPathBlank'), desc: t('emptyPathBlankDesc'), onClick: onCreate, primary: true },
+    { icon: Sparkles, title: t('emptyPathAi'), desc: t('emptyPathAiDesc'), onClick: onAiGenerate },
+    { icon: Upload, title: t('emptyPathUpload'), desc: t('emptyPathUploadDesc'), onClick: onCreate },
+  ];
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-[var(--whale-ink)] px-8 py-14 text-[var(--whale-cream)]">
-      {/* Decorative shapes */}
-      <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-[var(--whale-mint)]/15 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-12 -left-12 h-52 w-52 rounded-full bg-[var(--whale-mint)]/10 blur-3xl" />
-      <div className="relative mx-auto flex max-w-md flex-col items-center text-center">
-        {/* Stacked geometric illustration */}
-        <div className="relative mb-7 h-28 w-28">
-          {/* back card — rotated, mint outline */}
-          <div className="absolute inset-x-3 inset-y-2 -rotate-12 rounded-2xl border border-[var(--whale-mint)]/40 bg-[var(--whale-mint)]/10" />
-          {/* middle card — slight rotate, cream */}
-          <div className="absolute inset-x-1 inset-y-1 rotate-3 rounded-2xl bg-[var(--whale-cream)]/12 ring-1 ring-[var(--whale-cream)]/20" />
-          {/* front card — flat, mint gradient with sparkle */}
-          <div
-            className="absolute inset-0 flex items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--whale-mint)] to-[#7DD3C0] text-[var(--whale-ink)] shadow-[0_20px_40px_-20px_rgba(168,232,216,0.6)]"
-            style={{ animation: 'whale-sparkle 3.6s ease-in-out infinite' }}
-          >
-            <Sparkles className="h-8 w-8" />
-          </div>
-          {/* floating dot accents */}
-          <span className="absolute -right-2 top-1 h-2 w-2 rounded-full bg-[var(--whale-mint)]" />
-          <span className="absolute -left-3 bottom-3 h-1.5 w-1.5 rounded-full bg-[var(--whale-cream)]/40" />
-        </div>
-        <h2 className="font-display text-[1.375rem] font-semibold text-[var(--whale-cream)]">{t('emptyHeroTitle')}</h2>
-        <p className="mt-2 text-sm text-[var(--whale-cream)]/60">
-          {label}
-        </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+    <div className="rounded-2xl border border-[var(--whale-divider)] bg-[var(--whale-card)] p-5">
+      <h2 className="font-display text-lg font-semibold text-[var(--whale-ink)]">{t('emptyHeroTitle')}</h2>
+      <p className="mt-1 text-[13px] text-[var(--whale-ink-muted)]">{t('noResumes')}</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {paths.map(({ icon: Icon, title, desc, onClick, primary }) => (
           <button
+            key={title}
             type="button"
-            onClick={onCreate}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[var(--whale-cream)] px-5 py-2 text-sm font-semibold text-[var(--whale-ink)] transition-transform hover:scale-[1.03] active:scale-[0.98]"
+            onClick={onClick}
+            className={`group flex cursor-pointer flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all hover:-translate-y-0.5 ${
+              primary
+                ? 'border-[var(--whale-ink)] bg-[var(--whale-ink)] text-[var(--whale-cream)] hover:bg-[var(--whale-ink-soft)]'
+                : 'border-[var(--whale-divider)] bg-[var(--whale-cream-soft)] text-[var(--whale-ink)] hover:border-[var(--whale-ink)]/30'
+            }`}
           >
-            <Plus className="h-4 w-4" />
-            {t('createBlank')}
+            <Icon className={`h-4 w-4 ${primary ? 'text-[var(--whale-mint)]' : 'text-[var(--whale-mint-deep)]'}`} />
+            <span className="text-sm font-semibold">{title}</span>
+            <span className={`text-[11px] leading-relaxed ${primary ? 'text-[var(--whale-cream)]/70' : 'text-[var(--whale-ink-muted)]'}`}>
+              {desc}
+            </span>
           </button>
-          <button
-            type="button"
-            onClick={onAiGenerate}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[var(--whale-cream)]/30 px-5 py-2 text-sm font-medium text-[var(--whale-cream)]/90 transition-colors hover:bg-[var(--whale-cream)]/8"
-          >
-            <Sparkles className="h-4 w-4" />
-            {t('aiGenerate')}
-          </button>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -131,6 +115,28 @@ function StatsPanel({ resumes, onOpen }: { resumes: Resume[]; onOpen: () => void
   const resumeCount = resumes.length;
   const hasJournalData =
     agg.totalApplications + agg.totalInterviews + agg.totalOutcomes > 0;
+
+  // No journal data yet — a quiet, compact pointer beats an empty dashboard.
+  if (!hasJournalData) {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full cursor-pointer items-start gap-3 rounded-2xl border border-[var(--whale-divider)] bg-[var(--whale-cream-soft)] p-4 text-left transition-colors hover:border-[var(--whale-ink)]/25"
+      >
+        <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--whale-mint)]/30">
+          <BookOpenCheck className="h-4 w-4 text-[var(--whale-mint-deep)]" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-[var(--whale-ink)]">{t('journalTitle')}</span>
+          <span className="mt-0.5 block text-[12px] leading-relaxed text-[var(--whale-ink-muted)]">
+            {t('journalEmpty')}
+          </span>
+        </span>
+        <ArrowUpRight className="ml-auto h-3.5 w-3.5 shrink-0 text-[var(--whale-ink-muted)]" />
+      </button>
+    );
+  }
 
   return (
     <aside
@@ -172,38 +178,27 @@ function StatsPanel({ resumes, onOpen }: { resumes: Resume[]; onOpen: () => void
 
       <div className="relative h-px bg-[var(--whale-cream)]/8" />
 
-      {hasJournalData ? (
-        <>
-          <div className="relative grid grid-cols-3 gap-2">
-            <MiniStat label={t('journalInterviews')} value={agg.totalInterviews} />
-            <MiniStat label={t('journalPending')} value={agg.pendingCount} accent />
-            <MiniStat label={t('journalRejected')} value={agg.rejectCount} />
+      <div className="relative grid grid-cols-3 gap-2">
+        <MiniStat label={t('journalInterviews')} value={agg.totalInterviews} />
+        <MiniStat label={t('journalPending')} value={agg.pendingCount} accent />
+        <MiniStat label={t('journalRejected')} value={agg.rejectCount} />
+      </div>
+
+      <div className="relative h-px bg-[var(--whale-cream)]/8" />
+
+      {agg.topCompanies.length > 0 && (
+        <div className="relative">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--whale-cream)]/45">
+            {t('journalTopCompanies')}
           </div>
-
-          <div className="relative h-px bg-[var(--whale-cream)]/8" />
-
-          {agg.topCompanies.length > 0 && (
-            <div className="relative">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--whale-cream)]/45">
-                {t('journalTopCompanies')}
-              </div>
-              <ul className="mt-2 space-y-1">
-                {agg.topCompanies.slice(0, 3).map((c) => (
-                  <li key={c.company} className="flex items-center justify-between gap-2 text-[12px]">
-                    <span className="truncate text-[var(--whale-cream)]/85">{c.company}</span>
-                    <span className="tabular-nums text-[var(--whale-cream)]/55">{c.count}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="relative flex flex-1 flex-col items-center justify-center gap-2 text-center">
-          <BookOpenCheck className="h-7 w-7 text-[var(--whale-cream)]/30" />
-          <p className="max-w-[220px] text-[11px] leading-relaxed text-[var(--whale-cream)]/55">
-            {t('journalEmpty')}
-          </p>
+          <ul className="mt-2 space-y-1">
+            {agg.topCompanies.slice(0, 3).map((c) => (
+              <li key={c.company} className="flex items-center justify-between gap-2 text-[12px]">
+                <span className="truncate text-[var(--whale-cream)]/85">{c.company}</span>
+                <span className="tabular-nums text-[var(--whale-cream)]/55">{c.count}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -323,7 +318,6 @@ export default function DashboardPage() {
           <EmptyHero
             onCreate={() => openModal('create-resume')}
             onAiGenerate={() => openModal('generate-resume')}
-            label={t('noResumes')}
           />
         )}
 

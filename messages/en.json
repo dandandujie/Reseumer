@@ -254,7 +254,18 @@
     "delete": "Delete",
     "templateClassicDesc": "Traditional single-column professional layout",
     "templateModernDesc": "Contemporary two-column design with accent colors",
-    "titlePlaceholder": "Resume title (optional)"
+    "titlePlaceholder": "Resume title (optional)",
+    "globalAgentHistory": "Chat history",
+    "globalAgentNewChat": "New chat",
+    "cardEmptyTitle": "Not filled yet",
+    "cardEmptyHint": "Open the editor to start writing",
+    "cardNoName": "No name yet",
+    "emptyPathBlank": "Start blank",
+    "emptyPathBlankDesc": "Fill in section by section",
+    "emptyPathAi": "AI generate",
+    "emptyPathAiDesc": "Describe your background, get a full draft",
+    "emptyPathUpload": "Import existing",
+    "emptyPathUploadDesc": "Upload a PDF/image and parse it into editable content"
   },
   "editor": {
     "edit": "Edit",
@@ -280,7 +291,8 @@
       "share": "Share",
       "import": "Import",
       "smartFitSuccess": "Smart fitted to optimal one-page layout",
-      "smartFitFailed": "Content too long to fit one page. Consider trimming."
+      "smartFitFailed": "Content too long to fit one page. Consider trimming.",
+      "coverLetter": "Outreach"
     },
     "aiPolish": "AI Polish",
     "invalidSectionContent": "This section has invalid data. Please use AI to regenerate the content.",
@@ -417,7 +429,8 @@
     "followSettings": "Follow settings",
     "service": "Service",
     "model": "Model",
-    "notConfigured": "Not configured"
+    "notConfigured": "Not configured",
+    "stopGenerate": "Stop generating"
   },
   "pdf": {
     "exporting": "Generating PDF...",
@@ -460,6 +473,34 @@
       "autoSaveInterval": "Auto Save Interval",
       "restartTour": "Guided Tour",
       "restartTourDescription": "Restart the editor guided tour"
+    },
+    "browser": {
+      "title": "Browser Driver",
+      "description": "Connect job boards and company career/ATS pages to Resumer via a Tampermonkey userscript: the AI reads JDs for match analysis and auto-fills lengthy application forms (extract form → map answers from resume & memory → fill field by field; submitting is always yours). All traffic stays on 127.0.0.1.",
+      "status": "Connection status",
+      "refresh": "Refresh",
+      "listening": "Local service running on port {port}, waiting for browser tabs",
+      "noTabs": "No connected tabs yet — install the script, then open Boss Zhipin / Liepin etc.",
+      "notLoaded": "Driver status unavailable (port may be in use).",
+      "installTitle": "Setup",
+      "step1": "Install the Tampermonkey extension in your browser",
+      "step2": "Copy the driver script below, then create a new script in Tampermonkey and paste it",
+      "step3": "Open a job site or career/ATS page (Boss/Liepin/Moka/Beisen/Workday etc. covered), then refresh here; for uncovered career sites add an @match line to the script",
+      "copyScript": "Copy driver script",
+      "copied": "Script copied — paste it into Tampermonkey",
+      "copyFailed": "Copy failed",
+      "privacyNote": "Safety: the AI only reads pages and fills forms; it never clicks send/submit/apply for you. Keep sensitive IDs manual. The script only runs on declared domains."
+    },
+    "webSearch": {
+      "title": "Web search",
+      "off": "Off",
+      "native": "Provider built-in",
+      "free": "Free engine (DuckDuckGo)",
+      "tavily": "Tavily (your API key)",
+      "offHint": "AI answers from local knowledge only.",
+      "nativeHint": "Use the provider-native web grounding (Gemini / Claude; OpenAI-compatible varies). Some Gemini versions reject mixing search with tools — switch to an engine mode if it errors.",
+      "freeHint": "Free DuckDuckGo search (no setup, may be rate-limited). The AI calls webSearch when it needs fresh info.",
+      "tavilyHint": "Tavily search API (higher quality; free key at tavily.com, stored locally only)."
     }
   },
   "themeEditor": {
@@ -529,7 +570,10 @@
     "jdPreview": "JD Preview",
     "viewDetail": "View Details",
     "loadingHistory": "Loading history...",
-    "jobDescriptionLabel": "Job Description"
+    "jobDescriptionLabel": "Job Description",
+    "deriveTailored": "Derive tailored copy",
+    "deriveTailoredHint": "Duplicate this resume and optimize the copy for this JD; the original stays untouched",
+    "deriveFailed": "Failed to derive tailored copy"
   },
   "translate": {
     "title": "AI Resume Translation",
@@ -673,7 +717,17 @@
     "formatVideo": "Video",
     "formatOnsite": "Onsite",
     "formatTakeHome": "Take-home",
-    "knowledgeBaseHint": "Logged entries become AI chat context (this resume only)."
+    "knowledgeBaseHint": "Logged entries become AI chat context (this resume only).",
+    "statusUpdated": "Status updated",
+    "stageApplied": "Applied",
+    "stageInterview": "Interview",
+    "stageOutcome": "Outcome",
+    "fieldNextFollowUp": "Next follow-up",
+    "followUpOverdue": "⚠ Overdue",
+    "followUpDue": "Follow up",
+    "boardClosed": "Closed",
+    "viewBoard": "Board view",
+    "viewList": "List view"
   },
   "export": {
     "title": "Export Resume",
@@ -713,5 +767,25 @@
     "invalidFormat": "Invalid file format. Please select a valid JSON file with sections data.",
     "importBtn": "Import",
     "cancel": "Cancel"
+  },
+  "coverLetter": {
+    "title": "Outreach Writer",
+    "description": "Generate application outreach copy from this resume; paste a JD for sharper targeting",
+    "styleBoss": "Chat opener",
+    "styleBossDesc": "Recruiter DM opener, concise",
+    "styleEmail": "Cover letter",
+    "styleEmailDesc": "Formal email with subject line",
+    "styleIntro": "Self-intro",
+    "styleIntroDesc": "One-minute spoken intro",
+    "jdLabel": "Target JD (optional)",
+    "jdPlaceholder": "Paste the job description for a sharper, targeted draft…",
+    "generate": "Generate",
+    "generating": "Generating…",
+    "regenerate": "Regenerate",
+    "copy": "Copy",
+    "copied": "Copied to clipboard",
+    "copyFailed": "Copy failed",
+    "error": "Generation failed — check your AI settings and retry",
+    "close": "Close"
   }
 }

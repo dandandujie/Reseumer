@@ -5,8 +5,11 @@ import { useTranslations } from 'next-intl';
 import {
   Loader2, RotateCcw, Target, ShieldCheck, Lightbulb, AlertTriangle,
   Wand2, Trash2, FileSearch, ArrowUp, ArrowDown, Minus, ChevronLeft,
-  Briefcase, ChevronDown,
+  Briefcase, ChevronDown, CopyPlus,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useRouter } from '@/i18n/routing';
+import { useResumeStore } from '@/stores/resume-store';
 import {
   Dialog,
   DialogContent,
@@ -267,11 +270,14 @@ function JdAnalysisResultView({ result, jobDescription, t }: { result: JdAnalysi
 export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDialogProps) {
   const t = useTranslations('jdAnalysis');
   const ct = useTranslations('common');
-  const { setShowAiChat, setPendingAiMessage } = useEditorStore();
+  const router = useRouter();
+  const { setPendingAiMessage, setRightPaneTab } = useEditorStore();
+  const currentResumeTitle = useResumeStore((s) => s.currentResume?.title);
   const [jobDescription, setJobDescription] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<JdAnalysisResult | null>(null);
   const [error, setError] = useState('');
+  const [isDeriving, setIsDeriving] = useState(false);
 
   // History state
   const [activeTab, setActiveTab] = useState<string>('new');
@@ -334,8 +340,8 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
     }, 200);
   };
 
-  const handleOptimize = () => {
-    if (!result) return;
+  const buildAnalysisParts = (): string[] => {
+    if (!result) return [];
     const parts: string[] = [];
     if (result.missingKeywords.length > 0) {
       parts.push(`缺失关键词：${result.missingKeywords.join('、')}`);
@@ -346,12 +352,54 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
         .join('\n');
       parts.push(`优化建议：\n${list}`);
     }
-    const message = `请根据以下 JD 匹配分析结果优化简历，使其更匹配目标职位：\n\n${parts.join('\n\n')}\n\n请使用工具直接修改对应的简历模块内容，尽量自然地融入缺失关键词。`;
+    return parts;
+  };
+
+  const handleOptimize = () => {
+    if (!result) return;
+    const message = `请根据以下 JD 匹配分析结果优化简历，使其更匹配目标职位：\n\n${buildAnalysisParts().join('\n\n')}\n\n请使用工具直接修改对应的简历模块内容，尽量自然地融入缺失关键词。`;
     onOpenChange(false);
     setTimeout(() => {
-      setPendingAiMessage(message);
-      setShowAiChat(true);
+      setPendingAiMessage({ text: message, resumeId });
+      setRightPaneTab('ai');
     }, 300);
+  };
+
+  // 派生一份面向该 JD 的定制简历副本：主简历保持通用，投递用副本可以大胆裁剪。
+  const handleDeriveTailored = async () => {
+    if (!result || isDeriving) return;
+    setIsDeriving(true);
+    try {
+      const newId = await api.duplicateResume(resumeId);
+      const now = new Date();
+      const stamp = `${now.getMonth() + 1}.${now.getDate()}`;
+      const baseTitle = currentResumeTitle || '简历';
+      await api.updateResume(newId, { title: `${baseTitle}·定制 ${stamp}` });
+
+      const jdExcerpt = jobDescription.trim().slice(0, 3000);
+      const message = [
+        '这是一份为特定 JD 派生的定制简历副本（主简历不受影响），请对它做定向深度优化：',
+        '',
+        `## 目标 JD\n${jdExcerpt}`,
+        '',
+        `## 已有的匹配分析\n${buildAnalysisParts().join('\n\n') || '（无）'}`,
+        '',
+        '要求：',
+        '1. 用工具直接修改各模块，自然融入 JD 原词（机筛按原词命中）',
+        '2. 与该岗位无关的经历大胆压缩，相关经历扩充细节',
+        '3. 遵循"强动词+方法+量化结果"，缺数字用【建议补充：具体数据】占位，绝不编造',
+        '4. 完成后总结：改了哪些模块、还需要我人工补充什么',
+      ].join('\n');
+
+      setPendingAiMessage({ text: message, resumeId: newId });
+      setRightPaneTab('ai');
+      onOpenChange(false);
+      router.push(`/editor/${newId}`);
+    } catch (err: any) {
+      toast.error(t('deriveFailed'), { description: String(err?.message || err).slice(0, 160) });
+    } finally {
+      setIsDeriving(false);
+    }
   };
 
   const handleDeleteHistory = async (id: string) => {
@@ -435,7 +483,7 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   <JdAnalysisResultView result={result} jobDescription={jobDescription} t={t} />
                 </div>
-                <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+                <div className="flex justify-end gap-2 px-6 pb-5 pt-3">
                   <Button variant="outline" onClick={handleClose} className="cursor-pointer">
                     {t('close')}
                   </Button>
@@ -444,10 +492,26 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
                     {t('analyzeAgain')}
                   </Button>
                   {(result.suggestions.length > 0 || result.missingKeywords.length > 0) && (
-                    <Button onClick={handleOptimize} className="cursor-pointer gap-1.5 bg-brand hover:bg-brand-hover">
-                      <Wand2 className="h-3.5 w-3.5" />
-                      {t('optimize')}
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => void handleDeriveTailored()}
+                        disabled={isDeriving}
+                        className="cursor-pointer gap-1.5"
+                        title={t('deriveTailoredHint')}
+                      >
+                        {isDeriving ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <CopyPlus className="h-3.5 w-3.5" />
+                        )}
+                        {t('deriveTailored')}
+                      </Button>
+                      <Button onClick={handleOptimize} className="cursor-pointer gap-1.5 bg-brand hover:bg-brand-hover">
+                        <Wand2 className="h-3.5 w-3.5" />
+                        {t('optimize')}
+                      </Button>
+                    </>
                   )}
                 </div>
               </>
@@ -473,7 +537,7 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   <JdAnalysisResultView result={historyDetail} jobDescription={historyDetailJd} t={t} />
                 </div>
-                <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+                <div className="flex justify-end gap-2 px-6 pb-5 pt-3">
                   <Button variant="outline" onClick={handleClose} className="cursor-pointer">
                     {t('close')}
                   </Button>
@@ -550,7 +614,7 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
                     })}
                   </div>
                 </div>
-                <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+                <div className="flex justify-end gap-2 px-6 pb-5 pt-3">
                   <Button variant="outline" onClick={handleClose} className="cursor-pointer">
                     {t('close')}
                   </Button>

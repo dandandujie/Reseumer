@@ -229,7 +229,7 @@ export function TranslateDialog({ open, onOpenChange, resumeId }: TranslateDialo
         </div>
 
         {/* Footer */}
-        <DialogFooter className="border-t border-border px-6 py-4">
+        <DialogFooter className="px-6 pb-5 pt-3">
           {state === 'idle' && (
             <>
               <Button

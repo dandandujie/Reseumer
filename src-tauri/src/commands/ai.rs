@@ -67,6 +67,45 @@ pub async fn ai_grammar_check(
 }
 
 #[tauri::command]
+pub async fn ai_cover_letter(
+    db: State<'_, AppDb>,
+    config: Value,
+    resume_id: String,
+    job_description: Option<String>,
+    style: String,
+    language: Option<String>,
+) -> Result<String, CommandError> {
+    let cfg = cfg_from(config);
+    let lang = language.unwrap_or_else(|| "zh".into());
+
+    let resume_ctx = {
+        let conn = db.conn.lock().map_err(|e| CommandError { message: e.to_string() })?;
+        let resume = resume_repo::find_by_id_any(&conn, &resume_id)
+            .map_err(|e| CommandError { message: e.to_string() })?
+            .ok_or(CommandError { message: "Resume not found".into() })?;
+        serde_json::to_string(&resume.sections).unwrap_or_default()
+    };
+
+    let (system, prompt) = ai::prompts::cover_letter_prompt(
+        &resume_ctx,
+        job_description.as_deref().unwrap_or(""),
+        &style,
+        &lang,
+    );
+    let messages = vec![ChatMessage { role: "user".into(), content: prompt }];
+    let req = ai::provider::GenerateRequest {
+        config: &cfg,
+        system: Some(&system),
+        messages: &messages,
+        tools: None,
+        json_mode: false,
+        max_tokens: Some(2048),
+    };
+    let res = ai::provider::generate(req).await.map_err(|e| CommandError { message: e.to_string() })?;
+    Ok(res.text.trim().to_string())
+}
+
+#[tauri::command]
 pub async fn ai_jd_analysis(
     db: State<'_, AppDb>,
     config: Value,

@@ -2,9 +2,8 @@
 
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/routing';
-import { ArrowLeft, Undo2, Redo2, Download, Upload, Settings, Palette, Save, Languages, SpellCheck, BookOpenCheck, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Undo2, Redo2, Download, Upload, Settings, Palette, Save, Languages, SpellCheck, BookOpenCheck, MoreHorizontal, PenLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,7 +59,6 @@ export function EditorToolbar() {
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <Separator orientation="vertical" className="hidden h-6 bg-[var(--whale-divider)] sm:block" />
         <span className="min-w-0 max-w-[8rem] truncate text-sm font-semibold text-[var(--whale-ink)] sm:max-w-48">
           {currentResume?.title || ''}
         </span>
@@ -109,7 +107,6 @@ export function EditorToolbar() {
             <span className="hidden text-xs sm:inline">{t('save')}</span>
           </Button>
         )}
-        <Separator orientation="vertical" className="hidden h-6 bg-[var(--whale-divider)] sm:block" />
 
         {/* Desktop: show all secondary buttons */}
         <div className="hidden items-center gap-1 md:flex">
@@ -117,8 +114,8 @@ export function EditorToolbar() {
           <ToolbarSecondary onClick={() => openModal('import')} title={t('import')} icon={Upload} label={t('import')} />
           <ToolbarSecondary onClick={() => openModal('translate')} title={t('translate')} icon={Languages} label={t('translate')} />
           <ToolbarSecondary onClick={() => openModal('grammar-check')} title={t('grammarCheck')} icon={SpellCheck} label={t('grammarCheck')} />
+          <ToolbarSecondary onClick={() => openModal('cover-letter')} title={t('coverLetter')} icon={PenLine} label={t('coverLetter')} />
           <ToolbarSecondary onClick={() => openModal('journal')} title={t('journal')} icon={BookOpenCheck} label={t('journal')} />
-          <Separator orientation="vertical" className="h-6 bg-[var(--whale-divider)]" />
           <Button
             variant="ghost"
             size="sm"
@@ -161,6 +158,10 @@ export function EditorToolbar() {
                 <SpellCheck className="mr-2 h-4 w-4" />
                 {t('grammarCheck')}
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openModal('cover-letter')}>
+                <PenLine className="mr-2 h-4 w-4" />
+                {t('coverLetter')}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => openModal('journal')}>
                 <BookOpenCheck className="mr-2 h-4 w-4" />
                 {t('journal')}
@@ -172,8 +173,6 @@ export function EditorToolbar() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-
-        <Separator orientation="vertical" className="hidden h-6 bg-[var(--whale-divider)] sm:block" />
 
         {/* Primary: theme toggle — always visible */}
         <Button
@@ -191,7 +190,6 @@ export function EditorToolbar() {
           <Palette className="h-4 w-4" />
           <span className="ml-1 hidden text-xs sm:inline">{t('theme')}</span>
         </Button>
-        <Separator orientation="vertical" className="hidden h-6 bg-[var(--whale-divider)] sm:block" />
         <LocaleSwitcher />
       </div>
     </div>

@@ -211,7 +211,7 @@ export function GenerateResumeDialog({ open, onOpenChange, onCreated }: Generate
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+        <div className="flex justify-end gap-2 px-6 pb-5 pt-3">
           {state === 'form' && (
             <>
               <Button

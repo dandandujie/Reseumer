@@ -38,7 +38,8 @@ export type AIUsageAction =
   | 'generate_resume'
   | 'parse_resume'
   | 'project_chat'
-  | 'global_agent';
+  | 'global_agent'
+  | 'cover_letter';
 
 export interface AIUsageLogEntry {
   id: string;
@@ -148,11 +149,14 @@ function getAIConfigFromLocalCache(providerOverride?: AIProviderId) {
   const cached = configs?.[provider] || {};
   const activeProvider = getActiveAIProvider();
 
+  const webSearchMode = localStorage.getItem('jade_web_search_mode') || 'off';
   return {
     provider,
     apiKey: cached.apiKey || (provider === activeProvider ? localStorage.getItem(LOCAL_AI_API_KEY) : '') || '',
     baseUrl: cached.baseURL || defaults.baseURL,
     model: cached.model || defaults.model,
+    webSearchMode: webSearchMode === 'native' || webSearchMode === 'free' || webSearchMode === 'tavily' ? webSearchMode : 'off',
+    tavilyApiKey: localStorage.getItem('jade_tavily_key') || '',
   };
 }
 
@@ -338,7 +342,14 @@ function getAIConfigFromStore(selection?: AIConfigSelection) {
       return local;
     }
 
-    return { provider: s.aiProvider, apiKey: s.aiApiKey, baseUrl: s.aiBaseURL, model: modelOverride || s.aiModel };
+    return {
+      provider: s.aiProvider,
+      apiKey: s.aiApiKey,
+      baseUrl: s.aiBaseURL,
+      model: modelOverride || s.aiModel,
+      webSearchMode: s.webSearchMode || 'off',
+      tavilyApiKey: s.tavilyApiKey || '',
+    };
   }
 
   try {
@@ -351,6 +362,8 @@ function getAIConfigFromStore(selection?: AIConfigSelection) {
 
   return { provider: 'openai', apiKey: '', baseUrl: 'https://api.openai.com/v1', model: modelOverride || 'gpt-4o' };
 }
+
+/* getAIConfigFromLocalCache already appends webSearchMode/tavilyApiKey. */
 
 export function isAISelectionConfigured(selection?: AIConfigSelection) {
   const config = getAIConfigFromStore(selection);
@@ -375,6 +388,26 @@ export async function aiGrammarCheck(data: { resumeId: string; language?: string
     invoke<any>('ai_grammar_check', {
       config,
       resumeId: data.resumeId,
+      language: data.language,
+    })
+  );
+}
+
+export type CoverLetterStyle = 'boss_greeting' | 'email' | 'self_intro';
+
+export async function aiCoverLetter(data: {
+  resumeId: string;
+  jobDescription?: string;
+  style: CoverLetterStyle;
+  language?: string;
+}) {
+  const config = getAIConfigFromStore();
+  return withAIUsageLog('cover_letter', config, () =>
+    invoke<string>('ai_cover_letter', {
+      config,
+      resumeId: data.resumeId,
+      jobDescription: data.jobDescription,
+      style: data.style,
       language: data.language,
     })
   );
@@ -461,6 +494,14 @@ export async function createChatSession(resumeId: string, title?: string) {
   return invoke<string>('create_chat_session', { resumeId, title });
 }
 
+export async function cancelAiStream(streamId: string) {
+  return invoke<void>('cancel_ai_stream', { streamId });
+}
+
+export async function truncateChatMessages(sessionId: string, messageId: string) {
+  return invoke<void>('truncate_chat_messages', { sessionId, messageId });
+}
+
 export async function deleteChatSession(sessionId: string) {
   return invoke<void>('delete_chat_session', { sessionId });
 }
@@ -490,10 +531,14 @@ export async function aiChat(data: {
   );
 }
 
+/** Sentinel resume id owning Global-Agent chat sessions. */
+export const GLOBAL_AGENT_RESUME_ID = '__global__';
+
 export async function globalAgentChat(data: {
   streamId: string;
   message: string;
   journalContext?: string;
+  sessionId?: string;
   selectedProvider?: AIProviderId;
   selectedModel?: string;
 }) {
@@ -509,6 +554,7 @@ export async function globalAgentChat(data: {
       config,
       message: data.message,
       journalContext: data.journalContext,
+      sessionId: data.sessionId,
     })
   );
 }
@@ -537,6 +583,21 @@ export async function exportJson(resumeId: string, filename?: string) {
 
 export async function exportDocx(resumeId: string, filename?: string) {
   return invoke<string | null>('export_docx', { resumeId, filename });
+}
+
+// ── Browser driver ──
+
+export interface BrowserDriverInfo {
+  port: number;
+  tabs: { tabId: string; url: string; title: string }[];
+}
+
+export async function browserDriverInfo() {
+  return invoke<BrowserDriverInfo>('browser_driver_info');
+}
+
+export async function browserDriverUserscript() {
+  return invoke<string>('browser_driver_userscript');
 }
 
 // ── Resume parsing (PDF/image → Resume) ──

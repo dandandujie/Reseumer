@@ -1,6 +1,7 @@
 pub mod resume;
 pub mod user;
 pub mod ai;
+pub mod browser;
 pub mod chat;
 pub mod export;
 pub mod global_agent;

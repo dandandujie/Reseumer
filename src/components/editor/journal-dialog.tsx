@@ -24,6 +24,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   useJournalStore,
+  CHANNEL_PRESETS,
   type JournalEntry,
   type JournalEntryType,
   type ApplicationEntry,
@@ -302,10 +303,115 @@ function CompactEntrySummary({ entry }: { entry: JournalEntry }) {
   );
 }
 
+/** One-click status switcher — advance an application without opening the form. */
+export function StatusQuickPill({ entry }: { entry: ApplicationEntry }) {
+  const t = useTranslations('journal');
+  const update = useJournalStore((s) => s.update);
+  return (
+    <Select
+      value={entry.status}
+      onValueChange={(v) => {
+        update(entry.id, { status: v as ApplicationStatus });
+        toast.success(t('statusUpdated'));
+      }}
+    >
+      <SelectTrigger
+        size="sm"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="h-5 w-auto cursor-pointer gap-1 rounded-full border-transparent bg-[var(--whale-mint)]/30 px-2 py-0 text-[11px] font-medium text-[var(--whale-ink)] shadow-none data-[size=sm]:h-5"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent onClick={(e) => e.stopPropagation()}>
+        {STATUS_KEYS.map((k) => (
+          <SelectItem key={k} value={k} className="cursor-pointer text-xs">
+            {t(`status${cap(k)}`)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+/** 投→面→果 thread progress, auto-linked to same-company entries. */
+function ThreadProgress({ entry }: { entry: ApplicationEntry }) {
+  const t = useTranslations('journal');
+  const byResume = useJournalStore((s) => s.byResume);
+  const company = (entry.company || '').trim();
+  if (!company) return null;
+  const all = Object.values(byResume).flat();
+  const hasInterview =
+    entry.status === 'interview' ||
+    entry.status === 'offer' ||
+    all.some((e) => e.type === 'interview' && (e.company || '').trim() === company);
+  const outcome = all.find(
+    (e): e is OutcomeEntry => e.type === 'outcome' && (e.company || '').trim() === company
+  );
+  const outcomeReached = !!outcome || entry.status === 'offer' || entry.status === 'rejected';
+  const outcomeGood = outcome?.outcome === 'offer' || entry.status === 'offer';
+
+  const steps = [
+    { label: t('stageApplied'), reached: true, tone: 'mint' },
+    { label: t('stageInterview'), reached: hasInterview, tone: 'mint' },
+    { label: t('stageOutcome'), reached: outcomeReached, tone: outcomeGood ? 'mint' : 'red' },
+  ];
+  return (
+    <div className="mt-1.5 flex items-center gap-1">
+      {steps.map((s, i) => (
+        <div key={s.label} className="flex items-center gap-1">
+          {i > 0 && <span className={cn('h-px w-3', s.reached ? 'bg-[var(--whale-mint-deep)]/50' : 'bg-[var(--whale-divider)]')} />}
+          <span
+            className={cn(
+              'inline-flex items-center gap-1 text-[10px]',
+              s.reached
+                ? s.tone === 'red'
+                  ? 'font-medium text-red-500'
+                  : 'font-medium text-[var(--whale-mint-deep)]'
+                : 'text-[var(--whale-ink-muted)]/60'
+            )}
+          >
+            <span
+              className={cn(
+                'inline-block h-1.5 w-1.5 rounded-full',
+                s.reached
+                  ? s.tone === 'red'
+                    ? 'bg-red-400'
+                    : 'bg-[var(--whale-mint-deep)]'
+                  : 'bg-[var(--whale-divider)]'
+              )}
+            />
+            {s.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Follow-up date chip — red when overdue on an open application. */
+export function FollowUpBadge({ entry }: { entry: ApplicationEntry }) {
+  const t = useTranslations('journal');
+  if (!entry.nextFollowUp) return null;
+  const open = entry.status === 'submitted' || entry.status === 'screening' || entry.status === 'interview';
+  const overdue = open && entry.nextFollowUp < new Date().toISOString().slice(0, 10);
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+        overdue
+          ? 'bg-red-50 text-red-600'
+          : 'bg-[var(--whale-cream-deep)] text-[var(--whale-ink-soft)]'
+      )}
+    >
+      {overdue ? t('followUpOverdue') : t('followUpDue')} {entry.nextFollowUp.slice(5)}
+    </span>
+  );
+}
+
 function EntrySummary({ entry }: { entry: JournalEntry }) {
   const t = useTranslations('journal');
   if (entry.type === 'application') {
-    const statusLabel = t(`status${cap(entry.status)}`);
     return (
       <>
         <div className="flex items-center gap-1.5 text-[12px] font-semibold text-[var(--whale-ink)]">
@@ -314,10 +420,12 @@ function EntrySummary({ entry }: { entry: JournalEntry }) {
           <span className="truncate text-[var(--whale-ink-soft)]">{entry.role || '—'}</span>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
-          <Pill>{statusLabel}</Pill>
+          <StatusQuickPill entry={entry} />
           {entry.channel && <Pill subtle>{entry.channel}</Pill>}
           {entry.date && <span className="text-[var(--whale-ink-muted)]">{entry.date}</span>}
+          <FollowUpBadge entry={entry} />
         </div>
+        <ThreadProgress entry={entry} />
         {entry.notes && (
           <p className="mt-1 line-clamp-2 text-[11px] text-[var(--whale-ink-muted)]">{entry.notes}</p>
         )}
@@ -519,10 +627,12 @@ export function ApplicationForm({ resumeId, editing, onDone }: { resumeId: strin
   const [contact, setContact] = useState(editing?.contact || '');
   const [jdSnippet, setJdSnippet] = useState(editing?.jdSnippet || '');
   const [notes, setNotes] = useState(editing?.notes || '');
+  const [nextFollowUp, setNextFollowUp] = useState(editing?.nextFollowUp || '');
 
   const reset = () => {
     setCompany(''); setRole(''); setChannel(''); setDate(todayIso());
     setStatus('submitted'); setContact(''); setJdSnippet(''); setNotes('');
+    setNextFollowUp('');
   };
 
   const submit = () => {
@@ -537,6 +647,7 @@ export function ApplicationForm({ resumeId, editing, onDone }: { resumeId: strin
       contact: contact.trim() || undefined,
       jdSnippet: jdSnippet.trim() || undefined,
       notes: notes.trim() || undefined,
+      nextFollowUp: nextFollowUp || undefined,
     };
     if (editing) {
       update(editing.id, payload);
@@ -559,7 +670,18 @@ export function ApplicationForm({ resumeId, editing, onDone }: { resumeId: strin
           <Input value={role} onChange={(e) => setRole(e.target.value)} className="h-8" />
         </FieldRow>
         <FieldRow label={t('fieldChannel')}>
-          <Input value={channel} onChange={(e) => setChannel(e.target.value)} placeholder={t('fieldChannelPlaceholder')} className="h-8" />
+          <Input
+            value={channel}
+            onChange={(e) => setChannel(e.target.value)}
+            placeholder={t('fieldChannelPlaceholder')}
+            className="h-8"
+            list="journal-channel-presets"
+          />
+          <datalist id="journal-channel-presets">
+            {CHANNEL_PRESETS.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
         </FieldRow>
         <FieldRow label={t('fieldDate')}>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-8" />
@@ -580,6 +702,9 @@ export function ApplicationForm({ resumeId, editing, onDone }: { resumeId: strin
         </FieldRow>
         <FieldRow label={t('fieldContact')}>
           <Input value={contact} onChange={(e) => setContact(e.target.value)} className="h-8" />
+        </FieldRow>
+        <FieldRow label={t('fieldNextFollowUp')}>
+          <Input type="date" value={nextFollowUp} onChange={(e) => setNextFollowUp(e.target.value)} className="h-8" />
         </FieldRow>
       </div>
       <FieldRow label={t('fieldJd')}>

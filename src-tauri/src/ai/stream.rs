@@ -1,3 +1,6 @@
+use std::collections::HashSet;
+use std::sync::{Mutex, OnceLock};
+
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -9,11 +12,32 @@ use super::provider::{AIConfig, ChatMessage, ProviderError, ToolSpec};
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum StreamEvent {
     TextDelta { text: String },
+    ReasoningDelta { text: String },
     ToolCallStart { id: String, name: String },
     ToolCallArgs { id: String, args: Value },
     ToolResult { id: String, name: String, result: Value },
     Finish { final_text: String },
     Error { message: String },
+}
+
+/// Cooperative cancellation — the stop button inserts a stream_id here and
+/// every chunk loop polls it between chunks.
+static CANCEL_SET: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+
+fn cancel_set() -> &'static Mutex<HashSet<String>> {
+    CANCEL_SET.get_or_init(|| Mutex::new(HashSet::new()))
+}
+
+pub fn request_cancel(stream_id: &str) {
+    cancel_set().lock().unwrap().insert(stream_id.to_string());
+}
+
+pub fn is_cancelled(stream_id: &str) -> bool {
+    cancel_set().lock().unwrap().contains(stream_id)
+}
+
+pub fn clear_cancel(stream_id: &str) {
+    cancel_set().lock().unwrap().remove(stream_id);
 }
 
 pub struct ChatStreamResult {
@@ -66,6 +90,16 @@ async fn stream_openai(
         "stream": true,
     });
 
+    // Many OpenAI-compatible endpoints default to a tiny completion budget
+    // (e.g. 1024) and silently cut replies mid-sentence — always be explicit.
+    // o-series / gpt-5 家族 reject max_tokens and want max_completion_tokens.
+    let ml = config.model.to_ascii_lowercase();
+    if ml.starts_with("o1") || ml.starts_with("o3") || ml.starts_with("o4") || ml.contains("gpt-5") {
+        body["max_completion_tokens"] = json!(8192);
+    } else {
+        body["max_tokens"] = json!(8192);
+    }
+
     if let Some(ts) = tools {
         if !ts.is_empty() {
             body["tools"] = json!(
@@ -96,32 +130,84 @@ async fn stream_openai(
 
     let mut stream = res.bytes_stream();
     let mut buffer = String::new();
+    let mut byte_buf: Vec<u8> = Vec::new();
     let mut text_out = String::new();
     let mut tool_calls: Vec<super::provider::ToolCall> = Vec::new();
     // Accumulate tool-call argument strings by index
     let mut pending_tc: std::collections::HashMap<u32, (String, String, String)> = std::collections::HashMap::new();
+    // Wire-tap diagnostics: figure out WHY a stream ended.
+    let mut frame_count: u64 = 0;
+    let mut last_finish_reason: Option<String> = None;
+    let mut saw_done = false;
+    let mut last_raw_tail = String::new();
 
     while let Some(chunk) = stream.next().await {
+        if is_cancelled(stream_id) {
+            break;
+        }
         let chunk = chunk?;
-        buffer.push_str(&String::from_utf8_lossy(&chunk));
+        // UTF-8-safe accumulation: a multi-byte char split across network
+        // chunks must not be lossy-replaced.
+        byte_buf.extend_from_slice(&chunk);
+        match std::str::from_utf8(&byte_buf) {
+            Ok(text) => {
+                buffer.push_str(text);
+                byte_buf.clear();
+            }
+            Err(e) => {
+                let valid = e.valid_up_to();
+                buffer.push_str(std::str::from_utf8(&byte_buf[..valid]).unwrap_or(""));
+                byte_buf.drain(..valid);
+            }
+        }
+        // Normalize CRLF so \r\n\r\n event delimiters parse too.
+        if buffer.contains('\r') {
+            buffer = buffer.replace("\r\n", "\n");
+        }
 
         while let Some(idx) = buffer.find("\n\n") {
             let line = buffer[..idx].to_string();
             buffer.drain(..idx + 2);
 
             for l in line.lines() {
-                if let Some(data) = l.strip_prefix("data: ") {
+                if let Some(data) = l.strip_prefix("data: ").or_else(|| l.strip_prefix("data:")) {
+                    frame_count += 1;
+                    if data.len() < 400 {
+                        last_raw_tail = data.to_string();
+                    }
                     if data.trim() == "[DONE]" {
+                        saw_done = true;
                         continue;
                     }
                     if let Ok(v) = serde_json::from_str::<Value>(data) {
                         let choice = v.get("choices").and_then(|c| c.get(0)).cloned().unwrap_or(Value::Null);
+                        if let Some(fr) = choice.get("finish_reason").and_then(|f| f.as_str()) {
+                            last_finish_reason = Some(fr.to_string());
+                        }
+                        if choice.get("finish_reason").and_then(|f| f.as_str()) == Some("length") {
+                            let notice = "\n\n> ⚠️ 输出达到长度上限被截断，可回复“继续”接着生成。";
+                            text_out.push_str(notice);
+                            emit(app, stream_id, StreamEvent::TextDelta { text: notice.to_string() });
+                        }
                         let delta = choice.get("delta").cloned().unwrap_or(Value::Null);
 
                         if let Some(content) = delta.get("content").and_then(|c| c.as_str()) {
                             if !content.is_empty() {
                                 text_out.push_str(content);
                                 emit(app, stream_id, StreamEvent::TextDelta { text: content.to_string() });
+                            }
+                        }
+
+                        // Reasoning models (DeepSeek-R1 / QwQ / etc.) stream the
+                        // chain-of-thought in reasoning_content (or reasoning);
+                        // surface it so the UI can show a collapsible think block.
+                        if let Some(reasoning) = delta
+                            .get("reasoning_content")
+                            .and_then(|c| c.as_str())
+                            .or_else(|| delta.get("reasoning").and_then(|c| c.as_str()))
+                        {
+                            if !reasoning.is_empty() {
+                                emit(app, stream_id, StreamEvent::ReasoningDelta { text: reasoning.to_string() });
                             }
                         }
 
@@ -153,6 +239,32 @@ async fn stream_openai(
         }
     }
 
+    // End-of-stream forensics: always log how the stream terminated.
+    log::info!(
+        "openai stream ended: frames={} finish_reason={:?} done_marker={} text_len={} tool_calls={} tail={}",
+        frame_count,
+        last_finish_reason,
+        saw_done,
+        text_out.chars().count(),
+        pending_tc.len(),
+        &last_raw_tail.chars().take(200).collect::<String>()
+    );
+    // A stream that ends with no finish_reason and no [DONE] was cut upstream
+    // (proxy timeout / connection drop) — tell the user instead of silence.
+    if !saw_done && last_finish_reason.is_none() && pending_tc.is_empty() && !text_out.is_empty() {
+        let notice = "\n\n> ⚠️ 上游连接中断，回复不完整（可能是代理/网关超时）。可回复“继续”接着生成。";
+        text_out.push_str(notice);
+        emit(app, stream_id, StreamEvent::TextDelta { text: notice.to_string() });
+    }
+    // Content-filter style stops are otherwise invisible.
+    if let Some(fr) = &last_finish_reason {
+        if fr != "stop" && fr != "length" && fr != "tool_calls" && fr != "function_call" {
+            let notice = format!("\n\n> ⚠️ 生成被上游终止（finish_reason: {fr}）。");
+            text_out.push_str(&notice);
+            emit(app, stream_id, StreamEvent::TextDelta { text: notice });
+        }
+    }
+
     // Finalize tool calls
     let mut indices: Vec<u32> = pending_tc.keys().copied().collect();
     indices.sort();
@@ -181,21 +293,42 @@ async fn stream_anthropic(
         "model": config.model,
         "max_tokens": 4096,
         "stream": true,
-        "messages": messages.iter().map(|m| json!({ "role": m.role, "content": m.content })).collect::<Vec<_>>(),
+        // Content that parses as a JSON array is passed through as structured
+        // blocks (tool_use / tool_result rounds); plain strings stay strings.
+        "messages": messages.iter().map(|m| {
+            let content = serde_json::from_str::<Value>(&m.content)
+                .ok()
+                .filter(|v| v.is_array())
+                .unwrap_or_else(|| json!(m.content));
+            json!({ "role": m.role, "content": content })
+        }).collect::<Vec<_>>(),
     });
 
     if !system.is_empty() {
         body["system"] = json!(system);
     }
-    if let Some(ts) = tools {
-        if !ts.is_empty() {
-            body["tools"] = json!(
-                ts.iter().map(|t| json!({
-                    "name": t.name,
-                    "description": t.description,
-                    "input_schema": t.parameters,
-                })).collect::<Vec<_>>()
-            );
+    {
+        let mut tool_list: Vec<Value> = tools
+            .map(|ts| {
+                ts.iter()
+                    .map(|t| json!({
+                        "name": t.name,
+                        "description": t.description,
+                        "input_schema": t.parameters,
+                    }))
+                    .collect()
+            })
+            .unwrap_or_default();
+        // Native web search — Anthropic server-side tool.
+        if config.web_search_mode == "native" {
+            tool_list.push(json!({
+                "type": "web_search_20250305",
+                "name": "web_search",
+                "max_uses": 3,
+            }));
+        }
+        if !tool_list.is_empty() {
+            body["tools"] = json!(tool_list);
         }
     }
 
@@ -221,6 +354,9 @@ async fn stream_anthropic(
     let mut current_tool: Option<(String, String, String)> = None;
 
     while let Some(chunk) = stream.next().await {
+        if is_cancelled(stream_id) {
+            break;
+        }
         let chunk = chunk?;
         buffer.push_str(&String::from_utf8_lossy(&chunk));
         while let Some(idx) = buffer.find("\n\n") {
@@ -249,6 +385,10 @@ async fn stream_anthropic(
                                         if let Some(t) = delta.get("text").and_then(|v| v.as_str()) {
                                             text_out.push_str(t);
                                             emit(app, stream_id, StreamEvent::TextDelta { text: t.to_string() });
+                                        }
+                                    } else if dt == "thinking_delta" {
+                                        if let Some(t) = delta.get("thinking").and_then(|v| v.as_str()) {
+                                            emit(app, stream_id, StreamEvent::ReasoningDelta { text: t.to_string() });
                                         }
                                     } else if dt == "input_json_delta" {
                                         if let Some(part) = delta.get("partial_json").and_then(|v| v.as_str()) {
@@ -304,16 +444,38 @@ async fn stream_gemini(
     if !system.is_empty() {
         body["systemInstruction"] = json!({ "parts": [{ "text": system }] });
     }
-    body["generationConfig"] = json!({ "maxOutputTokens": 4096 });
-    if let Some(ts) = tools {
-        if !ts.is_empty() {
-            body["tools"] = json!([{
-                "functionDeclarations": ts.iter().map(|t| json!({
-                    "name": t.name,
-                    "description": t.description,
-                    "parameters": t.parameters,
-                })).collect::<Vec<_>>()
-            }]);
+    let ml = config.model.to_ascii_lowercase();
+    let thinking_capable = ml.contains("2.5") || ml.contains("thinking") || ml.contains("gemini-3") || ml.contains("gemini-exp");
+    if thinking_capable {
+        // Gemini only returns chain-of-thought when explicitly asked.
+        body["generationConfig"] = json!({
+            "maxOutputTokens": 8192,
+            "thinkingConfig": { "includeThoughts": true }
+        });
+    } else {
+        body["generationConfig"] = json!({ "maxOutputTokens": 8192 });
+    }
+    {
+        let mut tool_list: Vec<Value> = Vec::new();
+        if let Some(ts) = tools {
+            if !ts.is_empty() {
+                tool_list.push(json!({
+                    "functionDeclarations": ts.iter().map(|t| json!({
+                        "name": t.name,
+                        "description": t.description,
+                        "parameters": t.parameters,
+                    })).collect::<Vec<_>>()
+                }));
+            }
+        }
+        // Native web search — Gemini grounding tool. NOTE: some model versions
+        // reject mixing googleSearch with functionDeclarations; if the call
+        // 400s, switch to the free/tavily engine instead.
+        if config.web_search_mode == "native" {
+            tool_list.push(json!({ "google_search": {} }));
+        }
+        if !tool_list.is_empty() {
+            body["tools"] = json!(tool_list);
         }
     }
 
@@ -333,6 +495,7 @@ async fn stream_gemini(
 
     let mut stream = res.bytes_stream();
     let mut buffer = String::new();
+    let mut byte_buf: Vec<u8> = Vec::new();
     let mut text_out = String::new();
     let mut tool_calls: Vec<super::provider::ToolCall> = Vec::new();
     let mut chunk_count = 0u32;
@@ -346,15 +509,32 @@ async fn stream_gemini(
             return;
         }
         let Ok(v) = serde_json::from_str::<Value>(data) else {
-            eprintln!("[gemini stream] failed to parse JSON: {}", &data[..data.len().min(200)]);
+            eprintln!("[gemini stream] failed to parse JSON: {}", data.chars().take(120).collect::<String>());
             return;
         };
+        if let Some(fr) = v.pointer("/candidates/0/finishReason").and_then(|f| f.as_str()) {
+            if fr != "STOP" {
+                let notice = if fr == "MAX_TOKENS" {
+                    "\n\n> ⚠️ 输出达到长度上限被截断，可回复“继续”接着生成。".to_string()
+                } else {
+                    format!("\n\n> ⚠️ 生成被上游终止（finishReason: {fr}）。")
+                };
+                text_out.push_str(&notice);
+                emit(app, stream_id, StreamEvent::TextDelta { text: notice });
+            }
+            log::info!("gemini stream finishReason={fr}");
+        }
         if let Some(parts) = v.pointer("/candidates/0/content/parts").and_then(|p| p.as_array()) {
             for part in parts {
                 if let Some(t) = part.get("text").and_then(|v| v.as_str()) {
                     if !t.is_empty() {
-                        text_out.push_str(t);
-                        emit(app, stream_id, StreamEvent::TextDelta { text: t.to_string() });
+                        // Gemini marks chain-of-thought parts with thought=true.
+                        if part.get("thought").and_then(|v| v.as_bool()).unwrap_or(false) {
+                            emit(app, stream_id, StreamEvent::ReasoningDelta { text: t.to_string() });
+                        } else {
+                            text_out.push_str(t);
+                            emit(app, stream_id, StreamEvent::TextDelta { text: t.to_string() });
+                        }
                     }
                 }
                 if let Some(fc) = part.get("functionCall") {
@@ -370,12 +550,34 @@ async fn stream_gemini(
     };
 
     while let Some(chunk) = stream.next().await {
+        if is_cancelled(stream_id) {
+            break;
+        }
         let chunk = chunk?;
-        let s = String::from_utf8_lossy(&chunk);
+        // UTF-8-safe accumulation: a CJK char split across network chunks
+        // must not be lossy-corrupted.
+        byte_buf.extend_from_slice(&chunk);
+        let s: String = match std::str::from_utf8(&byte_buf) {
+            Ok(text) => {
+                let t = text.to_string();
+                byte_buf.clear();
+                t
+            }
+            Err(e) => {
+                let valid = e.valid_up_to();
+                let t = std::str::from_utf8(&byte_buf[..valid]).unwrap_or("").to_string();
+                byte_buf.drain(..valid);
+                t
+            }
+        };
         buffer.push_str(&s);
         chunk_count += 1;
         if chunk_count <= 2 {
-            eprintln!("[gemini stream] chunk #{} len={} preview={:?}", chunk_count, s.len(), &s[..s.len().min(160)]);
+            // GOTCHA: never byte-slice streamed text — CJK chars are 3 bytes
+            // and a raw &s[..160] panics on a char boundary, killing the
+            // whole stream task (this exact bug truncated every 中文 reply).
+            let preview: String = s.chars().take(60).collect();
+            log::info!("gemini stream chunk #{} len={} preview={:?}", chunk_count, s.len(), preview);
         }
 
         // Process every complete line in the buffer.

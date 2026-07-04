@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { SendHorizonal, ServerCog } from 'lucide-react';
+import { SendHorizonal, ServerCog, Square } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { FormEvent, ChangeEvent } from 'react';
 import type { AIProviderId, AIProviderOption } from '@/lib/tauri-api';
@@ -19,6 +19,8 @@ interface AIInputProps {
   selectedModel?: string;
   effectiveModel?: string;
   onModelChange: (model: string) => void;
+  /** Shown instead of send while generating — cooperative cancel. */
+  onStop?: () => void;
 }
 
 const DEFAULT_PROVIDER_VALUE = '__settings_default__';
@@ -36,6 +38,7 @@ export function AIInput({
   selectedModel,
   effectiveModel,
   onModelChange,
+  onStop,
 }: AIInputProps) {
   const t = useTranslations('ai');
   const activeProvider = providers.find((provider) => provider.id === effectiveProvider);
@@ -113,14 +116,25 @@ export function AIInput({
             </Select>
           </div>
 
-          {/* Send button */}
-          <button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[var(--whale-cream-deep)] text-[var(--whale-ink-muted)] transition-all hover:bg-[var(--whale-cream-deep)] disabled:cursor-not-allowed disabled:opacity-40 [&:not(:disabled)]:bg-[var(--whale-ink)] [&:not(:disabled)]:text-[var(--whale-cream)] [&:not(:disabled)]:hover:scale-105 [&:not(:disabled)]:hover:bg-[var(--whale-ink-soft)]"
-          >
-            <SendHorizonal className="h-4 w-4" />
-          </button>
+          {/* Send / Stop button */}
+          {isLoading && onStop ? (
+            <button
+              type="button"
+              onClick={onStop}
+              title={t('stopGenerate')}
+              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[var(--whale-ink)] text-[var(--whale-cream)] transition-all hover:scale-105 hover:bg-red-500"
+            >
+              <Square className="h-3 w-3 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-[var(--whale-cream-deep)] text-[var(--whale-ink-muted)] transition-all hover:bg-[var(--whale-cream-deep)] disabled:cursor-not-allowed disabled:opacity-40 [&:not(:disabled)]:bg-[var(--whale-ink)] [&:not(:disabled)]:text-[var(--whale-cream)] [&:not(:disabled)]:hover:scale-105 [&:not(:disabled)]:hover:bg-[var(--whale-ink-soft)]"
+            >
+              <SendHorizonal className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
     </form>

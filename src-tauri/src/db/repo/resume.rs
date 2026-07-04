@@ -185,6 +185,9 @@ pub fn delete(conn: &Connection, id: &str, user_id: &str) -> Result<(), rusqlite
         "DELETE FROM resumes WHERE id = ?1 AND user_id = ?2",
         params![id, user_id],
     )?;
+    // chat_sessions lost its FK cascade in migration 003 — clean up manually
+    // (chat_messages still cascade from chat_sessions).
+    super::chat::delete_sessions_for_resume(conn, id)?;
     Ok(())
 }
 

@@ -1,13 +1,12 @@
 import { create } from 'zustand';
 
-type ModalType = 'create-resume' | 'delete-resume' | 'export-pdf' | 'settings' | 'jd-analysis' | 'translate' | 'export' | 'import' | 'generate-resume' | 'grammar-check' | 'journal' | null;
+type ModalType = 'create-resume' | 'delete-resume' | 'export-pdf' | 'settings' | 'jd-analysis' | 'translate' | 'export' | 'import' | 'generate-resume' | 'grammar-check' | 'journal' | 'cover-letter' | null;
 
 interface UIStore {
   sidebarOpen: boolean;
   activeModal: ModalType;
   theme: 'light' | 'dark' | 'system';
   settingsTab: string;
-  pendingAiMessage: string | null;
 
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
@@ -15,7 +14,6 @@ interface UIStore {
   closeModal: () => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   setSettingsTab: (tab: string) => void;
-  setPendingAiMessage: (message: string | null) => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -23,7 +21,6 @@ export const useUIStore = create<UIStore>((set) => ({
   activeModal: null,
   theme: 'light',
   settingsTab: 'ai',
-  pendingAiMessage: null,
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -31,5 +28,4 @@ export const useUIStore = create<UIStore>((set) => ({
   closeModal: () => set({ activeModal: null }),
   setTheme: (theme) => set({ theme }),
   setSettingsTab: (tab) => set({ settingsTab: tab }),
-  setPendingAiMessage: (message) => set({ pendingAiMessage: message }),
 }));
