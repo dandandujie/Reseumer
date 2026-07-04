@@ -1,142 +1,98 @@
-# Reseumer
+# Resumer
 
-一个桌面端优先的 AI 简历应用，基于 **Tauri 2 + React 19 + Vite** 构建。所有数据保存在本地 SQLite，不需要登录、不需要后端服务。
+桌面端求职全流程 AI Agent：**简历管理 → 定向优化 → 投递执行 → 复盘迭代**，基于 **Tauri 2 + React 19 + Vite** 构建。所有数据保存在本地 SQLite，不需要登录、不需要后端服务。
 
 原项目链接：<https://github.com/twwch/JadeAI>
 
-## 当前能做什么
+## 它能做什么
 
-- 在仪表盘中管理多份简历。
-- 通过拖拽和实时预览编辑简历内容。
-- 只维护一个生产模板：`classic`。
-- 导出 PDF、单页 PDF、DOCX、HTML、TXT、JSON。
-- 将 JSON 导出再次导回应用。
-- 解析已有 PDF 或图片简历，生成可编辑数据。
-- 使用 AI 聊天改简历、生成简历、生成求职信、做语法检查、做 JD 匹配分析和翻译。
-- 在应用内配置 OpenAI、Anthropic、Gemini 或兼容 OpenAI 的接口，不需要在启动前设置环境变量。
+### 简历管理与编辑
+- 仪表盘管理多份简历，卡片直接展示内容摘要（姓名/岗位/最近经历/技能）
+- 拖拽排序 + 实时 A4 预览编辑；`classic` / `modern` 两套模板
+- 导出 PDF、单页 PDF、DOCX、HTML、TXT、JSON；JSON 可再导入
+- 上传 PDF / 图片简历，AI 解析为可编辑数据
+
+### AI 简历专家（单简历助手）
+- 内置**中国就业市场专家知识**：HR 初筛视线路径、ATS 机筛关键词逻辑、六大行业岗位画像（互联网技术/产品运营/金融/国企央企/外企/制造工程）、量化写作法则与造假红线
+- 对话式直接修改简历（工具调用可视化 + 改动提案卡，用户确认后生效）
+- JD 匹配分析（硬性门槛/关键词对齐/ATS 评分）→ 一键优化，或**一键派生定制简历副本**（主简历不动）
+- 语法检查（中文简历专项病灶）、中英互译（本地化而非直译）、AI 生成完整初稿
+- 求职文案生成器：Boss 直聘开场白 / 邮件求职信 / 一分钟自我介绍
+
+### 全局 Agent（跨简历策略顾问）
+- 站在全局视角：全部简历元数据 + 求职日志 + 版本历史（AI 采纳/拒绝率）
+- 求职漏斗分析（对照本土基准归因瓶颈）、渠道归因、金三银四/秋招春招节奏校准
+- **有权直接优化单简历助手**：下发调优指令（注入其每次对话）、直接修订技能库——用数据说话，改完告知
+
+### Agent 架构（GenericAgent 移植，MIT）
+- **L0-L4 五层记忆**：元规则 → 索引 → 全局事实 → 技能库 → 会话归档，外加会话级工作检查点
+- **技能 SOP 自进化**：9 个内置种子技能（岗位画像 ×6 + 简历诊断/JD 定制/申请表填写 SOP），markdown 文件可手工编辑，AI 会把新经验结晶为新技能
+- **浏览器驱动**：本地 WS 服务 + 油猴脚本连接你真实登录态的浏览器（覆盖 Boss/猎聘等平台与 Moka/北森/Workday 等 ATS），支持读取 JD、**官网申请表自动填写**（只填不提交，敏感信息不经手）
+- **联网搜索**：模型内建（Gemini/Claude 原生）/ DuckDuckGo 免费引擎 / Tavily API 三模式
+
+### 对话体验
+- 打字机流式 + 思维链展示（DeepSeek-R1 / Claude thinking / Gemini thought 三协议，实时思考秒数）
+- 停止生成、消息级回退、编辑重发、重新生成；多会话并行互不阻塞
+- Markdown + 安全内联 HTML 渲染（对比矩阵、信息卡片等可视化回复）
+
+### 复盘日记（求职 CRM）
+- 投递**看板**：已投递 → 初筛 → 面试 → Offer → 已关闭 五列管道，卡片上直接切状态
+- 投→面→果线程进度自动关联同公司记录；**跟进提醒**逾期红标
+- 渠道预设（Boss直聘/猎聘/内推等）与转化归因，喂给全局 Agent 做策略分析
 
 ## 技术栈
 
 | 层级 | 技术 |
 | --- | --- |
 | 桌面壳 | Tauri 2（Rust） |
-| 前端框架 | React 19 + Vite 7 |
-| 路由 | React Router 6 |
-| UI | Tailwind CSS 4 + shadcn/ui + Radix UI |
-| 状态管理 | Zustand |
-| 拖拽 | `@dnd-kit` |
-| 国际化 | i18next + react-i18next |
-| 数据库 | SQLite（Rust 侧 `rusqlite` 嵌入） |
-| 导出 | `docx-rs`（DOCX）、自渲染 HTML、Rust 侧 PDF 链路 |
-| PDF 解析 | `pdf-extract`（上传简历解析） |
-| AI 调用 | Rust `reqwest` 流式代理 OpenAI / Anthropic / Gemini / 兼容接口 |
-
-## 环境要求
-
-- Node.js 20+
-- pnpm 9+
-- Rust 稳定版工具链（通过 `rustup` 安装）
-- Tauri 系统依赖参考 <https://v2.tauri.app/start/prerequisites/>
-  - macOS：Xcode Command Line Tools
-  - Windows：Microsoft C++ Build Tools 与 WebView2
-  - Linux：`webkit2gtk-4.1`、`libappindicator`、`librsvg` 等
+| 前端 | React 19 + Vite 7 + Tailwind CSS 4 + shadcn/ui |
+| 状态 | Zustand |
+| 数据库 | SQLite（rusqlite 内嵌，4 个迁移） |
+| AI 调用 | Rust `reqwest` 流式代理 OpenAI 兼容 / Anthropic / Gemini |
+| Agent 记忆 | `app_data/memory/*.md` + `app_data/skills/*.md` + SQLite 会话/归档 |
+| 浏览器驱动 | tokio-tungstenite 本地 WS（127.0.0.1:17872）+ Tampermonkey 用户脚本 |
+| 导出 | 系统 Chromium 系浏览器渲染 PDF；`docx-rs`；自渲染 HTML |
 
 ## 快速开始
 
 ```bash
 pnpm install
-pnpm dev
+pnpm dev        # Vite + Tauri 窗口
 ```
 
-`pnpm dev` 会启动 Vite 开发服务器并拉起 Tauri 窗口。首次启动会自动在用户数据目录创建 SQLite 数据库文件。
+常用命令：`pnpm build`（打包）、`pnpm build:mac` / `pnpm build:win`、`pnpm lint`、`pnpm type-check`。
 
-仅想在浏览器里预览前端 UI（不含 Tauri 命令）：
+首次使用：设置 → AI 配置 填入任一服务商的 API Key（支持测试连接与拉取模型列表）；可选开启联网搜索；要用浏览器自动化则在 设置 → 浏览器驱动 安装油猴脚本。
 
-```bash
-pnpm dev:vite
-```
+## 数据与隐私
 
-## 常用命令
+所有数据均在本机：
 
-```bash
-pnpm dev           # Tauri + Vite 开发模式
-pnpm dev:vite      # 仅启动 Vite（浏览器预览，Tauri invoke 不可用）
-pnpm build         # 当前平台打包
-pnpm build:mac     # macOS (Apple Silicon) DMG 构建
-pnpm build:win     # Windows x86_64 NSIS 构建
-pnpm lint
-pnpm type-check
-```
+- `app_data_dir/reseumer.db` — 简历、会话、归档（macOS: `~/Library/Application Support/com.reseumer.desktop/`）
+- `app_data_dir/skills/*.md` — 技能库（可手工编辑）
+- `app_data_dir/memory/*.md` — 全局事实与助手调优指令
+- API Key 仅存本机 localStorage，请求由桌面端直接发给模型服务商
+- 浏览器驱动仅在 127.0.0.1 通信，脚本仅在声明的招聘域名生效；AI 只读取页面和填写表单，**绝不代点提交/发送**
 
-macOS Intel 当前未在 CI 中构建，本地可执行 `pnpm tauri build --target x86_64-apple-darwin`。
-
-## AI 与数据
-
-AI Provider、Base URL、模型等设置写入本地 SQLite 的 `users.settings` 字段；API Key 只保存在当前设备本地存储，并由桌面端直接带给模型服务商。设置页支持测试连接和拉取模型列表。AI 请求由 Rust 侧 `reqwest` 负责流式转发，前端通过 Tauri event 接收分片。
-
-桌面端所有数据保存在 Tauri 的 `app_data_dir/reseumer.db`：
-
-- macOS：`~/Library/Application Support/com.reseumer.desktop/reseumer.db`
-- Windows：`%APPDATA%\com.reseumer.desktop\reseumer.db`
-- Linux：`~/.local/share/com.reseumer.desktop/reseumer.db`
-
-## 项目结构
-
-```text
-src-tauri/                  Tauri 桌面壳（Rust）
-├── src/
-│   ├── commands/           暴露给前端的 Tauri 命令（resume / user / ai / chat / export）
-│   ├── db/                 rusqlite 连接、迁移执行器、按实体划分的 repo
-│   ├── ai/                 provider、流式、prompts、工具调用、JSON 提取
-│   └── export/             PDF / HTML / DOCX / TXT / 二维码生成
-└── migrations/             SQLite schema 迁移
-src/
-├── pages/                  dashboard / editor / preview 三个顶层页面
-├── router.tsx              React Router 路由定义
-├── components/             编辑器、仪表盘、AI、预览、布局、设置
-├── stores/                 Zustand stores（editor / resume / settings / ui）
-├── lib/                    Tauri API 封装、AI client、导出工具、品牌常量
-└── i18n/                   i18next 配置
-messages/                   国际化翻译（zh / en）
-packaging/homebrew/         macOS Homebrew Cask 模板
-.github/workflows/          构建与发布的 GitHub Actions
-```
+卸载会带走全部数据；换设备前请用「导出 JSON」备份。
 
 ## 说明与限制
 
-- 当前运行时只保留 `classic` 一个模板。
-- DOCX / HTML / TXT / JSON 导出完全由 Tauri 命令完成；PDF 导出会调用本机已安装的 Chromium 系浏览器（Chrome / Edge / Brave / Vivaldi / Opera / Arc 均可）进行渲染，若未安装可先导出 HTML 再用浏览器打印为 PDF。
-- GitHub Actions 只构建 `aarch64-apple-darwin` 和 `x86_64-pc-windows-msvc`。Intel Mac、Linux 与 Windows ARM 需要本地自行构建。
-- 简历数据保存在本地 SQLite 中，卸载应用会带走数据；换设备前请先用 **导出 JSON** 做备份。
+- PDF 导出调用本机已安装的 Chromium 系浏览器（Chrome/Edge/Brave/Vivaldi/Opera/Arc 均可）；未安装时可先导出 HTML 再用浏览器打印
+- GitHub Actions 只构建 `aarch64-apple-darwin` 与 `x86_64-pc-windows-msvc`；Intel Mac / Linux 需本地构建
+- 油猴脚本升级后需在 Tampermonkey 中重新粘贴一次（设置里一键复制）
 
 ## macOS 首次启动
 
-本项目的 macOS 安装包只做了 ad-hoc 签名，没有 Apple Developer ID 签名和公证。直接双击从 Release 下载的 `.dmg` 安装后，首次打开可能会被 Gatekeeper 拦下（提示「已损坏」或「未鉴定开发者」）。有两种解决方式：
+安装包仅 ad-hoc 签名，首次打开可能被 Gatekeeper 拦截：
 
-**方式 A：通过 Homebrew 安装（推荐，无感）**
+**方式 A（推荐）**：`brew tap dandandujie/reseumer && brew install --cask reseumer`
 
-Homebrew 安装的应用会自动跳过 Gatekeeper quarantine 检查：
-
-```bash
-brew tap dandandujie/reseumer
-brew install --cask reseumer
-```
-
-tap 仓库的 Cask 模板见 [`packaging/homebrew/reseumer.rb`](./packaging/homebrew/reseumer.rb)。
-
-**方式 B：直接下载 DMG 后手动放行**
-
-安装到 `/Applications` 后，打开终端执行一次即可：
-
-```bash
-xattr -cr /Applications/Reseumer.app
-```
-
-之后正常双击打开。或者在 Finder 里**右键点击 → 打开**，在弹出的警告对话框里选「打开」也可以。
+**方式 B**：安装后执行 `xattr -cr /Applications/Resumer.app`，或 Finder 右键 → 打开。
 
 ## 许可证
 
-Apache-2.0，见 [LICENSE](./LICENSE)。
+Apache-2.0，见 [LICENSE](./LICENSE)。致谢：Agent 架构参考 [GenericAgent](https://github.com/lsdefine/GenericAgent)（MIT）；对话交互参考 [Cherry Studio](https://github.com/CherryHQ/cherry-studio)。
 
 ## 友情链接
 
