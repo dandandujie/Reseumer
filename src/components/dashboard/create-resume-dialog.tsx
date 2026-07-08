@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/i18n/routing';
+import { TemplateThumbnail, TEMPLATE_OPTIONS } from './template-thumbnail';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ const ACCEPTED_EXTENSIONS = '.pdf,.png,.jpg,.jpeg,.webp';
 
 export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDialogProps) {
   const t = useTranslations();
+  const locale = useLocale();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('blank');
   const [title, setTitle] = useState('');
@@ -173,46 +175,28 @@ export function CreateResumeDialog({ open, onClose, onCreate }: CreateResumeDial
                   {t('editor.toolbar.template') || 'Template'}
                 </label>
                 <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    className={cn(
-                      'cursor-pointer rounded-lg border-2 p-4 text-left transition-all',
-                      template === 'classic'
-                        ? 'border-brand bg-brand-muted'
-                        : 'border-border hover:border-[var(--whale-ink-muted)]'
-                    )}
-                    onClick={() => setTemplate('classic')}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-foreground">Classic</span>
-                      {template === 'classic' && (
-                        <span className="text-brand">✓</span>
+                  {TEMPLATE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      className={cn(
+                        'cursor-pointer rounded-lg border-2 p-2 text-left transition-all',
+                        template === opt.id
+                          ? 'border-brand bg-brand-muted'
+                          : 'border-border hover:border-[var(--whale-ink-muted)]'
                       )}
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {t('dashboard.templateClassicDesc') || 'Traditional professional layout'}
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(
-                      'cursor-pointer rounded-lg border-2 p-4 text-left transition-all',
-                      template === 'modern'
-                        ? 'border-brand bg-brand-muted'
-                        : 'border-border hover:border-[var(--whale-ink-muted)]'
-                    )}
-                    onClick={() => setTemplate('modern')}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-foreground">Modern</span>
-                      {template === 'modern' && (
-                        <span className="text-brand">✓</span>
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {t('dashboard.templateModernDesc') || 'Contemporary design with accent colors'}
-                    </p>
-                  </button>
+                      onClick={() => setTemplate(opt.id)}
+                    >
+                      <TemplateThumbnail template={opt.id} />
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-sm font-semibold text-foreground">{opt.name}</span>
+                        {template === opt.id && <span className="text-brand">✓</span>}
+                      </div>
+                      <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                        {locale === 'zh' ? opt.descZh : opt.descEn}
+                      </p>
+                    </button>
+                  ))}
                 </div>
               </div>
 

@@ -59,7 +59,7 @@ function appMatchesFilter(app: Application, key: FilterKey, todayKey: string): b
   }
 }
 
-const APP_STATUSES: ApplicationStatus[] = ['submitted', 'screening', 'interview', 'offer', 'rejected', 'declined', 'ghosted'];
+const APP_STATUSES: ApplicationStatus[] = ['submitted', 'screening', 'interview', 'offer', 'rejected', 'ghosted'];
 const APP_FORMATS: InterviewFormat[] = ['phone', 'video', 'onsite', 'take-home', 'other'];
 const APP_STATUS_KEY: Record<ApplicationStatus, string> = {
   submitted: 'statusSubmitted',

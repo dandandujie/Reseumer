@@ -3,7 +3,7 @@ import * as api from '@/lib/tauri-api';
 import { useResumeStore } from '@/stores/resume-store';
 import { useEditorStore } from '@/stores/editor-store';
 import type { ResumeSection } from '@/types/resume';
-import { toast } from 'sonner';
+import { logError } from '@/stores/error-log-store';
 
 export function useEditor(resumeId: string) {
   const { setResume, sections, currentResume, updateSection, addSection, removeSection, reorderSections, reset: resetResume } = useResumeStore();
@@ -25,9 +25,7 @@ export function useEditor(resumeId: string) {
       }
     } catch (error) {
       console.error('Failed to load resume:', error);
-      toast.error('加载失败', {
-        description: '简历加载失败，请刷新页面重试',
-      });
+      logError('加载失败', '简历加载失败，请刷新页面重试');
     } finally {
       setIsLoading(false);
     }

@@ -4,6 +4,7 @@ import { useMemo, useCallback } from 'react';
 import { Check, Undo2, Wand2, Plus, Trash2, RefreshCcw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
+import { logError } from '@/stores/error-log-store';
 import { useProposalsStore, type Proposal } from '@/stores/proposals-store';
 import { useResumeStore } from '@/stores/resume-store';
 import { diffSectionFields, type FieldChange } from '@/lib/section-diff';
@@ -99,7 +100,7 @@ export function useProposalActions(proposal: Proposal | undefined) {
       await api.createResumeVersionSnapshot(proposal.resumeId, 'ai_accept');
     } catch (err) {
       console.error('Failed to create accept snapshot:', err);
-      toast.error(t('proposalAcceptFailed'));
+      logError(t('proposalAcceptFailed'));
       return;
     }
     useProposalsStore.getState().acceptProposal(proposal.id);
@@ -164,7 +165,7 @@ export function useProposalActions(proposal: Proposal | undefined) {
       });
     } catch (err) {
       console.error('Failed to persist rejection:', err);
-      toast.error(t('proposalRejectFailed'));
+      logError(t('proposalRejectFailed'));
       return;
     }
 

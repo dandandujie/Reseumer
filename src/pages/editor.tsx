@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { toast } from 'sonner';
+import { logError } from '@/stores/error-log-store';
 import { useEditor } from '@/hooks/use-editor';
 import { useIsMobile } from '@/hooks/use-media-query';
 import { EditorToolbar } from '@/components/editor/editor-toolbar';
@@ -81,9 +81,7 @@ export default function EditorPage() {
       const msg = e.reason?.message || String(e.reason || '');
       if (msg.includes('AI_RetryError') || msg.includes('AI_APICallError')) {
         e.preventDefault();
-        toast.error('操作失败', {
-          description: 'AI 服务暂时不可用，请稍后重试',
-        });
+        logError('操作失败', 'AI 服务暂时不可用，请稍后重试');
       }
     };
     window.addEventListener('unhandledrejection', handler);

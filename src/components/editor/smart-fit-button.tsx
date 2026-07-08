@@ -3,6 +3,7 @@
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { logError } from '@/stores/error-log-store';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { useResumeStore } from '@/stores/resume-store';
@@ -35,11 +36,11 @@ export function SmartFitButton() {
         updateThemeConfig(optimalTheme);
         toast.success(t('toolbar.smartFitSuccess') || '已为您智能排版至单页最优状态');
       } else {
-        toast.error(t('toolbar.smartFitFailed') || '内容过多，建议删减工作经历或项目细节');
+        logError(t('toolbar.smartFitFailed') || '内容过多，建议删减工作经历或项目细节');
       }
     } catch (err) {
       console.error(err);
-      toast.error('智能排版失败');
+      logError('智能排版失败');
     } finally {
       setIsCalculating(false);
     }

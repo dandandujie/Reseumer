@@ -7,7 +7,7 @@ import {
   Wand2, Trash2, FileSearch, ArrowUp, ArrowDown, Minus, ChevronLeft,
   Briefcase, ChevronDown, CopyPlus,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { logError } from '@/stores/error-log-store';
 import { useRouter } from '@/i18n/routing';
 import { useResumeStore } from '@/stores/resume-store';
 import {
@@ -396,7 +396,7 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
       onOpenChange(false);
       router.push(`/editor/${newId}`);
     } catch (err: any) {
-      toast.error(t('deriveFailed'), { description: String(err?.message || err).slice(0, 160) });
+      logError(t('deriveFailed'), String(err?.message || err).slice(0, 160));
     } finally {
       setIsDeriving(false);
     }

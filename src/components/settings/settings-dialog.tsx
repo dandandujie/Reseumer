@@ -25,6 +25,7 @@ import {
   PenLine,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { logError } from '@/stores/error-log-store';
 import * as tauriApi from '@/lib/tauri-api';
 import {
   Dialog,
@@ -155,7 +156,7 @@ export function SettingsDialog() {
       await navigator.clipboard.writeText(script);
       toast.success(t('browser.copied'));
     } catch {
-      toast.error(t('browser.copyFailed'));
+      logError(t('browser.copyFailed'));
     }
   }, [t]);
 

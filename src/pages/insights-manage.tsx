@@ -135,7 +135,7 @@ export default function InsightsManagePage() {
               <SelectTrigger size="sm" className="h-8 cursor-pointer border-transparent bg-[var(--whale-card)] text-[12px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all" className="cursor-pointer text-xs">{t('insightsAllStatuses')}</SelectItem>
-                {(['submitted', 'screening', 'interview', 'offer', 'rejected', 'declined', 'ghosted'] as ApplicationStatus[]).map((k) => (
+                {(['submitted', 'screening', 'interview', 'offer', 'rejected', 'ghosted'] as ApplicationStatus[]).map((k) => (
                   <SelectItem key={k} value={k} className="cursor-pointer text-xs">{tJournal(statusKey(k))}</SelectItem>
                 ))}
               </SelectContent>

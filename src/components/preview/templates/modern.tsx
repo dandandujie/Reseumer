@@ -46,12 +46,19 @@ function getDateRange(startDate?: string, endDate?: string | null, presentLabel 
   return tail ? `${startDate} - ${tail}` : startDate;
 }
 
-function EmptySectionPlaceholder({ lang }: { lang?: string }) {
+function EmptySectionPlaceholder({ lang, dark }: { lang?: string; dark?: boolean }) {
+  // On a dark zone (e.g. the sidebar) use a translucent card + light bars so the
+  // placeholder reads as part of the dark panel instead of a jarring white card.
   return (
-    <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-3 py-4">
-      <div className="h-2.5 w-24 rounded-full bg-zinc-200/80" />
-      <div className="mt-2 h-2.5 w-full max-w-[16rem] rounded-full bg-zinc-100" />
-      <p className="mt-3 text-xs text-zinc-400">
+    <div
+      className={cn(
+        'rounded-md border border-dashed px-3 py-4',
+        dark ? 'border-white/20 bg-white/5' : 'border-zinc-200 bg-zinc-50/70'
+      )}
+    >
+      <div className={cn('h-2.5 w-24 rounded-full', dark ? 'bg-white/25' : 'bg-zinc-200/80')} />
+      <div className={cn('mt-2 h-2.5 w-full max-w-[16rem] rounded-full', dark ? 'bg-white/15' : 'bg-zinc-100')} />
+      <p className={cn('mt-3 text-xs', dark ? 'text-white/70' : 'text-zinc-400')}>
         {lang === 'zh' ? '填写后会显示在这里' : 'Content will appear here'}
       </p>
     </div>
@@ -141,30 +148,60 @@ export function ModernTemplate({ resume, interactive, onReorderSections }: { res
     />
   );
 
+  const isZh = resume.language !== 'en';
+  // Full personal-info field list (matches classic), shown as plain "label: value"
+  // text lines — no icons — per the requested style.
+  const personalFields: [keyof PersonalInfoContent, string][] = [
+    ['age', isZh ? '年龄' : 'Age'],
+    ['gender', isZh ? '性别' : 'Gender'],
+    ['politicalStatus', isZh ? '政治面貌' : 'Political'],
+    ['ethnicity', isZh ? '民族' : 'Ethnicity'],
+    ['hometown', isZh ? '籍贯' : 'Hometown'],
+    ['maritalStatus', isZh ? '婚姻状况' : 'Marital'],
+    ['yearsOfExperience', isZh ? '工作年限' : 'Experience'],
+    ['educationLevel', isZh ? '学历' : 'Education'],
+    ['email', isZh ? '邮箱' : 'Email'],
+    ['phone', isZh ? '电话' : 'Phone'],
+    ['wechat', isZh ? '微信' : 'WeChat'],
+    ['location', isZh ? '所在地' : 'Location'],
+    ['website', isZh ? '网站' : 'Website'],
+    ['linkedin', isZh ? '领英' : 'LinkedIn'],
+    ['github', 'GitHub'],
+  ];
+
   return (
     <div className="mx-auto max-w-[210mm] bg-white shadow-lg">
       <div className="grid grid-cols-[35%_65%] gap-0">
-        {/* Left Sidebar - Personal Info + Skills/Languages */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 text-white">
-          {/* Avatar + Name */}
+        {/* Left Sidebar - Personal Info + Skills/Languages.
+            data-zone="dark" makes all text/headings inside render white (see
+            the dark-zone CSS in resume-preview) so nothing merges into the bg. */}
+        <div data-zone="dark" className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 text-white">
+          {/* Avatar + Name — avatar respects the configured style (circle / 1-inch)
+              so its shape & size match the photo instead of forcing a circle. */}
           <div {...(personalInfo ? getSectionProps(personalInfo.id) : {})} className="text-center">
             {pi.avatar && (
-              <div className="mx-auto mb-4 h-28 w-28 overflow-hidden rounded-full ring-4 ring-white/20">
-                <AvatarImage src={pi.avatar} size={112} avatarStyle="circle" />
-              </div>
+              <AvatarImage
+                src={pi.avatar}
+                size={100}
+                avatarStyle={resume.themeConfig?.avatarStyle}
+                className="mx-auto mb-4 block ring-4 ring-white/20"
+              />
             )}
             <h1 className="mb-1 text-2xl font-bold tracking-tight">{pi.fullName || 'Your Name'}</h1>
             {pi.jobTitle && <p className="text-sm font-medium text-slate-300">{pi.jobTitle}</p>}
           </div>
 
-          {/* Contact Info */}
-          <div className="mt-6 space-y-2 text-xs text-slate-300">
-            {pi.email && <div className="flex items-center gap-2"><span className="opacity-70">✉</span> {pi.email}</div>}
-            {pi.phone && <div className="flex items-center gap-2"><span className="opacity-70">☎</span> {pi.phone}</div>}
-            {pi.location && <div className="flex items-center gap-2"><span className="opacity-70">📍</span> {pi.location}</div>}
-            {pi.website && <div className="flex items-center gap-2"><span className="opacity-70">🌐</span> {pi.website}</div>}
-            {pi.linkedin && <div className="flex items-center gap-2"><span className="opacity-70">in</span> {pi.linkedin}</div>}
-            {pi.github && <div className="flex items-center gap-2"><span className="opacity-70">⚡</span> {pi.github}</div>}
+          {/* Personal info — plain text labels, no icons */}
+          <div className="mt-6 space-y-1.5 text-xs leading-relaxed text-slate-200">
+            {personalFields.map(([key, label]) => {
+              const val = pi[key] as string | undefined;
+              if (!val) return null;
+              return (
+                <div key={key} className="break-words">
+                  <span className="opacity-60">{label}{isZh ? '：' : ': '}</span>{val}
+                </div>
+              );
+            })}
           </div>
 
           {/* Left Sidebar Sections */}
@@ -222,7 +259,6 @@ function PreviewSection({
   };
 
   const content = section.content as any;
-  const pendingProposals = useProposalsStore((s) => s.proposals.filter((p) => p.afterSections.some((a) => a.id === section.id)));
 
   const sectionClasses = cn(
     'relative group',
@@ -248,8 +284,8 @@ function PreviewSection({
         {section.title}
       </h3>
 
-      {isSectionEmpty(section) && interactive ? (
-        <EmptySectionPlaceholder lang={lang} />
+      {!content || (isSectionEmpty(section) && interactive) ? (
+        <EmptySectionPlaceholder lang={lang} dark={compact} />
       ) : (
         <div className={compact ? "text-white/80 space-y-2" : "space-y-3"}>
           {section.type === 'summary' && (
@@ -355,7 +391,7 @@ function PreviewSection({
         </div>
       )}
 
-      {pendingProposals.length > 0 && <PreviewProposalOverlay sectionId={section.id} />}
+      {pendingChange && <PreviewProposalOverlay sectionId={section.id} />}
     </div>
   );
 

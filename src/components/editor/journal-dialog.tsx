@@ -26,7 +26,7 @@ interface JournalDialogProps {
   resumeId: string;
 }
 
-const STATUSES: ApplicationStatus[] = ['submitted', 'screening', 'interview', 'offer', 'rejected', 'declined', 'ghosted'];
+const STATUSES: ApplicationStatus[] = ['submitted', 'screening', 'interview', 'offer', 'rejected', 'ghosted'];
 const FORMATS: InterviewFormat[] = ['phone', 'video', 'onsite', 'take-home', 'other'];
 const OUTCOMES: OutcomeResult[] = ['offer', 'rejected', 'withdrew', 'ghosted'];
 

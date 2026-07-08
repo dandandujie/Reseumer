@@ -199,11 +199,8 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
       set({ isDirty: false });
     } catch (error) {
       console.error('Failed to save resume:', error);
-      // Import toast dynamically to avoid circular dependencies
-      import('sonner').then(({ toast }) => {
-        toast.error('保存失败', {
-          description: '简历保存失败，请检查网络连接后重试',
-        });
+      import('@/stores/error-log-store').then(({ logError }) => {
+        logError('保存失败', '简历保存失败，请检查网络连接后重试');
       });
     } finally {
       set({ isSaving: false });

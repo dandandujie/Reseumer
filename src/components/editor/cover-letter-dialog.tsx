@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
+import { logError } from '@/stores/error-log-store';
 import {
   Loader2,
   Mail,
@@ -71,7 +72,7 @@ export function CoverLetterDialog({ open, onOpenChange, resumeId }: CoverLetterD
       await navigator.clipboard.writeText(result);
       toast.success(t('copied'));
     } catch {
-      toast.error(t('copyFailed'));
+      logError(t('copyFailed'));
     }
   };
 

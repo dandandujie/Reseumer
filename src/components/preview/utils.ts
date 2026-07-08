@@ -39,6 +39,10 @@ export function degreeField(degree: string, field: string | undefined): string {
 
 export function isSectionEmpty(section: ResumeSection): boolean {
   const content = section.content as any;
+  // Defensive: a missing/null content object counts as empty (and must never
+  // reach the `'items' in content` / `content.text` checks below, which throw
+  // on null — that would white-screen the whole preview).
+  if (!content) return true;
 
   if (section.type === 'summary') {
     return !(content as SummaryContent).text;

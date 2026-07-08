@@ -1,6 +1,6 @@
 [package]
 name = "reseumer"
-version = "0.6.0"
+version = "0.6.1"
 description = "AI-powered resume builder"
 authors = ["liuchen"]
 edition = "2024"

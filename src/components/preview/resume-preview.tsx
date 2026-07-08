@@ -118,6 +118,29 @@ function buildThemeCSS(scopeId: string, theme: ThemeConfig): string {
     ${s} .bg-black h3:not([style*="color"]) {
       color: #ffffff !important;
     }` : ''}
+
+    /* ── Dark zones ──────────────────────────────────────────────
+       Any region a template marks with data-zone="dark" (e.g. a dark
+       sidebar / header band) renders its text WHITE, overriding the
+       theme's primary-color heading rules above (which would otherwise
+       make headings dark-on-dark and invisible). Declared last so it
+       wins on equal specificity. A nested data-zone="light" card opts
+       back into dark text (for light cards placed on a dark zone). */
+    ${s} [data-zone="dark"],
+    ${s} [data-zone="dark"] p, ${s} [data-zone="dark"] span, ${s} [data-zone="dark"] li,
+    ${s} [data-zone="dark"] a, ${s} [data-zone="dark"] strong, ${s} [data-zone="dark"] small,
+    ${s} [data-zone="dark"] h1, ${s} [data-zone="dark"] h2, ${s} [data-zone="dark"] h3 {
+      color: #ffffff !important;
+    }
+    ${s} [data-zone="dark"] h2 { border-color: rgba(255,255,255,0.35) !important; }
+    ${s} [data-zone="dark"] [data-zone="light"],
+    ${s} [data-zone="dark"] [data-zone="light"] p, ${s} [data-zone="dark"] [data-zone="light"] span,
+    ${s} [data-zone="dark"] [data-zone="light"] li, ${s} [data-zone="dark"] [data-zone="light"] a,
+    ${s} [data-zone="dark"] [data-zone="light"] strong, ${s} [data-zone="dark"] [data-zone="light"] small,
+    ${s} [data-zone="dark"] [data-zone="light"] h1, ${s} [data-zone="dark"] [data-zone="light"] h2,
+    ${s} [data-zone="dark"] [data-zone="light"] h3 {
+      color: #27272a !important;
+    }
   `;
 }
 

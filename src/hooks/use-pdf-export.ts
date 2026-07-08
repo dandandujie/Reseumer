@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { toast } from 'sonner';
+import { logError } from '@/stores/error-log-store';
 import i18n from '@/i18n';
 import * as api from '@/lib/tauri-api';
 import { generateHtml } from '@/lib/export/builders';
@@ -23,7 +23,7 @@ export function usePdfExport() {
       const description = raw.includes('CHROME_NOT_FOUND')
         ? i18n.t('export.chromeMissing')
         : raw.slice(0, 180);
-      toast.error(i18n.t('export.error'), { description });
+      logError(i18n.t('export.error'), description);
       console.error('Failed to export PDF:', error);
     } finally {
       setIsExporting(false);
