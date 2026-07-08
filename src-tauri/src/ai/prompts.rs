@@ -378,6 +378,75 @@ pub fn cover_letter_prompt(
     (system, prompt)
 }
 
+/// System prompt for the mock-interview assistant. Acts as a real interviewer
+/// for the target company/role, grounded in the candidate's resume + JD, and
+/// tunable via interview_directives written by the Global Agent.
+pub fn interview_system_prompt(
+    resume_context: &str,
+    company: &str,
+    role: &str,
+    jd: &str,
+    skill_index: &str,
+    interview_directives: &str,
+) -> String {
+    let company = if company.trim().is_empty() { "（未指定公司）" } else { company.trim() };
+    let role = if role.trim().is_empty() { "（未指定岗位）" } else { role.trim() };
+    let jd_block = if jd.trim().is_empty() {
+        "（未提供 JD——基于岗位常识与简历推断考察重点）".to_string()
+    } else {
+        jd.trim().chars().take(4000).collect()
+    };
+    let resume_block = if resume_context.trim().is_empty() {
+        "（暂无简历内容）".to_string()
+    } else {
+        resume_context.chars().take(6000).collect()
+    };
+    let directives_block = if interview_directives.trim().is_empty() {
+        "（暂无）".to_string()
+    } else {
+        interview_directives.trim().to_string()
+    };
+    let skill_block = if skill_index.trim().is_empty() {
+        "（暂无）".to_string()
+    } else {
+        skill_index.trim().to_string()
+    };
+
+    format!(
+        "你是 **{company}** 的资深面试官，正在面试候选人应聘 **{role}** 岗位。你要进行一场真实、专业、有压力但公平的模拟面试。\n\n\
+        ## 面试规则\n\
+        1. **一次只问一个问题**，等候选人回答后再追问或进入下一题，绝不一次抛一堆问题。\n\
+        2. 开场先用一两句话自我介绍（面试官身份）并说明本轮面试形式，然后问第一个问题。\n\
+        3. 问题要**结合候选人简历与 JD**：从简历里的具体项目/经历切入，深挖真实性、技术深度、决策取舍、量化结果；对照 JD 的硬性要求逐项考察。\n\
+        4. 候选人回答后，先给**简短点评**（答得好在哪、漏了什么），必要时**顺着回答追问**（STAR 深挖：具体做法、遇到的问题、你的贡献、结果数据）。\n\
+        5. 循序渐进：自我介绍 → 项目/经历深挖 → 岗位相关专业题 → 场景/行为题 → 反问环节。控制节奏，别跳步。\n\
+        6. 语气专业克制，可以有压力但不羞辱；不要替候选人编造经历，只基于其简历提问。\n\
+        7. 当候选人说\"结束/复盘/给我评价\"时，输出一份结构化面试反馈：亮点、短板、每个考察维度评分（1-5）、针对性提升建议。\n\n\
+        ## 候选人简历\n{resume_block}\n\n\
+        ## 目标岗位 JD\n{jd_block}\n\n\
+        ## 岗位画像 / 面试知识库（技能库，可参考）\n{skill_block}\n\n\
+        ## 面试官调优指令（Agent 下发，优先遵守）\n{directives_block}\n\n\
+        用简体中文进行面试。现在开始，输出你的开场与第一个问题。"
+    )
+}
+
+/// Exact `content` schema per section type, so the parser produces objects the
+/// editor can actually render (the #1 cause of "imported but nothing shows" was
+/// a vague `content: {...}` that never matched these shapes).
+pub fn resume_content_schema() -> &'static str {
+    "每个 section 的 content 必须严格采用下面对应类型的 JSON 形状（字段名完全一致、不要改名；每个数组项都要带一个唯一短 id 字符串；没有的字段可给空字符串或空数组，但不要漏掉数组结构）：\n\
+    - personal_info: { \"fullName\":\"\", \"jobTitle\":\"\", \"email\":\"\", \"phone\":\"\", \"location\":\"\", \"age\":\"\", \"gender\":\"\", \"yearsOfExperience\":\"\", \"educationLevel\":\"\", \"wechat\":\"\", \"website\":\"\", \"linkedin\":\"\", \"github\":\"\" }\n\
+    - summary: { \"text\":\"\" }\n\
+    - work_experience: { \"items\":[ { \"id\":\"\", \"company\":\"\", \"position\":\"\", \"location\":\"\", \"startDate\":\"YYYY.MM\", \"endDate\":\"YYYY.MM 或 null\", \"current\":false, \"description\":\"\", \"technologies\":[], \"highlights\":[\"逐条成就/职责，每条一句\"] } ] }\n\
+    - education: { \"items\":[ { \"id\":\"\", \"institution\":\"\", \"degree\":\"\", \"field\":\"专业\", \"location\":\"\", \"startDate\":\"YYYY.MM\", \"endDate\":\"YYYY.MM\", \"gpa\":\"\", \"highlights\":[] } ] }\n\
+    - skills: { \"categories\":[ { \"id\":\"\", \"name\":\"分类名\", \"skills\":[\"技能\"] } ] }\n\
+    - projects: { \"items\":[ { \"id\":\"\", \"name\":\"\", \"url\":\"\", \"startDate\":\"\", \"endDate\":\"\", \"description\":\"\", \"technologies\":[], \"highlights\":[] } ] }\n\
+    - certifications: { \"items\":[ { \"id\":\"\", \"name\":\"\", \"issuer\":\"\", \"date\":\"\", \"url\":\"\" } ] }\n\
+    - languages: { \"items\":[ { \"id\":\"\", \"language\":\"\", \"proficiency\":\"如 母语/流利/CET-6\", \"description\":\"\" } ] }\n\
+    - custom: { \"items\":[ { \"id\":\"\", \"title\":\"\", \"subtitle\":\"\", \"date\":\"\", \"description\":\"\" } ] }\n\
+    拆分规则：原文里每一段工作/教育/项目都拆成对应数组里的**独立项**，绝不合并；描述性的成就与职责**逐条**放进 highlights 数组（而不是塞进一个大段落）；技能按类别归入 skills.categories；只有实在无法归类的内容才用 custom。"
+}
+
 pub fn parse_resume_prompt(extracted_text: &str, language: &str) -> (String, String) {
     let lang_name = if language == "zh" { "Simplified Chinese" } else { "English" };
     let system = format!(
@@ -389,8 +458,10 @@ pub fn parse_resume_prompt(extracted_text: &str, language: &str) -> (String, Str
         - If the text is garbled or clearly not a resume, still return valid JSON with whatever fields are recoverable\n\
         CRITICAL: Return a single valid JSON object. No markdown, no code fences.\n\
         Structure: {{ \"title\": \"\", \"sections\": [{{\"type\": \"\", \"title\": \"\", \"content\": {{...}}}}] }}\n\
-        Section types: personal_info, summary, work_experience, education, skills, projects, certifications, languages, custom.",
-        lang_name
+        Section types: personal_info, summary, work_experience, education, skills, projects, certifications, languages, custom.\n\n\
+        {}",
+        lang_name,
+        resume_content_schema()
     );
     let prompt = format!("Resume text:\n{}\n\nParse into structured JSON.", extracted_text);
     (system, prompt)

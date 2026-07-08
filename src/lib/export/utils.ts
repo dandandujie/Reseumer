@@ -1,4 +1,4 @@
-import { DEFAULT_THEME_FONT_SIZE, resolveCssFontScale, resolveThemeFontStack } from '@/lib/theme-config';
+import { DEFAULT_THEME_FONT_SIZE, resolveCssFontScale, resolveExportFontStack } from '@/lib/theme-config';
 import type {
   PersonalInfoContent,
   SkillsContent,
@@ -114,7 +114,7 @@ export const DEFAULT_THEME = {
   fontSize: DEFAULT_THEME_FONT_SIZE,
   lineSpacing: 1.5,
   margin: { top: 20, right: 20, bottom: 20, left: 20 },
-  sectionSpacing: 16,
+  sectionSpacing: 8,
   avatarStyle: 'oneInch' as const,
 };
 
@@ -133,7 +133,7 @@ export function buildExportThemeCSS(theme: typeof DEFAULT_THEME): string {
   const primaryIsDark = isDark(theme.primaryColor);
   return `
     ${sel} > div {
-      font-family: ${resolveThemeFontStack(theme.fontFamily)} !important;
+      font-family: ${resolveExportFontStack(theme.fontFamily)} !important;
       line-height: ${theme.lineSpacing} !important;
       padding-top: ${m.top}px !important;
       padding-right: ${m.right}px !important;

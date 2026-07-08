@@ -178,6 +178,7 @@ pub async fn ai_chat(
 
     let mut ordered_parts: Vec<Value> = Vec::new();
     let mut final_text = String::new();
+    let mut usage_total = crate::ai::stream::Usage::default();
 
     // Tool-calling loop
     for _step in 0..MAX_STEPS {
@@ -205,6 +206,8 @@ pub async fn ai_chat(
                 return Err(CommandError { message: msg });
             }
         };
+
+        usage_total.add(&res.usage);
 
         if !res.text.is_empty() {
             ordered_parts.push(json!({ "type": "text", "text": res.text }));
@@ -394,5 +397,10 @@ pub async fn ai_chat(
     Ok(json!({
         "text": final_text,
         "orderedParts": ordered_parts,
+        "usage": {
+            "promptTokens": usage_total.prompt_tokens,
+            "completionTokens": usage_total.completion_tokens,
+            "totalTokens": usage_total.total_tokens,
+        },
     }))
 }

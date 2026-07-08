@@ -5,6 +5,7 @@ pub mod browser;
 pub mod chat;
 pub mod export;
 pub mod global_agent;
+pub mod interview;
 
 use serde::Serialize;
 

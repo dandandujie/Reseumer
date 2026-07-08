@@ -6,11 +6,13 @@ import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { useResumeStore } from '@/stores/resume-store';
+import { useEditorStore } from '@/stores/editor-store';
 import { calculateOptimalFit } from '@/lib/pretext-classic-estimate';
 
 export function SmartFitButton() {
   const t = useTranslations('editor');
   const { currentResume, sections, updateThemeConfig } = useResumeStore();
+  const pushSnapshot = useEditorStore((s) => s.pushSnapshot);
   const [isCalculating, setIsCalculating] = useState(false);
 
   const handleSmartFit = async () => {
@@ -27,6 +29,9 @@ export function SmartFitButton() {
       const optimalTheme = calculateOptimalFit(pretext, liveResume);
 
       if (optimalTheme) {
+        // Snapshot the pre-layout state (sections + current theme) so this
+        // smart-layout change can be reverted with undo/redo.
+        pushSnapshot(sections);
         updateThemeConfig(optimalTheme);
         toast.success(t('toolbar.smartFitSuccess') || '已为您智能排版至单页最优状态');
       } else {

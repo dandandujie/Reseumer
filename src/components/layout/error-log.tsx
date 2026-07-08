@@ -1,0 +1,89 @@
+'use client';
+
+import { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { AlertOctagon, ChevronDown, ChevronUp, Trash2, X } from 'lucide-react';
+import { useErrorLogStore } from '@/stores/error-log-store';
+import { cn } from '@/lib/utils';
+
+function formatTime(ts: number) {
+  const d = new Date(ts);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+/** Bottom-left dismissible error log — replaces stuck toasts. Renders nothing when empty. */
+export function ErrorLog() {
+  const errors = useErrorLogStore((s) => s.errors);
+  const dismiss = useErrorLogStore((s) => s.dismiss);
+  const clear = useErrorLogStore((s) => s.clear);
+  const [collapsed, setCollapsed] = useState(false);
+  const t = useTranslations('common');
+
+  if (errors.length === 0) return null;
+
+  return (
+    <div className="fixed bottom-3 left-3 z-[100] w-80 max-w-[calc(100vw-1.5rem)]">
+      <div className="overflow-hidden rounded-xl border border-[var(--whale-divider)] bg-[var(--whale-card)] shadow-[0_10px_40px_-12px_rgba(28,26,23,0.4)]">
+        <div className="flex items-center gap-2 border-b border-[var(--whale-divider)] px-3 py-2">
+          <AlertOctagon className="h-3.5 w-3.5 shrink-0 text-red-500" />
+          <span className="text-[12px] font-semibold text-[var(--whale-ink)]">
+            {t('errorLogTitle')} · {errors.length}
+          </span>
+          <div className="ml-auto flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => setCollapsed((c) => !c)}
+              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-[var(--whale-ink-muted)] hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)]"
+              title={collapsed ? t('expand') : t('collapse')}
+            >
+              {collapsed ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
+            <button
+              type="button"
+              onClick={clear}
+              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-[var(--whale-ink-muted)] hover:bg-[var(--whale-cream-deep)] hover:text-red-500"
+              title={t('clearAll')}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+        {!collapsed && (
+          <div className="max-h-64 overflow-y-auto">
+            {errors.map((e) => (
+              <div
+                key={e.id}
+                className={cn(
+                  'group flex gap-2 border-b border-[var(--whale-divider)] px-3 py-2 last:border-b-0'
+                )}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[12px] font-medium text-[var(--whale-ink)]">{e.title}</span>
+                    <span className="ml-auto shrink-0 text-[10px] tabular-nums text-[var(--whale-ink-muted)]">
+                      {formatTime(e.time)}
+                    </span>
+                  </div>
+                  {e.detail && (
+                    <p className="mt-0.5 whitespace-pre-wrap break-words text-[11px] leading-snug text-[var(--whale-ink-muted)]">
+                      {e.detail}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => dismiss(e.id)}
+                  className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-[var(--whale-ink-muted)] hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)]"
+                  aria-label={t('close')}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

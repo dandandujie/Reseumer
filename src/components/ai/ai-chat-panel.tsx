@@ -5,11 +5,14 @@ import { useTranslations } from 'next-intl';
 import { X, Sparkles, Plus, Trash2, Clock, MessageSquare } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { logError } from '@/stores/error-log-store';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useEditorStore } from '@/stores/editor-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useUIStore } from '@/stores/ui-store';
 import { useAIChat } from '@/hooks/use-ai-chat';
+import { useWebSearchMode } from '@/hooks/use-web-search-mode';
 import { useMessagePagination } from '@/hooks/use-message-pagination';
 import { AIMessage } from './ai-message';
 import { AIInput } from './ai-input';
@@ -49,6 +52,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
   const [providerOptions, setProviderOptions] = useState<AIProviderOption[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<AIProviderId | undefined>();
   const [selectedModel, setSelectedModel] = useState<string | undefined>();
+  const [webSearchMode, setWebSearchMode] = useWebSearchMode('project');
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
 
@@ -64,11 +68,31 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
   const settingsProvider = useSettingsStore((s) => s.aiProvider);
   const settingsBaseURL = useSettingsStore((s) => s.aiBaseURL);
   const settingsApiKey = useSettingsStore((s) => s.aiApiKey);
+  const channels = useSettingsStore((s) => s.channels);
+  const activeChannelId = useSettingsStore((s) => s.activeChannelId);
+  const selectChannel = useSettingsStore((s) => s.selectChannel);
+  const openSettings = useUIStore((s) => s.openModal);
   const hydrated = useSettingsStore((s) => s._hydrated);
 
   const effectiveProvider = selectedProvider || settingsProvider;
   const effectiveProviderOption = providerOptions.find((provider) => provider.id === effectiveProvider);
   const effectiveModel = selectedModel || effectiveProviderOption?.model || settingsModel;
+
+  // Restrict the picker to the active channel's shortlist (only when following
+  // settings; a manual provider override shows all fetched models). Empty = all.
+  const activeChannel = channels.find((c) => c.id === activeChannelId);
+  const shortlist = !selectedProvider ? activeChannel?.models ?? [] : [];
+  // A configured channel with no shortlist → prompt the user to set one up.
+  const needsModelSetup = !!activeChannel && !!activeChannel.apiKey.trim() && shortlist.length === 0;
+  const shownModels = useMemo(() => {
+    if (!shortlist.length) return [];
+    const allowed = new Set(shortlist);
+    const filtered = models.filter((m) => allowed.has(m));
+    const base = filtered.length ? filtered : shortlist;
+    if (effectiveModel && !base.includes(effectiveModel)) return [effectiveModel, ...base];
+    return base;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [models, shortlist.join('|'), effectiveModel]);
 
   useEffect(() => {
     if (hydrated) {
@@ -170,13 +194,58 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     }
   }, [activeSessionId, sessions, loadInitial, createNewSession]);
 
-  const { messages: chatMessages, input, handleInputChange, handleSubmit: originalHandleSubmit, isLoading, status, error: chatError, sendMessage, stop } = useAIChat({
+  const { messages: chatMessages, input, setInput, handleInputChange, handleSubmit: originalHandleSubmit, isLoading, status, error: chatError, sendMessage, stop } = useAIChat({
     resumeId,
     sessionId: activeSessionId,
     initialMessages,
     selectedProvider,
     selectedModel,
+    webSearchMode,
   });
+
+  // Message actions — edit-resend / rollback / regenerate (same as global agent).
+  const handleRollback = useCallback(
+    async (messageId: string) => {
+      if (!activeSessionId) return;
+      try {
+        const api = await import('@/lib/tauri-api');
+        await api.truncateChatMessages(activeSessionId, messageId);
+        const msgs = await loadInitial(activeSessionId);
+        setInitialMessages(msgs);
+      } catch (err: any) {
+        logError(t('errorMessage'), err?.message || String(err));
+      }
+    },
+    [activeSessionId, loadInitial, t]
+  );
+
+  const handleEditResend = useCallback(
+    (messageId: string, text: string) => {
+      void handleRollback(messageId).then(() => setInput(text));
+    },
+    [handleRollback, setInput]
+  );
+
+  const handleRegenerate = useCallback(
+    (assistantMessageId: string) => {
+      const list = chatMessages;
+      const idx = list.findIndex((m) => m.id === assistantMessageId);
+      if (idx <= 0) return;
+      // Find the user message right before this assistant reply.
+      let userIdx = idx - 1;
+      while (userIdx >= 0 && list[userIdx].role !== 'user') userIdx -= 1;
+      if (userIdx < 0) return;
+      const userMsg = list[userIdx];
+      const text = (userMsg.parts || [])
+        .filter((p: any) => p.type === 'text')
+        .map((p: any) => p.text)
+        .join('');
+      void handleRollback(userMsg.id).then(() => {
+        if (text.trim()) sendMessage({ text });
+      });
+    },
+    [chatMessages, handleRollback, sendMessage]
+  );
 
   // Show toast when AI API call fails
   const lastErrorRef = useRef<Error | null>(null);
@@ -184,13 +253,13 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     if (chatError && chatError !== lastErrorRef.current) {
       lastErrorRef.current = chatError;
       const msg = chatError.message || t('errorMessage');
-      // Show a user-friendly message for common errors
+      // Route to the bottom-left error log (with a friendlier hint for common cases).
       if (msg.includes('ETIMEDOUT') || msg.includes('Cannot connect')) {
-        toast.error(t('errorMessage'), { description: 'API 连接超时，请检查网络或 API 配置' });
+        logError(t('errorMessage'), 'API 连接超时，请检查网络或 API 配置');
       } else if (msg.includes('No tool call found')) {
-        toast.error(t('errorMessage'), { description: 'AI 模型返回了无效的工具调用，请重试' });
+        logError(t('errorMessage'), 'AI 模型返回了无效的工具调用，请重试');
       } else {
-        toast.error(t('errorMessage'), { description: msg.length > 200 ? msg.slice(0, 200) + '...' : msg });
+        logError(t('errorMessage'), msg);
       }
     }
   }, [chatError, t]);
@@ -359,6 +428,9 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
                 message.role === 'assistant' &&
                 i === displayMessages.length - 1
               }
+              onEditResend={handleEditResend}
+              onRollback={handleRollback}
+              onRegenerate={handleRegenerate}
             />
           ))}
           {status === 'submitted' && (
@@ -384,17 +456,20 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
         onChange={handleInputChange}
         onSubmit={handleSubmit}
         isLoading={isLoading}
-        models={models}
-        providers={providerOptions}
-        selectedProvider={selectedProvider}
-        effectiveProvider={effectiveProvider as AIProviderId}
-        onProviderChange={(provider) => {
-          setSelectedProvider(provider);
+        models={shownModels}
+        channels={channels}
+        activeChannelId={activeChannelId}
+        needsModelSetup={needsModelSetup}
+        onSelectChannel={(id) => {
+          selectChannel(id);
           setSelectedModel(undefined);
         }}
+        onOpenSettings={() => openSettings('settings')}
         selectedModel={selectedModel}
         effectiveModel={effectiveModel}
         onModelChange={setSelectedModel}
+        webSearchMode={webSearchMode}
+        onWebSearchModeChange={setWebSearchMode}
         onStop={stop}
       />
     </>

@@ -105,13 +105,14 @@ function StatsPanel({ resumes, onOpen }: { resumes: Resume[]; onOpen: () => void
   const t = useTranslations('dashboard');
   const tJournal = useTranslations('journal');
   const hydrate = useJournalStore((s) => s.hydrate);
-  const byResume = useJournalStore((s) => s.byResume);
+  const applications = useJournalStore((s) => s.applications);
+  const mocks = useJournalStore((s) => s.mocks);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
 
-  const agg = useMemo(() => aggregateJournal(byResume), [byResume]);
+  const agg = useMemo(() => aggregateJournal(applications, mocks), [applications, mocks]);
   const resumeCount = resumes.length;
   const hasJournalData =
     agg.totalApplications + agg.totalInterviews + agg.totalOutcomes > 0;

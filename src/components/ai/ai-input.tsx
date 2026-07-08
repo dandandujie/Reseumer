@@ -1,10 +1,10 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { SendHorizonal, ServerCog, Square } from 'lucide-react';
+import { SendHorizonal, ServerCog, Square, Globe, Settings2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { FormEvent, ChangeEvent } from 'react';
-import type { AIProviderId, AIProviderOption } from '@/lib/tauri-api';
+import type { AIChannel, WebSearchMode } from '@/stores/settings-store';
 
 interface AIInputProps {
   input: string;
@@ -12,18 +12,24 @@ interface AIInputProps {
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
   isLoading: boolean;
   models: string[];
-  providers?: AIProviderOption[];
-  selectedProvider?: AIProviderId;
-  effectiveProvider?: AIProviderId;
-  onProviderChange?: (provider: AIProviderId | undefined) => void;
+  /** Channel selection (replaces the old provider dropdown). */
+  channels?: AIChannel[];
+  activeChannelId?: string | null;
+  /** Active channel is configured but has no shortlist → prompt to set one. */
+  needsModelSetup?: boolean;
+  onSelectChannel?: (id: string) => void;
+  onOpenSettings?: () => void;
   selectedModel?: string;
   effectiveModel?: string;
   onModelChange: (model: string) => void;
+  /** Per-surface web-search toggle (independent of Settings). */
+  webSearchMode?: WebSearchMode;
+  onWebSearchModeChange?: (mode: WebSearchMode) => void;
   /** Shown instead of send while generating — cooperative cancel. */
   onStop?: () => void;
 }
 
-const DEFAULT_PROVIDER_VALUE = '__settings_default__';
+const WEB_SEARCH_MODES: WebSearchMode[] = ['off', 'native', 'free', 'bing', 'google', 'baidu', 'tavily', 'grok'];
 
 export function AIInput({
   input,
@@ -31,18 +37,23 @@ export function AIInput({
   onSubmit,
   isLoading,
   models,
-  providers = [],
-  selectedProvider,
-  effectiveProvider,
-  onProviderChange,
+  channels = [],
+  activeChannelId,
+  needsModelSetup,
+  onSelectChannel,
+  onOpenSettings,
   selectedModel,
   effectiveModel,
   onModelChange,
+  webSearchMode,
+  onWebSearchModeChange,
   onStop,
 }: AIInputProps) {
   const t = useTranslations('ai');
-  const activeProvider = providers.find((provider) => provider.id === effectiveProvider);
-  const providerValue = selectedProvider || DEFAULT_PROVIDER_VALUE;
+  const tw = useTranslations('settings.webSearch');
+  const isConfigured = (c: AIChannel) => !!c.apiKey.trim() && !!c.baseURL.trim();
+  const hasConfiguredChannel = channels.some(isConfigured);
+  const activeChannel = channels.find((c) => c.id === activeChannelId);
   const modelValue = selectedModel || effectiveModel || undefined;
 
   return (
@@ -67,53 +78,97 @@ export function AIInput({
         {/* Bottom toolbar */}
         <div className="flex items-center justify-between gap-2 px-3 pb-2.5">
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
-            {onProviderChange && providers.length > 0 && (
-              <Select
-                value={providerValue}
-                onValueChange={(value) => {
-                  onProviderChange(value === DEFAULT_PROVIDER_VALUE ? undefined : (value as AIProviderId));
-                }}
+            {onSelectChannel && (
+              hasConfiguredChannel ? (
+                <Select
+                  value={activeChannelId ?? undefined}
+                  onValueChange={(value) => {
+                    if (value === '__channel_settings__') onOpenSettings?.();
+                    else onSelectChannel(value);
+                  }}
+                >
+                  <SelectTrigger className="h-7 max-w-[160px] gap-1 rounded-full border-[var(--whale-divider)] bg-[var(--whale-card)] px-2.5 text-[11px] font-medium text-[var(--whale-ink-soft)] shadow-none hover:bg-[var(--whale-cream-soft)]">
+                    <ServerCog className="h-3 w-3 shrink-0 text-[var(--whale-ink-muted)]" />
+                    <SelectValue>{activeChannel?.name || t('selectChannel')}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {channels.filter(isConfigured).map((c) => (
+                      <SelectItem key={c.id} value={c.id} className="text-xs">
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="__channel_settings__" className="text-xs">
+                      {t('channelSettingsEntry')}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onOpenSettings?.()}
+                  className="flex h-7 shrink-0 items-center gap-1 rounded-full border border-dashed border-[var(--whale-ink)]/30 bg-[var(--whale-card)] px-2.5 text-[11px] font-medium text-[var(--whale-ink-soft)] hover:bg-[var(--whale-cream-soft)]"
+                >
+                  <Settings2 className="h-3 w-3 shrink-0 text-[var(--whale-ink-muted)]" />
+                  <span>{t('needChannelSetup')}</span>
+                </button>
+              )
+            )}
+
+            {needsModelSetup ? (
+              <button
+                type="button"
+                onClick={() => onOpenSettings?.()}
+                className="flex h-7 shrink-0 items-center gap-1 rounded-full border border-dashed border-[var(--whale-ink)]/30 bg-[var(--whale-card)] px-2.5 text-[11px] font-medium text-[var(--whale-ink-soft)] hover:bg-[var(--whale-cream-soft)]"
               >
-                <SelectTrigger className="h-7 max-w-[150px] gap-1 rounded-full border-[var(--whale-divider)] bg-[var(--whale-card)] px-2.5 text-[11px] font-medium text-[var(--whale-ink-soft)] shadow-none hover:bg-[var(--whale-cream-soft)]">
-                  <ServerCog className="h-3 w-3 shrink-0 text-[var(--whale-ink-muted)]" />
+                <Settings2 className="h-3 w-3 shrink-0 text-[var(--whale-ink-muted)]" />
+                <span>{t('needModelSetup')}</span>
+              </button>
+            ) : (
+              <Select value={modelValue} onValueChange={onModelChange}>
+                <SelectTrigger className="h-7 max-w-[190px] gap-1 rounded-full border-[var(--whale-divider)] bg-[var(--whale-card)] px-2.5 text-[11px] font-medium text-[var(--whale-ink-soft)] shadow-none hover:bg-[var(--whale-cream-soft)]">
+                  <span className="mr-0.5 inline-block h-1.5 w-1.5 rounded-full bg-[var(--whale-ink-muted)]" />
+                  <SelectValue placeholder={t('model')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((id) => (
+                    <SelectItem key={id} value={id} className="text-xs">
+                      {id}
+                    </SelectItem>
+                  ))}
+                  {modelValue && !models.includes(modelValue) && (
+                    <SelectItem value={modelValue} className="text-xs">
+                      {modelValue}
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+
+            {onWebSearchModeChange && (
+              <Select
+                value={webSearchMode || 'off'}
+                onValueChange={(value) => onWebSearchModeChange(value as WebSearchMode)}
+              >
+                <SelectTrigger
+                  title={tw('title')}
+                  className={`h-7 max-w-[130px] gap-1 rounded-full border-[var(--whale-divider)] px-2.5 text-[11px] font-medium shadow-none hover:bg-[var(--whale-cream-soft)] ${
+                    webSearchMode && webSearchMode !== 'off'
+                      ? 'bg-[var(--whale-ink)]/8 text-[var(--whale-ink-soft)]'
+                      : 'bg-[var(--whale-card)] text-[var(--whale-ink-muted)]'
+                  }`}
+                >
+                  <Globe className="h-3 w-3 shrink-0" />
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={DEFAULT_PROVIDER_VALUE} className="text-xs">
-                    {t('followSettings')} · {activeProvider?.label || t('service')}
-                  </SelectItem>
-                  {providers.map((provider) => (
-                    <SelectItem
-                      key={provider.id}
-                      value={provider.id}
-                      disabled={!provider.configured}
-                      className="text-xs"
-                    >
-                      {provider.label}{provider.configured ? '' : ` · ${t('notConfigured')}`}
+                  {WEB_SEARCH_MODES.map((mode) => (
+                    <SelectItem key={mode} value={mode} className="text-xs">
+                      {tw(`tag.${mode}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
-
-            <Select value={modelValue} onValueChange={onModelChange}>
-              <SelectTrigger className="h-7 max-w-[190px] gap-1 rounded-full border-[var(--whale-divider)] bg-[var(--whale-card)] px-2.5 text-[11px] font-medium text-[var(--whale-ink-soft)] shadow-none hover:bg-[var(--whale-cream-soft)]">
-                <span className="mr-0.5 inline-block h-1.5 w-1.5 rounded-full bg-[var(--whale-ink-muted)]" />
-                <SelectValue placeholder={t('model')} />
-              </SelectTrigger>
-              <SelectContent>
-                {models.map((id) => (
-                  <SelectItem key={id} value={id} className="text-xs">
-                    {id}
-                  </SelectItem>
-                ))}
-                {modelValue && !models.includes(modelValue) && (
-                  <SelectItem value={modelValue} className="text-xs">
-                    {modelValue}
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Send / Stop button */}

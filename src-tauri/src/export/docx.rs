@@ -1,6 +1,30 @@
-use docx_rs::{Docx, Paragraph, Run, RunFonts, LineSpacing, AlignmentType};
+use docx_rs::{Docx, Paragraph, Run, RunFonts, LineSpacing, AlignmentType, PageMargin};
 use serde_json::Value;
 use std::path::Path;
+
+// A4 page in twips (1/1440 inch): 210mm x 297mm. Set explicitly so Microsoft
+// Office (which defaults to US Letter) and WPS (which defaults to A4) produce
+// an identical page — otherwise the same .docx paginates differently in each.
+const A4_W: u32 = 11906;
+const A4_H: u32 = 16838;
+const MARGIN: i32 = 1440; // 1 inch, the value both Office and WPS treat as default
+
+/// RunFonts applied to EVERY run. Setting ascii/hi_ansi (Latin) AND east_asia
+/// (CJK) plus hint="eastAsia" makes both Office and WPS render Chinese with
+/// SimSun and Latin with Arial; relying on doc defaults alone leaves some
+/// WPS/Office versions rendering CJK in the Latin font (□□□ / wrong glyphs).
+fn fonts() -> RunFonts {
+    RunFonts::new()
+        .ascii("Arial")
+        .hi_ansi("Arial")
+        .east_asia("SimSun")
+        .hint("eastAsia")
+}
+
+/// A run pre-populated with the compatibility fonts + size.
+fn run(text: &str, size: usize) -> Run {
+    Run::new().fonts(fonts()).add_text(text).size(size)
+}
 
 fn gstr<'a>(v: &'a Value, key: &str) -> &'a str {
     v.get(key).and_then(|x| x.as_str()).unwrap_or("")
@@ -18,34 +42,36 @@ fn garr_str(v: &Value, key: &str) -> Vec<String> {
 
 fn heading(text: &str) -> Paragraph {
     Paragraph::new()
-        .add_run(Run::new().add_text(text).size(28).bold())
+        .add_run(run(text, 28).bold())
         .line_spacing(LineSpacing::new().before(120).after(60))
 }
 
 fn subheading(text: &str) -> Paragraph {
     Paragraph::new()
-        .add_run(Run::new().add_text(text).size(24).bold())
+        .add_run(run(text, 24).bold())
         .line_spacing(LineSpacing::new().before(60).after(40))
 }
 
 fn para(text: &str) -> Paragraph {
-    Paragraph::new().add_run(Run::new().add_text(text).size(20))
+    Paragraph::new().add_run(run(text, 20))
 }
 
 fn bullet(text: &str) -> Paragraph {
-    Paragraph::new().add_run(Run::new().add_text(format!("• {}", text)).size(20))
+    Paragraph::new().add_run(run(&format!("• {}", text), 20))
 }
 
 pub fn generate_docx(resume_title: &str, sections: &[Value], output_path: &Path) -> Result<(), String> {
     let mut docx = Docx::new()
-        .default_fonts(RunFonts::new().ascii("Arial").east_asia("SimSun"))
-        .default_size(20);
+        .default_fonts(fonts())
+        .default_size(20)
+        .page_size(A4_W, A4_H)
+        .page_margin(PageMargin::new().top(MARGIN).bottom(MARGIN).left(MARGIN).right(MARGIN));
 
     // Add title
     docx = docx.add_paragraph(
         Paragraph::new()
             .align(AlignmentType::Center)
-            .add_run(Run::new().add_text(resume_title).size(36).bold())
+            .add_run(run(resume_title, 36).bold())
     );
 
     for section in sections {
@@ -61,13 +87,13 @@ pub fn generate_docx(resume_title: &str, sections: &[Value], output_path: &Path)
                 if !name.is_empty() {
                     docx = docx.add_paragraph(
                         Paragraph::new().align(AlignmentType::Center)
-                            .add_run(Run::new().add_text(name).size(32).bold())
+                            .add_run(run(name, 32).bold())
                     );
                 }
                 if !job.is_empty() {
                     docx = docx.add_paragraph(
                         Paragraph::new().align(AlignmentType::Center)
-                            .add_run(Run::new().add_text(job).size(24).italic())
+                            .add_run(run(job, 24).italic())
                     );
                 }
                 let contact_keys = ["email", "phone", "location", "website"];
@@ -80,7 +106,7 @@ pub fn generate_docx(resume_title: &str, sections: &[Value], output_path: &Path)
                 if !parts.is_empty() {
                     docx = docx.add_paragraph(
                         Paragraph::new().align(AlignmentType::Center)
-                            .add_run(Run::new().add_text(parts.join(" | ")).size(20))
+                            .add_run(run(&parts.join(" | "), 20))
                     );
                 }
             }
@@ -205,4 +231,26 @@ pub fn generate_docx(resume_title: &str, sections: &[Value], output_path: &Path)
         .map_err(|e| format!("Failed to create file: {}", e))?;
     docx.build().pack(file).map_err(|e| format!("Failed to build DOCX: {}", e))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn generates_valid_docx_with_cjk() {
+        let sections = vec![
+            json!({"type":"personal_info","visible":true,"title":"","content":{
+                "fullName":"张三","jobTitle":"软件工程师","email":"a@b.com","phone":"13800000000"}}),
+            json!({"type":"work_experience","visible":true,"title":"工作经历","content":{"items":[
+                {"position":"后端工程师","company":"某科技公司","startDate":"2020","current":true,
+                 "description":"负责分布式系统开发。","highlights":["优化性能 30%","主导架构升级"]}]}}),
+        ];
+        let out = std::env::temp_dir().join("reseumer-docx-test.docx");
+        generate_docx("测试简历 Resume", &sections, &out).expect("generate_docx failed");
+        assert!(out.exists());
+        // A valid .docx is a non-trivial zip.
+        assert!(std::fs::metadata(&out).unwrap().len() > 500);
+    }
 }

@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/routing';
-import { ArrowLeft, Undo2, Redo2, Download, Upload, Settings, Palette, Save, Languages, SpellCheck, BookOpenCheck, MoreHorizontal, PenLine } from 'lucide-react';
+import { ArrowLeft, Undo2, Redo2, Download, Upload, Settings, Palette, Save, Languages, SpellCheck, BookOpenCheck, MoreHorizontal, PenLine, SlidersHorizontal, MessagesSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,6 +11,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
 import { useEditorStore } from '@/stores/editor-store';
 import { useResumeStore } from '@/stores/resume-store';
 import { useUIStore } from '@/stores/ui-store';
@@ -19,11 +24,28 @@ import { cn } from '@/lib/utils';
 
 export function EditorToolbar() {
   const t = useTranslations('editor.toolbar');
+  const tp = useTranslations('settings.editorTab');
   const router = useRouter();
   const { toggleThemeEditor, showThemeEditor, undo, redo, undoStack, redoStack } = useEditorStore();
-  const { isSaving, isDirty, currentResume, reorderSections, flushPendingSave } = useResumeStore();
+  const { isSaving, isDirty, currentResume, reorderSections, updateThemeConfig, flushPendingSave, setTitle } = useResumeStore();
   const { openModal } = useUIStore();
   const autoSave = useSettingsStore((s) => s.autoSave);
+  const autoSaveInterval = useSettingsStore((s) => s.autoSaveInterval);
+  const setAutoSave = useSettingsStore((s) => s.setAutoSave);
+  const setAutoSaveInterval = useSettingsStore((s) => s.setAutoSaveInterval);
+
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+
+  const startRename = () => {
+    setTitleDraft(currentResume?.title || '');
+    setEditingTitle(true);
+  };
+  const commitTitle = () => {
+    const v = titleDraft.trim();
+    if (v && v !== currentResume?.title) setTitle(v);
+    setEditingTitle(false);
+  };
 
   const handleBack = async () => {
     await flushPendingSave();
@@ -34,6 +56,7 @@ export function EditorToolbar() {
     const snapshot = undo(useResumeStore.getState().sections);
     if (snapshot) {
       reorderSections(snapshot.sections);
+      if (snapshot.themeConfig) updateThemeConfig(snapshot.themeConfig);
     }
   };
 
@@ -41,6 +64,7 @@ export function EditorToolbar() {
     const snapshot = redo(useResumeStore.getState().sections);
     if (snapshot) {
       reorderSections(snapshot.sections);
+      if (snapshot.themeConfig) updateThemeConfig(snapshot.themeConfig);
     }
   };
 
@@ -59,12 +83,70 @@ export function EditorToolbar() {
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <span className="min-w-0 max-w-[8rem] truncate text-sm font-semibold text-[var(--whale-ink)] sm:max-w-48">
-          {currentResume?.title || ''}
-        </span>
+        {editingTitle ? (
+          <input
+            autoFocus
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitTitle();
+              else if (e.key === 'Escape') setEditingTitle(false);
+            }}
+            className="min-w-0 max-w-[8rem] rounded border border-[var(--whale-ink)]/30 bg-[var(--whale-card)] px-1.5 py-0.5 text-sm font-semibold text-[var(--whale-ink)] outline-none focus:border-[var(--whale-ink)]/50 sm:max-w-48"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={startRename}
+            title={t('rename')}
+            className="group flex min-w-0 items-center gap-1 rounded px-1 py-0.5 hover:bg-[var(--whale-cream-deep)]"
+          >
+            <span className="min-w-0 max-w-[8rem] truncate text-sm font-semibold text-[var(--whale-ink)] sm:max-w-48">
+              {currentResume?.title || ''}
+            </span>
+            <PenLine className="h-3 w-3 shrink-0 text-[var(--whale-ink-muted)] opacity-0 transition-opacity group-hover:opacity-100" />
+          </button>
+        )}
         <span className="hidden text-xs text-[var(--whale-ink-muted)] sm:inline">
           {isSaving ? t('saving') : isDirty ? t('unsaved') : autoSave ? t('autoSaved') : ''}
         </span>
+        {/* Editor preferences (auto-save) */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0 cursor-pointer text-[var(--whale-ink-muted)] hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)]"
+              title={t('editorPrefs')}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-64 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-[13px]">{tp('autoSave')}</Label>
+                <p className="text-xs text-muted-foreground">{tp('autoSaveDescription')}</p>
+              </div>
+              <Switch checked={autoSave} onCheckedChange={setAutoSave} />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-[13px]">{tp('autoSaveInterval')}</Label>
+                <span className="text-xs text-muted-foreground">{(autoSaveInterval / 1000).toFixed(1)}s</span>
+              </div>
+              <Slider
+                value={[autoSaveInterval]}
+                onValueChange={([v]) => setAutoSaveInterval(v)}
+                min={300}
+                max={5000}
+                step={100}
+                disabled={!autoSave}
+              />
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
@@ -107,6 +189,18 @@ export function EditorToolbar() {
             <span className="hidden text-xs sm:inline">{t('save')}</span>
           </Button>
         )}
+
+        {/* Interview — prominent AI mock-interview entry */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => openModal('interview')}
+          className="shrink-0 cursor-pointer gap-1 text-[var(--whale-ink-soft)] hover:bg-[var(--whale-cream-deep)] hover:text-[var(--whale-ink)]"
+          title={t('interview')}
+        >
+          <MessagesSquare className="h-4 w-4" />
+          <span className="hidden text-xs sm:inline">{t('interview')}</span>
+        </Button>
 
         {/* Desktop: show all secondary buttons */}
         <div className="hidden items-center gap-1 md:flex">

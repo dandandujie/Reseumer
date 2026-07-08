@@ -17,6 +17,7 @@ interface UseAIChatOptions {
   initialMessages?: UIMessage[];
   selectedProvider?: AIProviderId;
   selectedModel?: string;
+  webSearchMode?: string;
 }
 
 interface StreamEvent {
@@ -31,7 +32,7 @@ interface StreamEvent {
     | { type: 'error'; message: string };
 }
 
-export function useAIChat({ resumeId, sessionId, initialMessages, selectedProvider, selectedModel }: UseAIChatOptions) {
+export function useAIChat({ resumeId, sessionId, initialMessages, selectedProvider, selectedModel, webSearchMode }: UseAIChatOptions) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [localMessages, setLocalMessages] = useState<UIMessage[]>([]);
@@ -326,8 +327,8 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedProvid
       try {
         // Pull the resume's journal entries (if any) and pass as AI context.
         useJournalStore.getState().hydrate();
-        const journalEntries = useJournalStore.getState().byResume[resumeId] || [];
-        const journalContext = summarizeForAI(journalEntries);
+        const js = useJournalStore.getState();
+        const journalContext = summarizeForAI(js.applications[resumeId] || [], js.mocks[resumeId] || []);
 
         await api.aiChat({
           streamId,
@@ -337,13 +338,14 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedProvid
           journalContext: journalContext || undefined,
           selectedProvider,
           selectedModel,
+          webSearchMode,
         });
       } catch (err: any) {
         setError(err instanceof Error ? err : new Error(String(err)));
         setStatus('idle');
       }
     },
-    [messages, resumeId, sessionId, selectedProvider, selectedModel]
+    [messages, resumeId, sessionId, selectedProvider, selectedModel, webSearchMode]
   );
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -387,6 +389,7 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedProvid
   return {
     messages: allMessages,
     input,
+    setInput,
     handleInputChange,
     handleSubmit,
     isLoading,

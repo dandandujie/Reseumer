@@ -21,6 +21,8 @@ export type AIProviderId = keyof typeof LOCAL_AI_DEFAULTS;
 export interface AIConfigSelection {
   provider?: AIProviderId;
   model?: string;
+  /** Per-surface override for whether/which web search to use (independent of Settings). */
+  webSearchMode?: string;
 }
 
 export interface AIProviderOption {
@@ -46,13 +48,40 @@ export interface AIUsageLogEntry {
   action: AIUsageAction;
   provider: string;
   model: string;
+  baseUrl?: string;
   startedAt: number;
   endedAt: number;
   durationMs: number;
   success: boolean;
   totalTokens?: number;
+  promptTokens?: number;
+  completionTokens?: number;
   costUsd?: number;
   error?: string;
+}
+
+/** Pull token usage from an AI command result that carries a `usage` object. */
+function extractUsage(result: unknown): {
+  totalTokens?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+} {
+  const u =
+    result && typeof result === 'object'
+      ? ((result as any).usage ?? (result as any).__usage)
+      : null;
+  if (!u || typeof u !== 'object') return {};
+  const num = (v: unknown) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : undefined;
+  };
+  const prompt = num(u.promptTokens ?? u.prompt_tokens);
+  const completion = num(u.completionTokens ?? u.completion_tokens);
+  let total = num(u.totalTokens ?? u.total_tokens);
+  if (total === undefined && (prompt !== undefined || completion !== undefined)) {
+    total = (prompt || 0) + (completion || 0);
+  }
+  return { totalTokens: total, promptTokens: prompt, completionTokens: completion };
 }
 
 const LOCAL_AI_PROVIDER_LABELS: Record<AIProviderId, string> = {
@@ -107,22 +136,25 @@ export function listAIUsageLogs(limit = 500): AIUsageLogEntry[] {
 
 async function withAIUsageLog<T>(
   action: AIUsageAction,
-  config: { provider?: string; model?: string },
+  config: { provider?: string; model?: string; baseUrl?: string },
   run: () => Promise<T>
 ): Promise<T> {
   const startedAt = Date.now();
   try {
     const result = await run();
     const endedAt = Date.now();
+    const usage = extractUsage(result);
     persistAIUsageLog({
       id: `${startedAt}-${Math.random().toString(36).slice(2, 8)}`,
       action,
       provider: config.provider || 'unknown',
       model: config.model || 'unknown',
+      baseUrl: config.baseUrl,
       startedAt,
       endedAt,
       durationMs: endedAt - startedAt,
       success: true,
+      ...usage,
     });
     return result;
   } catch (err) {
@@ -132,6 +164,7 @@ async function withAIUsageLog<T>(
       action,
       provider: config.provider || 'unknown',
       model: config.model || 'unknown',
+      baseUrl: config.baseUrl,
       startedAt,
       endedAt,
       durationMs: endedAt - startedAt,
@@ -155,8 +188,14 @@ function getAIConfigFromLocalCache(providerOverride?: AIProviderId) {
     apiKey: cached.apiKey || (provider === activeProvider ? localStorage.getItem(LOCAL_AI_API_KEY) : '') || '',
     baseUrl: cached.baseURL || defaults.baseURL,
     model: cached.model || defaults.model,
-    webSearchMode: webSearchMode === 'native' || webSearchMode === 'free' || webSearchMode === 'tavily' ? webSearchMode : 'off',
+    webSearchMode:
+      webSearchMode === 'native' || webSearchMode === 'free' || webSearchMode === 'tavily' || webSearchMode === 'grok'
+        ? webSearchMode
+        : 'off',
     tavilyApiKey: localStorage.getItem('jade_tavily_key') || '',
+    grokApiKey: localStorage.getItem('jade_grok_key') || '',
+    grokBaseUrl: localStorage.getItem('jade_grok_base_url') || 'https://api.x.ai/v1',
+    grokModel: localStorage.getItem('jade_grok_model') || 'grok-4-fast',
   };
 }
 
@@ -349,6 +388,9 @@ function getAIConfigFromStore(selection?: AIConfigSelection) {
       model: modelOverride || s.aiModel,
       webSearchMode: s.webSearchMode || 'off',
       tavilyApiKey: s.tavilyApiKey || '',
+      grokApiKey: s.grokApiKey || '',
+      grokBaseUrl: s.grokBaseURL || 'https://api.x.ai/v1',
+      grokModel: s.grokModel || 'grok-4-fast',
     };
   }
 
@@ -380,6 +422,24 @@ export async function aiListModelsForSelection(selection?: AIConfigSelection) {
 
 export async function aiTestConnection(config?: any) {
   return invoke<any>('ai_test_connection', { config: config || getAIConfigFromStore() });
+}
+
+/** Grok (xAI) is OpenAI-format, so its models/health reuse the OpenAI endpoints. */
+function buildGrokProbeConfig(cfg: { apiKey: string; baseUrl: string; model?: string }) {
+  return {
+    provider: 'openai',
+    apiKey: (cfg.apiKey || '').trim(),
+    baseUrl: (cfg.baseUrl || '').trim() || 'https://api.x.ai/v1',
+    model: (cfg.model || '').trim() || 'grok-4-fast',
+  };
+}
+
+export async function grokListModels(cfg: { apiKey: string; baseUrl: string; model?: string }) {
+  return invoke<any[]>('ai_list_models', { config: buildGrokProbeConfig(cfg) });
+}
+
+export async function grokTestConnection(cfg: { apiKey: string; baseUrl: string; model?: string }) {
+  return invoke<any>('ai_test_connection', { config: buildGrokProbeConfig(cfg) });
 }
 
 export async function aiGrammarCheck(data: { resumeId: string; language?: string }) {
@@ -514,11 +574,13 @@ export async function aiChat(data: {
   journalContext?: string;
   selectedProvider?: AIProviderId;
   selectedModel?: string;
+  webSearchMode?: string;
 }) {
   const config = getAIConfigFromStore({
     provider: data.selectedProvider,
     model: data.selectedModel,
   });
+  if (data.webSearchMode !== undefined) config.webSearchMode = data.webSearchMode;
   return withAIUsageLog('project_chat', config, () =>
     invoke<any>('ai_chat', {
       streamId: data.streamId,
@@ -531,6 +593,39 @@ export async function aiChat(data: {
   );
 }
 
+export async function interviewChat(data: {
+  streamId: string;
+  messages: { role: string; content: string }[];
+  resumeId?: string;
+  company?: string;
+  role?: string;
+  jd?: string;
+  webSearchMode?: string;
+  selectedModel?: string;
+}) {
+  const config = getAIConfigFromStore({ model: data.selectedModel });
+  if (data.webSearchMode !== undefined) config.webSearchMode = data.webSearchMode;
+  return withAIUsageLog('project_chat', config, () =>
+    invoke<any>('interview_chat', {
+      streamId: data.streamId,
+      config,
+      messages: data.messages,
+      resumeId: data.resumeId,
+      company: data.company,
+      role: data.role,
+      jd: data.jd,
+    })
+  );
+}
+
+export async function getInterviewDirectives() {
+  return invoke<string>('get_interview_directives');
+}
+
+export async function updateInterviewDirectives(content: string) {
+  return invoke<string>('update_interview_directives', { content });
+}
+
 /** Sentinel resume id owning Global-Agent chat sessions. */
 export const GLOBAL_AGENT_RESUME_ID = '__global__';
 
@@ -541,12 +636,14 @@ export async function globalAgentChat(data: {
   sessionId?: string;
   selectedProvider?: AIProviderId;
   selectedModel?: string;
+  webSearchMode?: string;
 }) {
   const userId = await getCachedUserId();
   const config = getAIConfigFromStore({
     provider: data.selectedProvider,
     model: data.selectedModel,
   });
+  if (data.webSearchMode !== undefined) config.webSearchMode = data.webSearchMode;
   return withAIUsageLog('global_agent', config, () =>
     invoke<string>('global_agent_chat', {
       streamId: data.streamId,
@@ -575,6 +672,10 @@ export async function exportHtml(resumeId: string, html: string, filename?: stri
 
 export async function exportTxt(resumeId: string, filename?: string) {
   return invoke<string | null>('export_txt', { resumeId, filename });
+}
+
+export async function exportMarkdown(resumeId: string, filename?: string) {
+  return invoke<string | null>('export_markdown', { resumeId, filename });
 }
 
 export async function exportJson(resumeId: string, filename?: string) {

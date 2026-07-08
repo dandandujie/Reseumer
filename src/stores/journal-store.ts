@@ -2,21 +2,17 @@ import { create } from 'zustand';
 import { generateId } from '@/lib/utils';
 
 /* ────────────────────────────────────────────────────────────────────────────
-   Resume journal — per-resume entries the user records about their job search
-   journey: applications, interviews, outcomes, retrospectives. Stored in
-   localStorage so it survives reloads without needing a backend migration.
-   Acts as a knowledge base for the AI chat (scoped to the current resume).
+   Resume journal (v2) — thread-based job-search CRM.
+
+   The primary unit is an **Application**: one job application thread (company +
+   role + this specific attempt). Each application OWNS its interview rounds and
+   its outcome, so a résumé can have many applications, each with its own
+   multi-round interview history. There is one source of truth per field, so
+   editing anywhere syncs everywhere (dynamics list, journal dialog, funnel, AI).
+
+   Mock-interview archives (from the interview assistant) are kept separately
+   since they aren't tied to a real application.
    ──────────────────────────────────────────────────────────────────────────── */
-
-export type JournalEntryType = 'application' | 'interview' | 'outcome' | 'debrief';
-
-interface JournalBase {
-  id: string;
-  resumeId: string;
-  type: JournalEntryType;
-  createdAt: number;
-  updatedAt: number;
-}
 
 export type ApplicationStatus =
   | 'submitted'
@@ -27,181 +23,312 @@ export type ApplicationStatus =
   | 'declined'
   | 'ghosted';
 
-export interface ApplicationEntry extends JournalBase {
-  type: 'application';
-  company: string;
-  role: string;
-  channel?: string;
-  date: string;
-  status: ApplicationStatus;
-  contact?: string;
-  jdSnippet?: string;
-  notes?: string;
-  /** Next follow-up date (YYYY-MM-DD) — overdue entries get flagged. */
-  nextFollowUp?: string;
-}
+export type InterviewFormat = 'phone' | 'video' | 'onsite' | 'take-home' | 'other';
+export type OutcomeResult = 'offer' | 'rejected' | 'withdrew' | 'ghosted';
 
-export interface InterviewEntry extends JournalBase {
-  type: 'interview';
-  company: string;
-  role: string;
-  round: string;
-  date: string;
-  format?: 'phone' | 'video' | 'onsite' | 'take-home';
+export interface InterviewRound {
+  id: string;
+  round: string; // 一面 / 二面 / HR 面 …
+  format?: InterviewFormat;
+  scheduledAt?: string; // 约定面试时间 (YYYY-MM-DDTHH:mm)
+  durationMin?: number; // 面试时长（分钟）
   interviewer?: string;
   topics?: string;
   notes?: string;
+  createdAt: number;
 }
 
-export type Outcome = 'offer' | 'rejected' | 'withdrew' | 'ghosted';
-
-export interface OutcomeEntry extends JournalBase {
-  type: 'outcome';
-  company: string;
-  role: string;
-  outcome: Outcome;
+export interface Outcome {
+  result: OutcomeResult;
   reason?: string;
   reflection?: string;
+  date?: string;
 }
 
-export interface DebriefEntry extends JournalBase {
-  type: 'debrief';
-  title: string;
-  wins?: string;
-  losses?: string;
-  improvements?: string;
+export interface Application {
+  id: string;
+  resumeId: string;
+  createdAt: number;
+  updatedAt: number;
+  company: string;
+  role: string;
+  channel?: string;
+  appliedDate: string; // YYYY-MM-DD
+  status: ApplicationStatus;
+  hrName?: string; // HR 姓名
+  hrContact?: string; // HR 联系方式
+  jdSnippet?: string;
+  notes?: string;
+  nextFollowUp?: string; // YYYY-MM-DD
+  interviews: InterviewRound[];
+  outcome?: Outcome | null;
 }
 
-export type JournalEntry =
-  | ApplicationEntry
-  | InterviewEntry
-  | OutcomeEntry
-  | DebriefEntry;
+export interface MockInterview {
+  id: string;
+  resumeId: string;
+  createdAt: number;
+  company?: string;
+  role?: string;
+  feedback?: string;
+  transcript?: string;
+}
 
-const STORAGE_KEY = 'jade_journal_v1';
+const STORAGE_KEY = 'jade_journal_v2';
 
-function loadAll(): Record<string, JournalEntry[]> {
-  if (typeof window === 'undefined') return {};
+interface Persisted {
+  applications: Record<string, Application[]>;
+  mocks: Record<string, MockInterview[]>;
+}
+
+function loadAll(): Persisted {
+  if (typeof window === 'undefined') return { applications: {}, mocks: {} };
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
+    if (!raw) return { applications: {}, mocks: {} };
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return {};
-    return parsed as Record<string, JournalEntry[]>;
+    return {
+      applications: parsed?.applications && typeof parsed.applications === 'object' ? parsed.applications : {},
+      mocks: parsed?.mocks && typeof parsed.mocks === 'object' ? parsed.mocks : {},
+    };
   } catch {
-    return {};
+    return { applications: {}, mocks: {} };
   }
 }
 
-function persistAll(data: Record<string, JournalEntry[]>) {
+function persistAll(applications: Record<string, Application[]>, mocks: Record<string, MockInterview[]>) {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ applications, mocks }));
   } catch {
     /* quota / privacy mode — silent ignore */
   }
 }
 
+/** The latest interview round of an application (by scheduled time, else creation). */
+export function latestInterview(app: Application): InterviewRound | undefined {
+  if (!app.interviews?.length) return undefined;
+  return [...app.interviews].sort((a, b) => {
+    const ta = a.scheduledAt ? Date.parse(a.scheduledAt) : a.createdAt;
+    const tb = b.scheduledAt ? Date.parse(b.scheduledAt) : b.createdAt;
+    return tb - ta;
+  })[0];
+}
+
 interface JournalStore {
-  byResume: Record<string, JournalEntry[]>;
+  applications: Record<string, Application[]>;
+  mocks: Record<string, MockInterview[]>;
   hydrate: () => void;
-  entriesFor: (resumeId: string) => JournalEntry[];
-  add: (entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>) => JournalEntry;
-  update: (id: string, patch: Partial<JournalEntry>) => void;
-  remove: (id: string) => void;
+  applicationsFor: (resumeId: string) => Application[];
+  mocksFor: (resumeId: string) => MockInterview[];
+  addApplication: (resumeId: string, data?: Partial<Application>) => Application;
+  updateApplication: (id: string, patch: Partial<Application>) => void;
+  deleteApplication: (id: string) => void;
+  addInterview: (appId: string, round?: Partial<InterviewRound>) => InterviewRound | undefined;
+  updateInterview: (appId: string, roundId: string, patch: Partial<InterviewRound>) => void;
+  removeInterview: (appId: string, roundId: string) => void;
+  setOutcome: (appId: string, outcome: Outcome | null) => void;
+  addMock: (resumeId: string, data: Omit<MockInterview, 'id' | 'resumeId' | 'createdAt'>) => void;
+  removeMock: (id: string) => void;
   clearForResume: (resumeId: string) => void;
 }
 
+function mapApps(
+  applications: Record<string, Application[]>,
+  id: string,
+  fn: (app: Application) => Application
+): Record<string, Application[]> {
+  const next: Record<string, Application[]> = {};
+  for (const [rid, list] of Object.entries(applications)) {
+    next[rid] = list.map((a) => (a.id === id ? fn(a) : a));
+  }
+  return next;
+}
+
 export const useJournalStore = create<JournalStore>((set, get) => ({
-  byResume: {},
+  applications: {},
+  mocks: {},
 
   hydrate: () => {
-    set({ byResume: loadAll() });
+    const { applications, mocks } = loadAll();
+    set({ applications, mocks });
   },
 
-  entriesFor: (resumeId) => {
-    const all = get().byResume[resumeId] || [];
-    // newest first
-    return [...all].sort((a, b) => b.createdAt - a.createdAt);
-  },
+  applicationsFor: (resumeId) =>
+    [...(get().applications[resumeId] || [])].sort((a, b) => b.createdAt - a.createdAt),
 
-  add: (entry) => {
+  mocksFor: (resumeId) =>
+    [...(get().mocks[resumeId] || [])].sort((a, b) => b.createdAt - a.createdAt),
+
+  addApplication: (resumeId, data = {}) => {
     const now = Date.now();
-    const full = {
-      ...entry,
+    const app: Application = {
       id: generateId(),
+      resumeId,
       createdAt: now,
       updatedAt: now,
-    } as JournalEntry;
+      company: '',
+      role: '',
+      appliedDate: new Date().toISOString().slice(0, 10),
+      status: 'submitted',
+      interviews: [],
+      outcome: null,
+      ...data,
+    };
     set((state) => {
-      const list = state.byResume[entry.resumeId] || [];
-      const next = { ...state.byResume, [entry.resumeId]: [...list, full] };
-      persistAll(next);
-      return { byResume: next };
+      const list = state.applications[resumeId] || [];
+      const applications = { ...state.applications, [resumeId]: [...list, app] };
+      persistAll(applications, state.mocks);
+      return { applications };
     });
-    return full;
+    return app;
   },
 
-  update: (id, patch) => {
+  updateApplication: (id, patch) => {
     set((state) => {
-      const next: Record<string, JournalEntry[]> = {};
-      for (const [rid, list] of Object.entries(state.byResume)) {
-        next[rid] = list.map((e) =>
-          e.id === id ? ({ ...e, ...patch, updatedAt: Date.now() } as JournalEntry) : e
-        );
-      }
-      persistAll(next);
-      return { byResume: next };
+      const applications = mapApps(state.applications, id, (a) => ({ ...a, ...patch, updatedAt: Date.now() }));
+      persistAll(applications, state.mocks);
+      return { applications };
     });
   },
 
-  remove: (id) => {
+  deleteApplication: (id) => {
     set((state) => {
-      const next: Record<string, JournalEntry[]> = {};
-      for (const [rid, list] of Object.entries(state.byResume)) {
-        next[rid] = list.filter((e) => e.id !== id);
+      const applications: Record<string, Application[]> = {};
+      for (const [rid, list] of Object.entries(state.applications)) {
+        applications[rid] = list.filter((a) => a.id !== id);
       }
-      persistAll(next);
-      return { byResume: next };
+      persistAll(applications, state.mocks);
+      return { applications };
+    });
+  },
+
+  addInterview: (appId, round = {}) => {
+    const created: InterviewRound = {
+      id: generateId(),
+      round: round.round || '',
+      createdAt: Date.now(),
+      ...round,
+    };
+    set((state) => {
+      const applications = mapApps(state.applications, appId, (a) => ({
+        ...a,
+        updatedAt: Date.now(),
+        interviews: [...a.interviews, created],
+        // Advance an open application into the interview stage automatically.
+        status: a.status === 'submitted' || a.status === 'screening' ? 'interview' : a.status,
+      }));
+      persistAll(applications, state.mocks);
+      return { applications };
+    });
+    return created;
+  },
+
+  updateInterview: (appId, roundId, patch) => {
+    set((state) => {
+      const applications = mapApps(state.applications, appId, (a) => ({
+        ...a,
+        updatedAt: Date.now(),
+        interviews: a.interviews.map((r) => (r.id === roundId ? { ...r, ...patch } : r)),
+      }));
+      persistAll(applications, state.mocks);
+      return { applications };
+    });
+  },
+
+  removeInterview: (appId, roundId) => {
+    set((state) => {
+      const applications = mapApps(state.applications, appId, (a) => ({
+        ...a,
+        updatedAt: Date.now(),
+        interviews: a.interviews.filter((r) => r.id !== roundId),
+      }));
+      persistAll(applications, state.mocks);
+      return { applications };
+    });
+  },
+
+  setOutcome: (appId, outcome) => {
+    set((state) => {
+      const applications = mapApps(state.applications, appId, (a) => {
+        // Reflect the outcome in the application status.
+        let status = a.status;
+        if (outcome) {
+          status =
+            outcome.result === 'offer'
+              ? 'offer'
+              : outcome.result === 'rejected'
+                ? 'rejected'
+                : outcome.result === 'withdrew'
+                  ? 'declined'
+                  : 'ghosted';
+        }
+        return { ...a, outcome, status, updatedAt: Date.now() };
+      });
+      persistAll(applications, state.mocks);
+      return { applications };
+    });
+  },
+
+  addMock: (resumeId, data) => {
+    const mock: MockInterview = { id: generateId(), resumeId, createdAt: Date.now(), ...data };
+    set((state) => {
+      const list = state.mocks[resumeId] || [];
+      const mocks = { ...state.mocks, [resumeId]: [...list, mock] };
+      persistAll(state.applications, mocks);
+      return { mocks };
+    });
+  },
+
+  removeMock: (id) => {
+    set((state) => {
+      const mocks: Record<string, MockInterview[]> = {};
+      for (const [rid, list] of Object.entries(state.mocks)) {
+        mocks[rid] = list.filter((m) => m.id !== id);
+      }
+      persistAll(state.applications, mocks);
+      return { mocks };
     });
   },
 
   clearForResume: (resumeId) => {
     set((state) => {
-      const next = { ...state.byResume };
-      delete next[resumeId];
-      persistAll(next);
-      return { byResume: next };
+      const applications = { ...state.applications };
+      const mocks = { ...state.mocks };
+      delete applications[resumeId];
+      delete mocks[resumeId];
+      persistAll(applications, mocks);
+      return { applications, mocks };
     });
   },
 }));
 
-/* ─── Aggregations used by the dashboard analytics card ─── */
+/* ─── Aggregations used by the dashboard analytics & the global Agent ─── */
 
 export interface ChannelStat {
   channel: string;
   total: number;
-  /** applications that progressed to interview stage or beyond */
   reachedInterview: number;
   offers: number;
 }
 
 export interface JournalAggregate {
   totalApplications: number;
-  totalInterviews: number;
+  totalInterviews: number; // total interview rounds
+  interviewedApplications: number; // applications that reached ≥1 interview
   totalOutcomes: number;
   offerCount: number;
   rejectCount: number;
   pendingCount: number;
-  successRate: number; // offers / (offers + rejects), 0..1
+  successRate: number;
   topCompanies: { company: string; count: number }[];
   byStatus: Record<ApplicationStatus, number>;
   byChannel: ChannelStat[];
   overdueFollowUps: number;
-  recentEntries: JournalEntry[];
+  mockInterviewCount: number;
+  recentApplications: Application[];
 }
 
-/** 国内主流投递渠道预设 — 录入时用作 datalist，归因分析时保证口径统一 */
 export const CHANNEL_PRESETS = [
   'Boss直聘',
   '猎聘',
@@ -215,17 +342,21 @@ export const CHANNEL_PRESETS = [
   '校招系统',
 ] as const;
 
-export function aggregateJournal(byResume: Record<string, JournalEntry[]>): JournalAggregate {
-  const all = Object.values(byResume).flat();
-  const apps = all.filter((e): e is ApplicationEntry => e.type === 'application');
-  const ints = all.filter((e): e is InterviewEntry => e.type === 'interview');
-  const outs = all.filter((e): e is OutcomeEntry => e.type === 'outcome');
+const OPEN_STATUSES: ApplicationStatus[] = ['submitted', 'screening', 'interview'];
 
-  const offerCount = outs.filter((o) => o.outcome === 'offer').length;
-  const rejectCount = outs.filter((o) => o.outcome === 'rejected').length;
-  const pendingCount = apps.filter(
-    (a) => a.status === 'submitted' || a.status === 'screening' || a.status === 'interview'
-  ).length;
+export function aggregateJournal(
+  applications: Record<string, Application[]>,
+  mocks: Record<string, MockInterview[]> = {}
+): JournalAggregate {
+  const apps = Object.values(applications).flat();
+  const mockCount = Object.values(mocks).flat().length;
+
+  const offerCount = apps.filter((a) => a.outcome?.result === 'offer').length;
+  const rejectCount = apps.filter((a) => a.outcome?.result === 'rejected').length;
+  const pendingCount = apps.filter((a) => OPEN_STATUSES.includes(a.status)).length;
+  const totalInterviews = apps.reduce((sum, a) => sum + (a.interviews?.length || 0), 0);
+  const interviewedApplications = apps.filter((a) => (a.interviews?.length || 0) > 0).length;
+  const totalOutcomes = apps.filter((a) => !!a.outcome).length;
 
   const companies: Record<string, number> = {};
   for (const a of apps) {
@@ -248,64 +379,60 @@ export function aggregateJournal(byResume: Record<string, JournalEntry[]>): Jour
   };
   for (const a of apps) byStatus[a.status]++;
 
-  // Channel attribution — which channels actually convert, not just volume.
   const channelMap: Record<string, ChannelStat> = {};
   for (const a of apps) {
     const key = (a.channel || '').trim() || '未记录';
-    if (!channelMap[key]) {
-      channelMap[key] = { channel: key, total: 0, reachedInterview: 0, offers: 0 };
-    }
+    if (!channelMap[key]) channelMap[key] = { channel: key, total: 0, reachedInterview: 0, offers: 0 };
     channelMap[key].total++;
-    if (a.status === 'interview' || a.status === 'offer') channelMap[key].reachedInterview++;
-    if (a.status === 'offer') channelMap[key].offers++;
+    if ((a.interviews?.length || 0) > 0 || a.status === 'offer') channelMap[key].reachedInterview++;
+    if (a.outcome?.result === 'offer') channelMap[key].offers++;
   }
   const byChannel = Object.values(channelMap).sort((a, b) => b.total - a.total);
 
   const today = new Date().toISOString().slice(0, 10);
-  const OPEN_STATUSES: ApplicationStatus[] = ['submitted', 'screening', 'interview'];
   const overdueFollowUps = apps.filter(
     (a) => a.nextFollowUp && a.nextFollowUp < today && OPEN_STATUSES.includes(a.status)
   ).length;
 
-  const recentEntries = [...all].sort((a, b) => b.createdAt - a.createdAt).slice(0, 6);
+  const recentApplications = [...apps].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 8);
 
   return {
     totalApplications: apps.length,
-    totalInterviews: ints.length,
-    totalOutcomes: outs.length,
+    totalInterviews,
+    interviewedApplications,
+    totalOutcomes,
     offerCount,
     rejectCount,
     pendingCount,
-    successRate:
-      offerCount + rejectCount > 0 ? offerCount / (offerCount + rejectCount) : 0,
+    successRate: offerCount + rejectCount > 0 ? offerCount / (offerCount + rejectCount) : 0,
     topCompanies,
     byStatus,
     byChannel,
     overdueFollowUps,
-    recentEntries,
+    mockInterviewCount: mockCount,
+    recentApplications,
   };
 }
 
-/** Summarize a resume's journal for the AI knowledge base (≤ ~600 chars). */
-export function summarizeForAI(entries: JournalEntry[]): string {
-  if (entries.length === 0) return '';
-  const apps = entries.filter((e): e is ApplicationEntry => e.type === 'application');
-  const ints = entries.filter((e): e is InterviewEntry => e.type === 'interview');
-  const outs = entries.filter((e): e is OutcomeEntry => e.type === 'outcome');
-  const debs = entries.filter((e): e is DebriefEntry => e.type === 'debrief');
-
+/** Summarize a résumé's job-search threads for the AI knowledge base. */
+export function summarizeForAI(apps: Application[], mocks: MockInterview[] = []): string {
+  if (apps.length === 0 && mocks.length === 0) return '';
   const lines: string[] = [];
   if (apps.length > 0) {
-    lines.push(`投递（${apps.length}）：` + apps.slice(0, 5).map((a) => `${a.company}·${a.role}[${a.status}]`).join('；'));
+    lines.push(
+      `投递主线（${apps.length}）：` +
+        apps
+          .slice(0, 6)
+          .map((a) => {
+            const rounds = a.interviews?.length || 0;
+            const oc = a.outcome ? `→${a.outcome.result}` : '';
+            return `${a.company || '?'}·${a.role || '?'}[${a.status}${rounds ? `·${rounds}轮面试` : ''}${oc}]`;
+          })
+          .join('；')
+    );
   }
-  if (ints.length > 0) {
-    lines.push(`面试（${ints.length}）：` + ints.slice(0, 5).map((i) => `${i.company}·${i.round}`).join('；'));
-  }
-  if (outs.length > 0) {
-    lines.push(`结果（${outs.length}）：` + outs.slice(0, 5).map((o) => `${o.company}·${o.outcome}${o.reason ? ` (${o.reason.slice(0, 30)})` : ''}`).join('；'));
-  }
-  if (debs.length > 0) {
-    lines.push(`复盘要点：` + debs.slice(0, 3).map((d) => d.title).join('；'));
+  if (mocks.length > 0) {
+    lines.push(`模拟面试存档（${mocks.length}）：` + mocks.slice(0, 3).map((m) => `${m.company || ''}${m.role || ''}`.trim() || '未命名').join('；'));
   }
   return lines.join('\n');
 }

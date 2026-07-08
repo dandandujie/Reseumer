@@ -19,7 +19,7 @@ const DEFAULT_THEME: ThemeConfig = {
   fontSize: DEFAULT_THEME_FONT_SIZE,
   lineSpacing: 1.5,
   margin: { top: 20, right: 20, bottom: 20, left: 20 },
-  sectionSpacing: 16,
+  sectionSpacing: 8,
   avatarStyle: 'oneInch',
 };
 

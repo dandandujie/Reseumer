@@ -314,13 +314,14 @@ function AIMessageImpl({ message, isStreaming, onEditResend, onRollback, onRegen
           <Bot className="h-3 w-3 text-[var(--whale-cream)]" />
         )}
       </div>
-      <div
-        className={`min-w-0 rounded-2xl px-3.5 py-2.5 text-[14px] leading-relaxed ${
-          isUser
-            ? 'max-w-[min(720px,calc(100%-2.5rem))] bg-[var(--whale-ink)] text-[var(--whale-cream)]'
-            : 'w-fit min-w-0 max-w-[calc(100%-2.5rem)] bg-[var(--whale-cream-soft)] text-[var(--whale-ink-soft)] ring-1 ring-[var(--whale-divider)]'
-        }`}
-      >
+      <div className={`flex min-w-0 flex-col gap-1 ${isUser ? 'items-end max-w-[min(720px,calc(100%-2.5rem))]' : 'items-start max-w-[calc(100%-2.5rem)]'}`}>
+        <div
+          className={`min-w-0 rounded-2xl px-3.5 py-2.5 text-[14px] leading-relaxed ${
+            isUser
+              ? 'bg-[var(--whale-ink)] text-[var(--whale-cream)]'
+              : 'w-fit min-w-0 bg-[var(--whale-cream-soft)] text-[var(--whale-ink-soft)] ring-1 ring-[var(--whale-divider)]'
+          }`}
+        >
         {isUser ? (
           <p className="whitespace-pre-wrap">{userText}</p>
         ) : (
@@ -365,19 +366,20 @@ function AIMessageImpl({ message, isStreaming, onEditResend, onRollback, onRegen
             return null;
           })
         )}
-        {/* Hover actions — CherryStudio-style edit/rollback/regenerate */}
+        </div>
+        {/* Hover actions — below the bubble */}
         {actionButtons && (
-          <div className={`mt-1 flex items-center gap-1 opacity-0 transition-opacity group-hover/msg:opacity-100 ${isUser ? 'justify-end' : ''}`}>
+          <div className={`flex items-center gap-1 px-1 opacity-0 transition-opacity group-hover/msg:opacity-100 ${isUser ? 'justify-end' : ''}`}>
             {isUser && onEditResend && (
               <MsgAction
                 icon={Pencil}
                 label="编辑重发"
                 onClick={() => onEditResend(message.id, userText)}
-                dark={isUser}
+                dark={false}
               />
             )}
             {isUser && onRollback && (
-              <MsgAction icon={Scissors} label="回退到此前" onClick={() => onRollback(message.id)} dark={isUser} />
+              <MsgAction icon={Scissors} label="回退到此前" onClick={() => onRollback(message.id)} dark={false} />
             )}
             {!isUser && onRegenerate && (
               <MsgAction icon={RotateCcw} label="重新生成" onClick={() => onRegenerate(message.id)} dark={false} />

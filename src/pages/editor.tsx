@@ -22,6 +22,7 @@ import { ExportDialog } from '@/components/editor/export-dialog';
 import { ImportDialog } from '@/components/editor/import-dialog';
 import { GrammarCheckDialog } from '@/components/editor/grammar-check-dialog';
 import { CoverLetterDialog } from '@/components/editor/cover-letter-dialog';
+import { InterviewDialog } from '@/components/editor/interview-dialog';
 import { JournalDialog } from '@/components/editor/journal-dialog';
 import { useEditorStore } from '@/stores/editor-store';
 import { useResumeStore } from '@/stores/resume-store';
@@ -66,7 +67,10 @@ export default function EditorPage() {
       const snapshot = e.shiftKey
         ? editor.redo(resumeStore.sections)
         : editor.undo(resumeStore.sections);
-      if (snapshot) resumeStore.reorderSections(snapshot.sections);
+      if (snapshot) {
+        resumeStore.reorderSections(snapshot.sections);
+        if (snapshot.themeConfig) resumeStore.updateThemeConfig(snapshot.themeConfig);
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -140,6 +144,7 @@ export default function EditorPage() {
       <GrammarCheckDialog open={activeModal === 'grammar-check'} onOpenChange={(open) => open ? openModal('grammar-check') : closeModal()} resumeId={id!} />
       <CoverLetterDialog open={activeModal === 'cover-letter'} onOpenChange={(open) => open ? openModal('cover-letter') : closeModal()} resumeId={id!} />
       <JournalDialog open={activeModal === 'journal'} onOpenChange={(open) => open ? openModal('journal') : closeModal()} resumeId={id!} />
+      <InterviewDialog />
     </div>
   );
 }

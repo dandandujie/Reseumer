@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useLocale, useTranslations } from 'next-intl';
+import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useClassicPageEstimate } from '@/hooks/use-classic-page-estimate';
 import { useResumeStore } from '@/stores/resume-store';
 import { generateHtml } from '@/lib/export/builders';
 import * as api from '@/lib/tauri-api';
@@ -23,11 +22,10 @@ import {
   Globe,
   AlignLeft,
   Braces,
-  Sparkles,
+  FileCode,
   Loader2,
   CheckCircle2,
   AlertCircle,
-  AlertTriangle,
 } from 'lucide-react';
 
 interface ExportDialogProps {
@@ -36,7 +34,7 @@ interface ExportDialogProps {
   resumeId: string;
 }
 
-type ExportFormat = 'pdf' | 'pdf-one-page' | 'docx' | 'html' | 'txt' | 'json';
+type ExportFormat = 'pdf' | 'md' | 'docx' | 'html' | 'txt' | 'json';
 type ExportState = 'idle' | 'exporting' | 'success' | 'error';
 
 const FORMAT_OPTIONS: {
@@ -47,7 +45,7 @@ const FORMAT_OPTIONS: {
   tooltipKey?: string;
 }[] = [
   { value: 'pdf', icon: FileDown, labelKey: 'pdf', descKey: 'pdfDescription' },
-  { value: 'pdf-one-page', icon: Sparkles, labelKey: 'pdfOnePage', descKey: 'pdfOnePageDescription', tooltipKey: 'pdfOnePageTooltip' },
+  { value: 'md', icon: FileCode, labelKey: 'markdown', descKey: 'markdownDescription' },
   { value: 'docx', icon: FileText, labelKey: 'docx', descKey: 'docxDescription' },
   { value: 'html', icon: Globe, labelKey: 'html', descKey: 'htmlDescription' },
   { value: 'txt', icon: AlignLeft, labelKey: 'txt', descKey: 'txtDescription' },
@@ -55,24 +53,12 @@ const FORMAT_OPTIONS: {
 ];
 
 export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps) {
-  const locale = useLocale();
   const t = useTranslations('export');
-  const { currentResume, sections, isDirty, save } = useResumeStore();
+  const { currentResume, isDirty, save } = useResumeStore();
 
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('pdf');
   const [state, setState] = useState<ExportState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
-
-  const liveResume = useMemo<Resume | null>(() => {
-    if (!currentResume) return null;
-    return { ...currentResume, sections };
-  }, [currentResume, sections]);
-
-  const { estimate } = useClassicPageEstimate(liveResume);
-  const showOnePageEstimate = selectedFormat === 'pdf-one-page' && !!estimate;
-  const hasOnePageRisk = !!estimate && (estimate.pageCount > 1 || estimate.overflowSections.length > 0);
-  const overflowPreview = estimate?.overflowSections.slice(0, 3).join(locale === 'zh' ? '、' : ', ') || '';
-  const estimatePageCount = estimate?.pageCount ?? 1;
 
   useEffect(() => {
     if (open) {
@@ -95,7 +81,7 @@ export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps
       const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
       const extMap: Record<ExportFormat, string> = {
         'pdf': 'pdf',
-        'pdf-one-page': 'pdf',
+        'md': 'md',
         'docx': 'docx',
         'html': 'html',
         'txt': 'txt',
@@ -104,7 +90,7 @@ export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps
       const filename = `${title}-${ts}.${extMap[selectedFormat]}`;
 
       let savedPath: string | null = null;
-      if (selectedFormat === 'pdf' || selectedFormat === 'pdf-one-page') {
+      if (selectedFormat === 'pdf') {
         const resume = (await api.getResume(resumeId)) as Resume | null;
         if (!resume) throw new Error('Resume not found');
         const html = await generateHtml(resume, true);
@@ -116,6 +102,8 @@ export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps
         savedPath = await api.exportHtml(resumeId, html, filename);
       } else if (selectedFormat === 'docx') {
         savedPath = await api.exportDocx(resumeId, filename);
+      } else if (selectedFormat === 'md') {
+        savedPath = await api.exportMarkdown(resumeId, filename);
       } else if (selectedFormat === 'txt') {
         savedPath = await api.exportTxt(resumeId, filename);
       } else {
@@ -195,36 +183,6 @@ export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps
                   })}
                 </div>
               </TooltipProvider>
-
-              {showOnePageEstimate && (
-                <div
-                  className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm ${
-                    hasOnePageRisk
-                      ? 'border-amber-200 bg-amber-50 text-amber-900'
-                      : 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                  }`}
-                >
-                  {hasOnePageRisk ? (
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                  ) : (
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-                  )}
-                  <div className="min-w-0">
-                    <p className="font-medium">
-                      {hasOnePageRisk
-                        ? t('onePageEstimateWarning', { pageCount: estimatePageCount })
-                        : t('onePageEstimateOk')}
-                    </p>
-                    {hasOnePageRisk && (
-                      <p className="mt-1 text-xs leading-5 opacity-90">
-                        {t('onePageEstimateWarningDetail', {
-                          sections: overflowPreview || '...',
-                        })}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

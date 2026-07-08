@@ -2,6 +2,12 @@ import { create } from 'zustand';
 import type { ResumeSection } from '@/types/resume';
 import type { ResumeSnapshot } from '@/types/editor';
 import { MAX_UNDO_STACK } from '@/lib/constants';
+import { useResumeStore } from '@/stores/resume-store';
+
+// Read the live theme so every snapshot captures the full visual state
+// (sections + theme), letting theme-only operations be undone. Read lazily to
+// avoid a static import cycle (resume-store does not import editor-store).
+const currentThemeConfig = () => useResumeStore.getState().currentResume?.themeConfig;
 
 /** A queued instruction for the AI chat panel. When resumeId is set, only the
  *  editor of that resume may consume it (cross-navigation handoff, e.g. derive
@@ -50,10 +56,11 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   toggleThemeEditor: () => set((s) => ({ showThemeEditor: !s.showThemeEditor })),
 
   pushSnapshot: (sections) => {
+    const themeConfig = currentThemeConfig();
     set((state) => ({
       undoStack: [
         ...state.undoStack.slice(-MAX_UNDO_STACK + 1),
-        { sections, timestamp: Date.now() },
+        { sections, themeConfig, timestamp: Date.now() },
       ],
       redoStack: [],
     }));
@@ -66,9 +73,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const { undoStack } = get();
     if (undoStack.length === 0) return null;
     const snapshot = undoStack[undoStack.length - 1];
+    const themeConfig = currentThemeConfig();
     set((state) => ({
       undoStack: state.undoStack.slice(0, -1),
-      redoStack: [...state.redoStack, { sections: current, timestamp: Date.now() }],
+      redoStack: [...state.redoStack, { sections: current, themeConfig, timestamp: Date.now() }],
     }));
     return snapshot;
   },
@@ -77,9 +85,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const { redoStack } = get();
     if (redoStack.length === 0) return null;
     const snapshot = redoStack[redoStack.length - 1];
+    const themeConfig = currentThemeConfig();
     set((state) => ({
       redoStack: state.redoStack.slice(0, -1),
-      undoStack: [...state.undoStack, { sections: current, timestamp: Date.now() }],
+      undoStack: [...state.undoStack, { sections: current, themeConfig, timestamp: Date.now() }],
     }));
     return snapshot;
   },

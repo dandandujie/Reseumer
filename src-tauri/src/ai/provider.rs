@@ -10,11 +10,18 @@ pub struct AIConfig {
     #[serde(alias = "baseURL")]
     pub base_url: String,
     pub model: String,
-    /// off | native | free | tavily
+    /// off | native | free | tavily | grok
     #[serde(default)]
     pub web_search_mode: String,
     #[serde(default)]
     pub tavily_api_key: String,
+    /// Grok (xAI, OpenAI-format) used as a background search backend.
+    #[serde(default)]
+    pub grok_api_key: String,
+    #[serde(default)]
+    pub grok_base_url: String,
+    #[serde(default)]
+    pub grok_model: String,
 }
 
 impl Default for AIConfig {
@@ -25,6 +32,9 @@ impl Default for AIConfig {
             base_url: "https://api.openai.com/v1".into(),
             web_search_mode: String::new(),
             tavily_api_key: String::new(),
+            grok_api_key: String::new(),
+            grok_base_url: String::new(),
+            grok_model: String::new(),
             model: "gpt-4o".into(),
         }
     }

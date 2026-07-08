@@ -40,9 +40,46 @@ pub fn clear_cancel(stream_id: &str) {
     cancel_set().lock().unwrap().remove(stream_id);
 }
 
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct Usage {
+    pub prompt_tokens: u64,
+    pub completion_tokens: u64,
+    pub total_tokens: u64,
+}
+
+impl Usage {
+    pub fn add(&mut self, other: &Usage) {
+        self.prompt_tokens += other.prompt_tokens;
+        self.completion_tokens += other.completion_tokens;
+        self.total_tokens += other.total_tokens;
+    }
+}
+
 pub struct ChatStreamResult {
     pub text: String,
     pub tool_calls: Vec<super::provider::ToolCall>,
+    pub usage: Usage,
+}
+
+/// True when an error looks like the provider rejected the native/built-in web
+/// search tool — so we can retry the request without it instead of failing.
+/// Native/built-in search is the single most provider-specific part of a request
+/// (Anthropic web_search, Gemini google_search, xAI Live Search all differ and
+/// each model/relay may reject it), so a generic "drop it and retry" net catches
+/// current and future incompatibilities uniformly.
+fn is_native_search_error(msg: &str) -> bool {
+    let m = msg.to_ascii_lowercase();
+    m.contains("search")
+        || m.contains("google_search")
+        || m.contains("web_search")
+        || m.contains("grounding")
+        || m.contains("tool_config")
+        || m.contains("server_side_tool")
+        || m.contains("server-side tool")
+        || m.contains("built-in tool")
+        || m.contains("builtin tool")
+        || m.contains("live search")
+        || m.contains("search_parameters")
 }
 
 pub async fn stream_chat(
@@ -53,10 +90,52 @@ pub async fn stream_chat(
     messages: &[ChatMessage],
     tools: Option<&[ToolSpec]>,
 ) -> Result<ChatStreamResult, ProviderError> {
+    let result = stream_dispatch(app, stream_id, config, system, messages, tools).await;
+
+    // Safety net: if the request failed and native ("模型自带") search was on, the
+    // provider likely rejected the built-in search tool. The failure happens
+    // before anything streams (all providers return Err on non-2xx up front), so
+    // retry once with native search disabled rather than surfacing the error.
+    if config.web_search_mode == "native" {
+        if let Err(e) = &result {
+            if is_native_search_error(&e.to_string()) {
+                log::warn!("native search rejected ({e}); retrying without built-in search");
+                let mut fallback = config.clone();
+                fallback.web_search_mode = "off".into();
+                return stream_dispatch(app, stream_id, &fallback, system, messages, tools).await;
+            }
+        }
+    }
+    result
+}
+
+async fn stream_dispatch(
+    app: &AppHandle,
+    stream_id: &str,
+    config: &AIConfig,
+    system: &str,
+    messages: &[ChatMessage],
+    tools: Option<&[ToolSpec]>,
+) -> Result<ChatStreamResult, ProviderError> {
     match config.provider.as_str() {
         "anthropic" => stream_anthropic(app, stream_id, config, system, messages, tools).await,
         "gemini" => stream_gemini(app, stream_id, config, system, messages, tools).await,
-        _ => stream_openai(app, stream_id, config, system, messages, tools).await,
+        _ => {
+            // GPT models default to the OpenAI Responses protocol; if that endpoint
+            // is unavailable (e.g. a relay that only speaks chat/completions), the
+            // request fails before anything streams, so we fall back to chat.
+            if config.model.to_ascii_lowercase().contains("gpt") {
+                match stream_openai_responses(app, stream_id, config, system, messages, tools).await {
+                    Ok(r) => Ok(r),
+                    Err(e) => {
+                        log::warn!("responses API unavailable ({e}); falling back to chat/completions");
+                        stream_openai(app, stream_id, config, system, messages, tools).await
+                    }
+                }
+            } else {
+                stream_openai(app, stream_id, config, system, messages, tools).await
+            }
+        }
     }
 }
 
@@ -88,6 +167,8 @@ async fn stream_openai(
         "model": config.model,
         "messages": msgs,
         "stream": true,
+        // Ask the server to append a final chunk carrying token usage.
+        "stream_options": { "include_usage": true },
     });
 
     // Many OpenAI-compatible endpoints default to a tiny completion budget
@@ -112,6 +193,17 @@ async fn stream_openai(
                     }
                 })).collect::<Vec<_>>()
             );
+        }
+    }
+
+    // Native web search for a Grok (xAI) main model: xAI exposes Live Search via
+    // a top-level `search_parameters` field (not a tool). Only inject for xAI
+    // endpoints — a stray field would 400 on stricter OpenAI-compatible servers.
+    if config.web_search_mode == "native" {
+        let is_grok = config.base_url.to_ascii_lowercase().contains("x.ai")
+            || config.model.to_ascii_lowercase().contains("grok");
+        if is_grok {
+            body["search_parameters"] = json!({ "mode": "auto", "return_citations": true });
         }
     }
 
@@ -140,6 +232,9 @@ async fn stream_openai(
     let mut last_finish_reason: Option<String> = None;
     let mut saw_done = false;
     let mut last_raw_tail = String::new();
+    // xAI Live Search returns citation URLs at the top level of a chunk.
+    let mut citations: Vec<String> = Vec::new();
+    let mut usage = Usage::default();
 
     while let Some(chunk) = stream.next().await {
         if is_cancelled(stream_id) {
@@ -180,6 +275,17 @@ async fn stream_openai(
                         continue;
                     }
                     if let Ok(v) = serde_json::from_str::<Value>(data) {
+                        if let Some(cits) = v.get("citations").and_then(|c| c.as_array()) {
+                            citations = cits.iter().filter_map(|c| c.as_str().map(|s| s.to_string())).collect();
+                        }
+                        if let Some(u) = v.get("usage").filter(|u| !u.is_null()) {
+                            let p = u.get("prompt_tokens").and_then(|x| x.as_u64()).unwrap_or(0);
+                            let c = u.get("completion_tokens").and_then(|x| x.as_u64()).unwrap_or(0);
+                            let tot = u.get("total_tokens").and_then(|x| x.as_u64()).unwrap_or(p + c);
+                            if p + c + tot > 0 {
+                                usage = Usage { prompt_tokens: p, completion_tokens: c, total_tokens: tot };
+                            }
+                        }
                         let choice = v.get("choices").and_then(|c| c.get(0)).cloned().unwrap_or(Value::Null);
                         if let Some(fr) = choice.get("finish_reason").and_then(|f| f.as_str()) {
                             last_finish_reason = Some(fr.to_string());
@@ -265,6 +371,16 @@ async fn stream_openai(
         }
     }
 
+    // Surface Grok Live Search citations (native mode) as a sources footer.
+    if !citations.is_empty() && pending_tc.is_empty() {
+        let mut footer = String::from("\n\n---\n**参考来源**\n");
+        for (i, c) in citations.iter().enumerate() {
+            footer.push_str(&format!("{}. {}\n", i + 1, c));
+        }
+        text_out.push_str(&footer);
+        emit(app, stream_id, StreamEvent::TextDelta { text: footer });
+    }
+
     // Finalize tool calls
     let mut indices: Vec<u32> = pending_tc.keys().copied().collect();
     indices.sort();
@@ -275,7 +391,193 @@ async fn stream_openai(
         tool_calls.push(super::provider::ToolCall { id, name, arguments: args });
     }
 
-    Ok(ChatStreamResult { text: text_out, tool_calls })
+    Ok(ChatStreamResult { text: text_out, tool_calls, usage })
+}
+
+/// OpenAI Responses API (`/responses`) streaming. Returns Err *before emitting
+/// anything* when the endpoint is unavailable, so the caller can fall back to
+/// chat/completions without duplicating output. Once streaming starts it always
+/// returns Ok (mid-stream drops just end the turn early).
+async fn stream_openai_responses(
+    app: &AppHandle,
+    stream_id: &str,
+    config: &AIConfig,
+    system: &str,
+    messages: &[ChatMessage],
+    tools: Option<&[ToolSpec]>,
+) -> Result<ChatStreamResult, ProviderError> {
+    let client = super::provider::http_client();
+    let url = format!("{}/responses", config.base_url.trim_end_matches('/'));
+
+    // chat.rs feeds tool results back as plain string messages, so every message
+    // maps cleanly to a Responses input item.
+    let input: Vec<Value> = messages
+        .iter()
+        .map(|m| json!({ "role": m.role, "content": m.content }))
+        .collect();
+
+    let mut body = json!({
+        "model": config.model,
+        "input": input,
+        "stream": true,
+        "max_output_tokens": 8192,
+    });
+    if !system.is_empty() {
+        body["instructions"] = json!(system);
+    }
+    if let Some(ts) = tools {
+        if !ts.is_empty() {
+            body["tools"] = json!(ts
+                .iter()
+                .map(|t| json!({
+                    "type": "function",
+                    "name": t.name,
+                    "description": t.description,
+                    "parameters": t.parameters,
+                }))
+                .collect::<Vec<_>>());
+        }
+    }
+
+    let res = client
+        .post(&url)
+        .bearer_auth(&config.api_key)
+        .json(&body)
+        .send()
+        .await?;
+
+    if !res.status().is_success() {
+        let status = res.status();
+        let txt = res.text().await.unwrap_or_default();
+        return Err(ProviderError::Api(format!("{} {}", status, txt)));
+    }
+
+    let mut stream = res.bytes_stream();
+    let mut buffer = String::new();
+    let mut byte_buf: Vec<u8> = Vec::new();
+    let mut text_out = String::new();
+    let mut tool_calls: Vec<super::provider::ToolCall> = Vec::new();
+    let mut usage = Usage::default();
+    // item_id -> (call_id, name, accumulated args)
+    let mut fn_calls: std::collections::HashMap<String, (String, String, String)> = std::collections::HashMap::new();
+
+    while let Some(chunk) = stream.next().await {
+        if is_cancelled(stream_id) {
+            break;
+        }
+        // Post-2xx: never propagate errors (would risk duplicate fallback output).
+        let chunk = match chunk {
+            Ok(c) => c,
+            Err(_) => break,
+        };
+        byte_buf.extend_from_slice(&chunk);
+        match std::str::from_utf8(&byte_buf) {
+            Ok(text) => {
+                buffer.push_str(text);
+                byte_buf.clear();
+            }
+            Err(e) => {
+                let valid = e.valid_up_to();
+                buffer.push_str(std::str::from_utf8(&byte_buf[..valid]).unwrap_or(""));
+                byte_buf.drain(..valid);
+            }
+        }
+        if buffer.contains('\r') {
+            buffer = buffer.replace("\r\n", "\n");
+        }
+
+        while let Some(idx) = buffer.find("\n\n") {
+            let block = buffer[..idx].to_string();
+            buffer.drain(..idx + 2);
+            for l in block.lines() {
+                let Some(data) = l.strip_prefix("data: ").or_else(|| l.strip_prefix("data:")) else {
+                    continue;
+                };
+                if data.trim() == "[DONE]" {
+                    continue;
+                }
+                let Ok(v) = serde_json::from_str::<Value>(data) else { continue };
+                let ev = v.get("type").and_then(|s| s.as_str()).unwrap_or("");
+                match ev {
+                    "response.output_text.delta" => {
+                        if let Some(t) = v.get("delta").and_then(|d| d.as_str()) {
+                            text_out.push_str(t);
+                            emit(app, stream_id, StreamEvent::TextDelta { text: t.to_string() });
+                        }
+                    }
+                    "response.reasoning_summary_text.delta" | "response.reasoning_text.delta" => {
+                        if let Some(t) = v.get("delta").and_then(|d| d.as_str()) {
+                            emit(app, stream_id, StreamEvent::ReasoningDelta { text: t.to_string() });
+                        }
+                    }
+                    "response.output_item.added" => {
+                        if let Some(item) = v.get("item") {
+                            if item.get("type").and_then(|t| t.as_str()) == Some("function_call") {
+                                let item_id = item.get("id").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                                let call_id = item
+                                    .get("call_id")
+                                    .and_then(|x| x.as_str())
+                                    .unwrap_or(&item_id)
+                                    .to_string();
+                                let name = item.get("name").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                                emit(app, stream_id, StreamEvent::ToolCallStart { id: call_id.clone(), name: name.clone() });
+                                fn_calls.insert(item_id, (call_id, name, String::new()));
+                            }
+                        }
+                    }
+                    "response.function_call_arguments.delta" => {
+                        let item_id = v.get("item_id").and_then(|x| x.as_str()).unwrap_or("");
+                        if let Some((_, _, acc)) = fn_calls.get_mut(item_id) {
+                            if let Some(part) = v.get("delta").and_then(|x| x.as_str()) {
+                                acc.push_str(part);
+                            }
+                        }
+                    }
+                    "response.output_item.done" => {
+                        if let Some(item) = v.get("item") {
+                            if item.get("type").and_then(|t| t.as_str()) == Some("function_call") {
+                                let item_id = item.get("id").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                                let (call_id, name, acc) = fn_calls.remove(&item_id).unwrap_or_else(|| {
+                                    let call_id = item.get("call_id").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                                    let name = item.get("name").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                                    (call_id, name, String::new())
+                                });
+                                // Prefer the complete arguments on the done item.
+                                let args_str = item
+                                    .get("arguments")
+                                    .and_then(|x| x.as_str())
+                                    .filter(|s| !s.is_empty())
+                                    .map(|s| s.to_string())
+                                    .unwrap_or(acc);
+                                let args: Value = serde_json::from_str(&args_str).unwrap_or(Value::Object(Default::default()));
+                                emit(app, stream_id, StreamEvent::ToolCallArgs { id: call_id.clone(), args: args.clone() });
+                                tool_calls.push(super::provider::ToolCall { id: call_id, name, arguments: args });
+                            }
+                        }
+                    }
+                    "response.completed" | "response.incomplete" => {
+                        if let Some(u) = v.pointer("/response/usage") {
+                            let p = u.get("input_tokens").and_then(|x| x.as_u64()).unwrap_or(0);
+                            let c = u.get("output_tokens").and_then(|x| x.as_u64()).unwrap_or(0);
+                            let tot = u.get("total_tokens").and_then(|x| x.as_u64()).unwrap_or(p + c);
+                            usage = Usage { prompt_tokens: p, completion_tokens: c, total_tokens: tot };
+                        }
+                    }
+                    "response.failed" | "error" => {
+                        let msg = v
+                            .pointer("/response/error/message")
+                            .or_else(|| v.get("message"))
+                            .and_then(|m| m.as_str())
+                            .unwrap_or("responses stream error");
+                        log::warn!("responses stream error: {msg}");
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    Ok(ChatStreamResult { text: text_out, tool_calls, usage })
 }
 
 async fn stream_anthropic(
@@ -352,6 +654,7 @@ async fn stream_anthropic(
     let mut text_out = String::new();
     let mut tool_calls: Vec<super::provider::ToolCall> = Vec::new();
     let mut current_tool: Option<(String, String, String)> = None;
+    let mut usage = Usage::default();
 
     while let Some(chunk) = stream.next().await {
         if is_cancelled(stream_id) {
@@ -367,6 +670,14 @@ async fn stream_anthropic(
                 if let Some(data) = l.strip_prefix("data: ") {
                     if let Ok(v) = serde_json::from_str::<Value>(data) {
                         let ev_type = v.get("type").and_then(|s| s.as_str()).unwrap_or("");
+                        // Anthropic reports input tokens on message_start and
+                        // output tokens (cumulative) on message_delta.
+                        if let Some(iu) = v.pointer("/message/usage/input_tokens").and_then(|x| x.as_u64()) {
+                            usage.prompt_tokens = iu;
+                        }
+                        if let Some(ou) = v.pointer("/usage/output_tokens").and_then(|x| x.as_u64()) {
+                            usage.completion_tokens = ou;
+                        }
                         match ev_type {
                             "content_block_start" => {
                                 if let Some(block) = v.get("content_block") {
@@ -414,7 +725,8 @@ async fn stream_anthropic(
         }
     }
 
-    Ok(ChatStreamResult { text: text_out, tool_calls })
+    usage.total_tokens = usage.prompt_tokens + usage.completion_tokens;
+    Ok(ChatStreamResult { text: text_out, tool_calls, usage })
 }
 
 async fn stream_gemini(
@@ -457,8 +769,10 @@ async fn stream_gemini(
     }
     {
         let mut tool_list: Vec<Value> = Vec::new();
+        let mut has_functions = false;
         if let Some(ts) = tools {
             if !ts.is_empty() {
+                has_functions = true;
                 tool_list.push(json!({
                     "functionDeclarations": ts.iter().map(|t| json!({
                         "name": t.name,
@@ -468,11 +782,17 @@ async fn stream_gemini(
                 }));
             }
         }
-        // Native web search — Gemini grounding tool. NOTE: some model versions
-        // reject mixing googleSearch with functionDeclarations; if the call
-        // 400s, switch to the free/tavily engine instead.
+        // Native web search — Gemini grounding tool.
         if config.web_search_mode == "native" {
             tool_list.push(json!({ "google_search": {} }));
+            // GOTCHA: Gemini 2.5/3 reject a built-in tool (google_search) alongside
+            // client functionDeclarations unless server-side tool invocation is
+            // explicitly enabled — otherwise it 400s "Please enable
+            // tool_config.include_server_side_tool_invocations". Set it whenever we
+            // combine the two so native search doesn't blow up the request.
+            if has_functions {
+                body["toolConfig"] = json!({ "includeServerSideToolInvocations": true });
+            }
         }
         if !tool_list.is_empty() {
             body["tools"] = json!(tool_list);
@@ -498,12 +818,14 @@ async fn stream_gemini(
     let mut byte_buf: Vec<u8> = Vec::new();
     let mut text_out = String::new();
     let mut tool_calls: Vec<super::provider::ToolCall> = Vec::new();
+    let mut usage = Usage::default();
     let mut chunk_count = 0u32;
 
     // Line-based SSE parser — robust to \n vs \r\n vs missing trailing newline.
     let process_data = |data: &str,
                             text_out: &mut String,
-                            tool_calls: &mut Vec<super::provider::ToolCall>| {
+                            tool_calls: &mut Vec<super::provider::ToolCall>,
+                            usage: &mut Usage| {
         let data = data.trim();
         if data.is_empty() || data == "[DONE]" {
             return;
@@ -512,6 +834,15 @@ async fn stream_gemini(
             eprintln!("[gemini stream] failed to parse JSON: {}", data.chars().take(120).collect::<String>());
             return;
         };
+        // usageMetadata is cumulative across chunks; keep the latest.
+        if let Some(um) = v.get("usageMetadata") {
+            let p = um.get("promptTokenCount").and_then(|x| x.as_u64()).unwrap_or(0);
+            let c = um.get("candidatesTokenCount").and_then(|x| x.as_u64()).unwrap_or(0);
+            let tot = um.get("totalTokenCount").and_then(|x| x.as_u64()).unwrap_or(p + c);
+            if p + c + tot > 0 {
+                *usage = Usage { prompt_tokens: p, completion_tokens: c, total_tokens: tot };
+            }
+        }
         if let Some(fr) = v.pointer("/candidates/0/finishReason").and_then(|f| f.as_str()) {
             if fr != "STOP" {
                 let notice = if fr == "MAX_TOKENS" {
@@ -586,7 +917,7 @@ async fn stream_gemini(
             let line = buffer[..nl].trim_end_matches('\r').to_string();
             buffer.drain(..nl + 1);
             if let Some(data) = line.strip_prefix("data: ").or_else(|| line.strip_prefix("data:")) {
-                process_data(data, &mut text_out, &mut tool_calls);
+                process_data(data, &mut text_out, &mut tool_calls, &mut usage);
             }
         }
     }
@@ -595,7 +926,7 @@ async fn stream_gemini(
     if !buffer.is_empty() {
         let line = buffer.trim_end_matches('\r');
         if let Some(data) = line.strip_prefix("data: ").or_else(|| line.strip_prefix("data:")) {
-            process_data(data, &mut text_out, &mut tool_calls);
+            process_data(data, &mut text_out, &mut tool_calls, &mut usage);
         }
     }
 
@@ -606,5 +937,6 @@ async fn stream_gemini(
     Ok(ChatStreamResult {
         text: text_out,
         tool_calls,
+        usage,
     })
 }

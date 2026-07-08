@@ -97,6 +97,30 @@ export function resolveThemeFontStack(fontFamily?: string): string {
   return FONT_CSS_STACKS[fontFamily || ''] || "'Inter', 'Noto Sans SC', sans-serif";
 }
 
+// Font families the user picks that render as CJK serif (宋体) vs kai (楷体).
+// Everything else falls back to the sans (黑体/雅黑) bundle.
+const EXPORT_SERIF_FONTS = new Set(['Georgia', 'Palatino', 'Times New Roman', 'Garamond', 'SimSun']);
+const EXPORT_KAI_FONTS = new Set(['KaiTi', 'LXGW WenKai']);
+const EXPORT_MONO_FONTS = new Set(['Courier New']);
+
+/**
+ * Font stack used ONLY for PDF/HTML export. Unlike the on-screen stack, this
+ * puts a LOCALLY-BUNDLED, embeddable font FIRST ('Reseumer Hei/Song/Kai',
+ * provided via @font-face injected by the Rust exporter). Rationale:
+ *  - Guarantees the PDF embeds a real TrueType/CFF font instead of an
+ *    un-embeddable OS system font → no more uneditable "Type3" PDFs.
+ *  - Works fully offline (no dependency on Google Fonts, which is often
+ *    blocked/slow), and renders identically on Windows and macOS.
+ * The chosen family still tracks the user's serif/kai/sans intent.
+ */
+export function resolveExportFontStack(fontFamily?: string): string {
+  const ff = fontFamily || '';
+  if (EXPORT_KAI_FONTS.has(ff)) return "'Reseumer Kai', 'Reseumer Song', 'Reseumer Hei', serif";
+  if (EXPORT_SERIF_FONTS.has(ff)) return "'Reseumer Song', 'Reseumer Hei', serif";
+  if (EXPORT_MONO_FONTS.has(ff)) return "'Courier New', 'Reseumer Hei', monospace";
+  return "'Reseumer Hei', sans-serif";
+}
+
 export const WEBFONT_STYLESHEETS = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/lxgw-wenkai-webfont/1.7.0/style.min.css',

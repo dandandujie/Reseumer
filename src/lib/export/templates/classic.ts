@@ -28,7 +28,7 @@ export function buildClassicSectionContent(section: Section, lang: string = 'en'
         <div class="min-w-0 text-right"><span class="text-xs font-semibold text-zinc-500">${dateRange(it.startDate, it.endDate, it.current ? (lang === 'zh' ? '至今' : 'Present') : '')}</span></div>
       </div>
       ${it.description ? `<div class="mt-1 text-sm text-zinc-600">${md(it.description)}</div>` : ''}
-      ${it.technologies?.length ? `<p class="mt-0.5 text-xs text-zinc-400">${lang === 'zh' ? '技术栈' : 'Tech'}: ${esc(it.technologies.join(', '))}</p>` : ''}
+      ${it.technologies?.length ? `<p class="mt-0.5 text-xs font-medium text-zinc-600"><span class="font-semibold text-zinc-700">${lang === 'zh' ? '技术栈' : 'Tech'}:</span> ${esc(it.technologies.join(', '))}</p>` : ''}
       ${it.highlights?.length ? `<ul class="mt-1 list-disc pl-4">${buildHighlights(it.highlights, 'text-sm text-zinc-600')}</ul>` : ''}
     </div>`).join('')}</div>`;
   }
@@ -48,7 +48,7 @@ export function buildClassicSectionContent(section: Section, lang: string = 'en'
     return `<div class="space-y-3">${((c as ProjectsContent).items || []).map((it: any) => `<div>
       <div class="flex items-baseline justify-between"><span class="font-semibold text-zinc-800 text-sm">${esc(it.name)}</span>${it.startDate ? `<span class="text-xs font-semibold text-zinc-500">${dateRange(it.startDate, it.endDate, lang === 'zh' ? '至今' : 'Present')}</span>` : ''}</div>
       ${it.description ? `<div class="mt-1 text-sm text-zinc-600">${md(it.description)}</div>` : ''}
-      ${it.technologies?.length ? `<p class="mt-0.5 text-xs text-zinc-400">${lang === 'zh' ? '技术栈' : 'Tech'}: ${esc(it.technologies.join(', '))}</p>` : ''}
+      ${it.technologies?.length ? `<p class="mt-0.5 text-xs font-medium text-zinc-600"><span class="font-semibold text-zinc-700">${lang === 'zh' ? '技术栈' : 'Tech'}:</span> ${esc(it.technologies.join(', '))}</p>` : ''}
       ${it.highlights?.length ? `<ul class="mt-1 list-disc pl-4">${buildHighlights(it.highlights, 'text-sm text-zinc-600')}</ul>` : ''}
     </div>`).join('')}</div>`;
   }
@@ -88,7 +88,7 @@ export function buildClassicHtml(resume: ResumeWithSections): string {
   const contacts = [pi.age, pi.politicalStatus, pi.gender, pi.ethnicity, pi.hometown, pi.maritalStatus, pi.yearsOfExperience, pi.educationLevel, pi.email, pi.phone, pi.wechat, pi.location, pi.website].filter(Boolean);
 
   return `<div class="mx-auto max-w-[210mm] bg-white shadow-lg" style="font-family:Inter,sans-serif">
-    <div class="mb-6 border-b-2 border-zinc-800 pb-4">
+    <div class="border-b-2 border-zinc-800 pb-2" data-section>
       <div class="flex items-center justify-center gap-4">
         ${pi.avatar ? `<img src="${esc(pi.avatar)}" alt="" class="h-16 w-16 shrink-0 rounded-full object-cover"/>` : ''}
         <div class="text-center">

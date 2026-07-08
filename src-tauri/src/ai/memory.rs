@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 const FACTS_FILE: &str = "global_facts.md";
 const DIRECTIVES_FILE: &str = "assistant_directives.md";
+const INTERVIEW_DIRECTIVES_FILE: &str = "interview_directives.md";
 const MAX_FACTS_BYTES: usize = 8 * 1024;
 
 /// Tauri-managed state holding the memory directory (app_data/memory).
@@ -46,4 +47,22 @@ pub fn update_assistant_directives(dir: &Path, content: &str) -> Result<String, 
     fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     fs::write(dir.join(DIRECTIVES_FILE), content.trim()).map_err(|e| e.to_string())?;
     Ok("助手调优指令已更新，下一次对话即生效".into())
+}
+
+/// Interview-assistant tuning directives — mirrors assistant directives but for
+/// the mock-interview helper. The Global Agent can read and rewrite these.
+pub fn read_interview_directives(dir: &Path) -> String {
+    fs::read_to_string(dir.join(INTERVIEW_DIRECTIVES_FILE)).unwrap_or_default()
+}
+
+pub fn update_interview_directives(dir: &Path, content: &str) -> Result<String, String> {
+    if content.len() > MAX_FACTS_BYTES {
+        return Err(format!(
+            "面试调优指令超过 {} KB 上限，请压缩后重写",
+            MAX_FACTS_BYTES / 1024
+        ));
+    }
+    fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    fs::write(dir.join(INTERVIEW_DIRECTIVES_FILE), content.trim()).map_err(|e| e.to_string())?;
+    Ok("面试助手调优指令已更新，下一次对话即生效".into())
 }

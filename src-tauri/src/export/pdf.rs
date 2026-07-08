@@ -66,7 +66,63 @@ pub fn find_chrome() -> Option<PathBuf> {
     None
 }
 
-pub fn generate_pdf_from_html(html: &str, output_path: &std::path::Path) -> Result<(), String> {
+/// Build an `@font-face` <style> block defining the LOCAL, embeddable font
+/// families the export stack references first ("Reseumer Hei/Song/Kai"), backed
+/// by bundled woff2 files copied next to the HTML.
+///
+/// WHY: the export normally relies on OS system fonts / Google Fonts. On macOS
+/// the system CJK fonts (PingFang, Songti SC…) are marked non-embeddable, so
+/// Chrome rasterizes text as uneditable Type3 fonts; and Google Fonts is often
+/// blocked/slow. By bundling open (OFL) fonts and making them the primary
+/// export family, every PDF embeds a real TrueType/CFF font — editable,
+/// fully offline, and byte-identical on Windows and macOS.
+///
+/// Family → bundled file:
+///   Reseumer Hei  (黑体/雅黑/sans) → Noto Sans SC  (Regular + Bold)
+///   Reseumer Song (宋体/serif)     → Noto Serif SC (Regular + Bold)
+///   Reseumer Kai  (楷体)           → LXGW WenKai   (Regular; Bold synthesized)
+fn build_local_font_css(font_dir: &std::path::Path, temp_dir: &std::path::Path) -> Option<String> {
+    // (css family name, regular file, optional bold file)
+    let families: [(&str, &str, Option<&str>); 3] = [
+        ("Reseumer Hei", "NotoSansSC-Regular.woff2", Some("NotoSansSC-Bold.woff2")),
+        ("Reseumer Song", "NotoSerifSC-Regular.woff2", Some("NotoSerifSC-Bold.woff2")),
+        ("Reseumer Kai", "LXGWWenKai-Regular.woff2", None),
+    ];
+    // Require at least the sans regular; otherwise skip injection entirely.
+    if !font_dir.join("NotoSansSC-Regular.woff2").exists() {
+        return None;
+    }
+    let copy_font = |file: &str| -> Option<String> {
+        let src = font_dir.join(file);
+        if !src.exists() {
+            return None;
+        }
+        let dst = temp_dir.join(format!("reseumer-{}", file));
+        std::fs::copy(&src, &dst).ok()?;
+        Some(format!("file://{}", dst.to_string_lossy().replace('\\', "/")))
+    };
+    let mut css = String::from("<style>\n");
+    for (family, regular, bold) in families {
+        let Some(reg_url) = copy_font(regular) else { continue };
+        css.push_str(&format!(
+            "@font-face{{font-family:'{family}';font-weight:100 500;font-style:normal;src:url('{reg_url}') format('woff2');}}\n"
+        ));
+        // Use a real bold file when available; otherwise reuse regular (Chrome
+        // synthesizes bold) so 600-900 weights still resolve to this family.
+        let bold_url = bold.and_then(copy_font).unwrap_or_else(|| reg_url.clone());
+        css.push_str(&format!(
+            "@font-face{{font-family:'{family}';font-weight:600 900;font-style:normal;src:url('{bold_url}') format('woff2');}}\n"
+        ));
+    }
+    css.push_str("</style>");
+    Some(css)
+}
+
+pub fn generate_pdf_from_html(
+    html: &str,
+    output_path: &std::path::Path,
+    font_dir: Option<&std::path::Path>,
+) -> Result<(), String> {
     // Stable CHROME_NOT_FOUND prefix lets the frontend detect this case and
     // show a localized, actionable message.
     let chrome = find_chrome().ok_or_else(|| {
@@ -75,6 +131,24 @@ pub fn generate_pdf_from_html(html: &str, output_path: &std::path::Path) -> Resu
 
     // Write HTML to a temp file
     let temp_dir = std::env::temp_dir();
+
+    // Inject local embeddable CJK fonts into <head> (see build_local_font_css).
+    let html = match font_dir.and_then(|d| build_local_font_css(d, &temp_dir)) {
+        Some(font_css) => {
+            if let Some(pos) = html.find("</head>") {
+                let mut out = String::with_capacity(html.len() + font_css.len());
+                out.push_str(&html[..pos]);
+                out.push_str(&font_css);
+                out.push_str(&html[pos..]);
+                out
+            } else {
+                format!("{}{}", font_css, html)
+            }
+        }
+        None => html.to_string(),
+    };
+    let html = html.as_str();
+
     let html_path = temp_dir.join(format!("reseumer-{}.html", uuid::Uuid::new_v4()));
     std::fs::write(&html_path, html).map_err(|e| format!("Failed to write temp HTML: {}", e))?;
 
@@ -88,6 +162,16 @@ pub fn generate_pdf_from_html(html: &str, output_path: &std::path::Path) -> Resu
             "--no-sandbox",
             "--hide-scrollbars",
             "--print-to-pdf-no-header",
+            // Wait for the (embeddable) web fonts to finish loading before
+            // printing. Without this, Chrome prints too early and falls back to
+            // the OS system font, which it CANNOT embed → it rasterizes text as
+            // Type3 fonts (uneditable). Advancing virtual time + draining the
+            // compositor makes the real fonts load and embed as proper TrueType.
+            "--run-all-compositor-stages-before-draw",
+            "--virtual-time-budget=10000",
+            "--font-render-hinting=none",
+            // Allow the file:// export HTML to load the sibling font files.
+            "--allow-file-access-from-files",
             &pdf_arg,
             &file_url,
         ])

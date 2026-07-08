@@ -143,8 +143,9 @@ export function ClassicTemplate({ resume, interactive, onReorderSections }: { re
 
   return (
     <div className="mx-auto max-w-[210mm] bg-white shadow-lg">
-      {/* Header */}
-      <div className="mb-6 border-b-2 border-zinc-800 pb-4">
+      {/* Header — margin-bottom driven by the section-spacing setting (data-section)
+          instead of a fixed mb-6, so the gap to the first section stays tight. */}
+      <div className="border-b-2 border-zinc-800 pb-2" data-section>
         <div {...(personalInfo ? getSectionProps(personalInfo.id) : {})}>
           <div className="flex items-center justify-center gap-4">
             {pi.avatar && (
@@ -252,7 +253,7 @@ function PreviewSection({
 
   if (dndEnabled) {
     return (
-      <div ref={sortable.setNodeRef} style={style} className="mb-5" data-section-id={section.id}>
+      <div ref={sortable.setNodeRef} style={style} className="mb-5" data-section data-section-id={section.id}>
         {content}
       </div>
     );
@@ -262,6 +263,7 @@ function PreviewSection({
   return (
     <Comp
       className="mb-5"
+      data-section
       data-section-id={section.id}
       layout={interactive ? 'position' : false}
       transition={interactive ? { type: 'spring', stiffness: 300, damping: 30 } : undefined}
@@ -306,7 +308,7 @@ function SectionContent({ section, lang, interactive }: { section: any; lang?: s
             </div>
             {item.description && <p className="mt-1 text-sm text-zinc-600" dangerouslySetInnerHTML={{ __html: md(item.description) }} />}
             {item.technologies?.length > 0 && (
-              <p className="mt-0.5 text-xs text-zinc-400">{lang === 'zh' ? '技术栈' : 'Tech'}: {item.technologies.join(', ')}</p>
+              <p className="mt-0.5 text-xs font-medium text-zinc-600"><span className="font-semibold text-zinc-700">{lang === 'zh' ? '技术栈' : 'Tech'}:</span> {item.technologies.join(', ')}</p>
             )}
             {item.highlights?.length > 0 && (
               <ul className="mt-1 list-disc pl-4">
@@ -382,7 +384,7 @@ function SectionContent({ section, lang, interactive }: { section: any; lang?: s
             </div>
             {item.description && <p className="mt-1 text-sm text-zinc-600" dangerouslySetInnerHTML={{ __html: md(item.description) }} />}
             {item.technologies?.length > 0 && (
-              <p className="mt-0.5 text-xs text-zinc-400">{lang === 'zh' ? '技术栈' : 'Tech'}: {item.technologies.join(', ')}</p>
+              <p className="mt-0.5 text-xs font-medium text-zinc-600"><span className="font-semibold text-zinc-700">{lang === 'zh' ? '技术栈' : 'Tech'}:</span> {item.technologies.join(', ')}</p>
             )}
             {item.highlights?.length > 0 && (
               <ul className="mt-1 list-disc pl-4">

@@ -1,0 +1,351 @@
+'use client';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { listen } from '@tauri-apps/api/event';
+import { Send, Square, Play, RotateCcw, BookmarkPlus } from 'lucide-react';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AIMessage } from '@/components/ai/ai-message';
+import { useSettingsStore, type WebSearchMode } from '@/stores/settings-store';
+import { useUIStore } from '@/stores/ui-store';
+import { useResumeStore } from '@/stores/resume-store';
+import { useJournalStore } from '@/stores/journal-store';
+import * as api from '@/lib/tauri-api';
+import { logError } from '@/stores/error-log-store';
+import { generateId } from '@/lib/utils';
+import type { UIMessage } from '@/types/chat';
+
+const WEB_SEARCH_MODES: WebSearchMode[] = ['off', 'native', 'free', 'bing', 'google', 'baidu', 'tavily', 'grok'];
+
+interface StreamEvent {
+  streamId: string;
+  event:
+    | { type: 'textDelta'; text: string }
+    | { type: 'reasoningDelta'; text: string }
+    | { type: 'toolCallStart'; id: string; name: string }
+    | { type: 'toolResult'; id: string; name: string; result: unknown }
+    | { type: 'finish'; finalText: string }
+    | { type: 'error'; message: string };
+}
+
+export function InterviewDialog() {
+  const t = useTranslations('interview');
+  const tw = useTranslations('settings.webSearch');
+  const activeModal = useUIStore((s) => s.activeModal);
+  const closeModal = useUIStore((s) => s.closeModal);
+  const openSettings = useUIStore((s) => s.openModal);
+  const isOpen = activeModal === 'interview';
+
+  const resumeId = useResumeStore((s) => s.currentResume?.id);
+  const addMock = useJournalStore((s) => s.addMock);
+  const channels = useSettingsStore((s) => s.channels);
+  const activeChannelId = useSettingsStore((s) => s.activeChannelId);
+  const selectChannel = useSettingsStore((s) => s.selectChannel);
+
+  const [company, setCompany] = useState('');
+  const [role, setRole] = useState('');
+  const [jd, setJd] = useState('');
+  const [webSearchMode, setWebSearchMode] = useState<WebSearchMode>('native');
+  const [selectedModel, setSelectedModel] = useState<string | undefined>();
+
+  const [messages, setMessages] = useState<UIMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const streamRef = useRef<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const activeChannel = channels.find((c) => c.id === activeChannelId);
+  const configuredChannels = channels.filter((c) => c.apiKey.trim() && c.baseURL.trim());
+  const hasConfigured = configuredChannels.length > 0;
+  const shortlist = activeChannel?.models ?? [];
+  const modelValue = selectedModel || activeChannel?.model;
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages]);
+
+  // Single global listener for this modal's stream.
+  useEffect(() => {
+    if (!isOpen) return;
+    let unlisten: (() => void) | undefined;
+    listen<StreamEvent>('ai-chat-event', (e) => {
+      const payload = e.payload;
+      if (payload.streamId !== streamRef.current) return;
+      const ev = payload.event;
+      if (ev.type === 'textDelta') {
+        setMessages((prev) => appendToLastAssistant(prev, ev.text));
+      } else if (ev.type === 'finish') {
+        setMessages((prev) => finalizeLastAssistant(prev, ev.finalText));
+        streamRef.current = null;
+        setIsLoading(false);
+      } else if (ev.type === 'error') {
+        streamRef.current = null;
+        setIsLoading(false);
+        logError(t('title'), typeof ev.message === 'string' ? ev.message : '');
+      }
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => unlisten?.();
+  }, [isOpen, t]);
+
+  const runTurn = useCallback(
+    async (history: UIMessage[]) => {
+      if (!hasConfigured) {
+        openSettings('settings');
+        return;
+      }
+      const streamId = generateId();
+      streamRef.current = streamId;
+      setIsLoading(true);
+      // Add an empty assistant placeholder to stream into.
+      setMessages([...history, { id: generateId(), role: 'assistant', parts: [{ type: 'text', text: '' }] }]);
+      const backend = history.map((m) => ({
+        role: m.role,
+        content: m.content || m.parts.filter((p) => p.type === 'text').map((p: any) => p.text).join(''),
+      }));
+      try {
+        await api.interviewChat({
+          streamId,
+          messages: backend,
+          resumeId,
+          company,
+          role,
+          jd,
+          webSearchMode,
+          selectedModel,
+        });
+      } catch (err: any) {
+        streamRef.current = null;
+        setIsLoading(false);
+        logError(t('title'), err?.message || String(err));
+      }
+    },
+    [hasConfigured, openSettings, resumeId, company, role, jd, webSearchMode, selectedModel, t]
+  );
+
+  const startInterview = () => {
+    const first: UIMessage = { id: generateId(), role: 'user', parts: [{ type: 'text', text: t('startTrigger') }] };
+    void runTurn([first]);
+  };
+
+  const sendAnswer = () => {
+    if (!input.trim() || isLoading) return;
+    const userMsg: UIMessage = { id: generateId(), role: 'user', parts: [{ type: 'text', text: input }] };
+    void runTurn([...messages.filter((m) => m.parts.some((p) => p.type === 'text' && p.text)), userMsg]);
+    setInput('');
+  };
+
+  const stop = () => {
+    if (streamRef.current) {
+      void api.cancelAiStream(streamRef.current);
+      streamRef.current = null;
+      setIsLoading(false);
+    }
+  };
+
+  const reset = () => {
+    stop();
+    setMessages([]);
+  };
+
+  const saveToJournal = () => {
+    if (!resumeId || messages.length === 0) return;
+    const textOf = (m: UIMessage) =>
+      m.content || m.parts.filter((p) => p.type === 'text').map((p: any) => p.text).join('');
+    const assistantMsgs = messages.filter((m) => m.role === 'assistant' && textOf(m).trim());
+    // The last interviewer message is usually the closing feedback — archive it.
+    const feedback = assistantMsgs.length ? textOf(assistantMsgs[assistantMsgs.length - 1]) : '';
+    const transcript = messages
+      .map((m) => `【${m.role === 'user' ? '我' : '面试官'}】${textOf(m)}`)
+      .join('\n\n');
+    const label = [company.trim(), role.trim()].filter(Boolean).join(' · ') || t('title');
+    addMock(resumeId, {
+      company: company.trim() || undefined,
+      role: role.trim() || undefined,
+      feedback: feedback.slice(0, 4000),
+      transcript: transcript.slice(0, 8000),
+    });
+    toast.success(t('archived'));
+  };
+
+  const started = messages.length > 0;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(o) => !o && closeModal()}>
+      <DialogContent className="flex h-[80vh] max-w-[900px] flex-col gap-0 p-0 sm:max-w-[900px]">
+        <DialogHeader className="border-b border-border px-5 py-3">
+          <DialogTitle>{t('title')}</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex min-h-0 flex-1">
+          {/* Left: interview setup */}
+          <div className="flex w-[300px] shrink-0 flex-col gap-3 overflow-y-auto border-r border-border p-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">{t('company')}</Label>
+              <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder={t('companyPlaceholder')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">{t('role')}</Label>
+              <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder={t('rolePlaceholder')} />
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col space-y-1.5">
+              <Label className="text-xs">{t('jd')}</Label>
+              <textarea
+                value={jd}
+                onChange={(e) => setJd(e.target.value)}
+                placeholder={t('jdPlaceholder')}
+                className="min-h-[120px] flex-1 resize-none rounded-md border border-border bg-transparent px-3 py-2 text-xs outline-none focus:border-[var(--whale-ink-muted)]"
+              />
+            </div>
+
+            {/* Channel / model / web-search */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">{t('channel')}</Label>
+              {hasConfigured ? (
+                <Select value={activeChannelId ?? undefined} onValueChange={(v) => { selectChannel(v); setSelectedModel(undefined); }}>
+                  <SelectTrigger size="sm" className="h-8 w-full text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {configuredChannels.map((c) => (
+                      <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Button variant="outline" size="sm" className="w-full cursor-pointer text-xs" onClick={() => openSettings('settings')}>
+                  {t('needChannel')}
+                </Button>
+              )}
+            </div>
+            {hasConfigured && shortlist.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t('model')}</Label>
+                <Select value={modelValue} onValueChange={setSelectedModel}>
+                  <SelectTrigger size="sm" className="h-8 w-full text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {shortlist.map((m) => (<SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label className="text-xs">{tw('title')}</Label>
+              <Select value={webSearchMode} onValueChange={(v) => setWebSearchMode(v as WebSearchMode)}>
+                <SelectTrigger size="sm" className="h-8 w-full text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {WEB_SEARCH_MODES.map((m) => (<SelectItem key={m} value={m} className="text-xs">{tw(`tag.${m}`)}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="mt-1 flex flex-col gap-2">
+              <Button
+                onClick={started ? reset : startInterview}
+                disabled={isLoading && !started}
+                className="w-full cursor-pointer gap-1.5"
+              >
+                {started ? <RotateCcw className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                {started ? t('restart') : t('start')}
+              </Button>
+              {started && (
+                <Button
+                  variant="outline"
+                  onClick={saveToJournal}
+                  disabled={isLoading}
+                  className="w-full cursor-pointer gap-1.5"
+                >
+                  <BookmarkPlus className="h-4 w-4" />
+                  {t('saveToJournal')}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Right: conversation */}
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+              {messages.length === 0 ? (
+                <div className="flex h-full items-center justify-center px-6 text-center text-[13px] text-[var(--whale-ink-muted)]">
+                  {t('emptyHint')}
+                </div>
+              ) : (
+                messages.map((m, i) => (
+                  <AIMessage
+                    key={m.id}
+                    message={m}
+                    isStreaming={isLoading && m.role === 'assistant' && i === messages.length - 1}
+                  />
+                ))
+              )}
+            </div>
+            <form
+              onSubmit={(e) => { e.preventDefault(); sendAnswer(); }}
+              className="border-t border-border p-3"
+            >
+              <div className="flex items-end gap-2">
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={started ? t('answerPlaceholder') : t('startFirst')}
+                  disabled={!started}
+                  rows={2}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      sendAnswer();
+                    }
+                  }}
+                  className="min-h-[44px] flex-1 resize-none rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--whale-ink-muted)] disabled:opacity-50"
+                />
+                {isLoading ? (
+                  <Button type="button" onClick={stop} variant="outline" size="icon" className="h-10 w-10 shrink-0 cursor-pointer">
+                    <Square className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button type="submit" disabled={!started || !input.trim()} size="icon" className="h-10 w-10 shrink-0 cursor-pointer">
+                    <Send className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function appendToLastAssistant(prev: UIMessage[], text: string): UIMessage[] {
+  if (prev.length === 0) return prev;
+  const out = [...prev];
+  const last = out[out.length - 1];
+  if (last.role !== 'assistant') return prev;
+  const parts = [...last.parts];
+  const lastPart = parts[parts.length - 1];
+  if (lastPart?.type === 'text') {
+    parts[parts.length - 1] = { type: 'text', text: lastPart.text + text };
+  } else {
+    parts.push({ type: 'text', text });
+  }
+  out[out.length - 1] = { ...last, parts };
+  return out;
+}
+
+function finalizeLastAssistant(prev: UIMessage[], finalText: string): UIMessage[] {
+  if (prev.length === 0) return prev;
+  const out = [...prev];
+  const last = out[out.length - 1];
+  if (last.role !== 'assistant') return prev;
+  const current = last.parts.filter((p) => p.type === 'text').map((p: any) => p.text).join('');
+  if (!current && finalText) {
+    out[out.length - 1] = { ...last, parts: [{ type: 'text', text: finalText }], content: finalText };
+  } else {
+    out[out.length - 1] = { ...last, content: current };
+  }
+  return out;
+}

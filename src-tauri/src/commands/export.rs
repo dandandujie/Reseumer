@@ -5,7 +5,7 @@ use tauri_plugin_dialog::DialogExt;
 
 use crate::db::AppDb;
 use crate::db::repo::resume as resume_repo;
-use crate::export::{pdf, txt, docx};
+use crate::export::{pdf, txt, md, docx};
 use super::CommandError;
 
 #[derive(serde::Deserialize)]
@@ -41,10 +41,29 @@ pub async fn export_pdf(
         None => return Ok(None),
     };
 
-    pdf::generate_pdf_from_html(&options.html, &path)
+    let font_dir = resolve_font_dir(&app);
+    pdf::generate_pdf_from_html(&options.html, &path, font_dir.as_deref())
         .map_err(|e| CommandError { message: e })?;
 
     Ok(Some(path.to_string_lossy().to_string()))
+}
+
+/// Locate the bundled `fonts/` directory holding the embeddable export fonts.
+/// In a packaged app they live under the Tauri resource dir; in `tauri dev`
+/// they live next to the crate (CARGO_MANIFEST_DIR/fonts).
+fn resolve_font_dir(app: &tauri::AppHandle) -> Option<PathBuf> {
+    use tauri::Manager;
+    if let Ok(dir) = app.path().resource_dir() {
+        let fonts = dir.join("fonts");
+        if fonts.join("NotoSansSC-Regular.woff2").exists() {
+            return Some(fonts);
+        }
+    }
+    let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts");
+    if dev.join("NotoSansSC-Regular.woff2").exists() {
+        return Some(dev);
+    }
+    None
 }
 
 #[derive(serde::Deserialize)]
@@ -90,6 +109,34 @@ pub async fn export_txt(
 
     let default_name = filename.unwrap_or_else(|| format!("{}.txt", resume.resume.title));
     let path = pick_save_path(&app, &default_name, "txt").await;
+    let path = match path {
+        Some(p) => p,
+        None => return Ok(None),
+    };
+
+    std::fs::write(&path, text).map_err(|e| CommandError { message: format!("Failed to write: {}", e) })?;
+    Ok(Some(path.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+pub async fn export_markdown(
+    app: tauri::AppHandle,
+    db: State<'_, AppDb>,
+    resume_id: String,
+    filename: Option<String>,
+) -> Result<Option<String>, CommandError> {
+    let resume = {
+        let conn = db.conn.lock().map_err(|e| CommandError { message: e.to_string() })?;
+        resume_repo::find_by_id_any(&conn, &resume_id)
+            .map_err(|e| CommandError { message: e.to_string() })?
+            .ok_or(CommandError { message: "Resume not found".into() })?
+    };
+
+    let sections_values: Vec<Value> = resume.sections.iter().map(|s| serde_json::to_value(s).unwrap_or_default()).collect();
+    let text = md::generate_markdown(&sections_values);
+
+    let default_name = filename.unwrap_or_else(|| format!("{}.md", resume.resume.title));
+    let path = pick_save_path(&app, &default_name, "md").await;
     let path = match path {
         Some(p) => p,
         None => return Ok(None),

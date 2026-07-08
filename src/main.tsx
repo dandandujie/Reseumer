@@ -8,6 +8,7 @@ import i18n from '@/i18n';
 import { AppRouter } from '@/router';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
+import { ErrorLog } from '@/components/layout/error-log';
 import './globals.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -17,6 +18,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <TooltipProvider>
           <AppRouter />
           <Toaster />
+          <ErrorLog />
         </TooltipProvider>
       </I18nextProvider>
     </BrowserRouter>

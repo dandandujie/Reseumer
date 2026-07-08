@@ -3,14 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
+import { logError } from '@/stores/error-log-store';
 import { listen } from '@tauri-apps/api/event';
 import { PanelLeft, Plus, Trash2 } from 'lucide-react';
 import { AIInput } from '@/components/ai/ai-input';
 import { AIMessage } from '@/components/ai/ai-message';
 import { Button } from '@/components/ui/button';
 import { useResume } from '@/hooks/use-resume';
+import { useWebSearchMode } from '@/hooks/use-web-search-mode';
 import { useJournalStore, aggregateJournal } from '@/stores/journal-store';
 import { useSettingsStore } from '@/stores/settings-store';
+import { useUIStore } from '@/stores/ui-store';
 import * as api from '@/lib/tauri-api';
 import { GLOBAL_AGENT_RESUME_ID } from '@/lib/tauri-api';
 import { generateId } from '@/lib/utils';
@@ -59,7 +62,8 @@ function formatSessionTime(ts: number) {
 export default function AgentPage() {
   const t = useTranslations('dashboard');
   const hydrate = useJournalStore((s) => s.hydrate);
-  const byResume = useJournalStore((s) => s.byResume);
+  const applications = useJournalStore((s) => s.applications);
+  const mocks = useJournalStore((s) => s.mocks);
   const { resumes, fetchResumes } = useResume();
   const [versions, setVersions] = useState<ResumeVersion[]>([]);
   const [input, setInput] = useState('');
@@ -74,6 +78,7 @@ export default function AgentPage() {
   const [providerOptions, setProviderOptions] = useState<AIProviderOption[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<AIProviderId | undefined>();
   const [selectedModel, setSelectedModel] = useState<string | undefined>();
+  const [webSearchMode, setWebSearchMode] = useWebSearchMode('global');
   const [isHydrated, setIsHydrated] = useState(false);
   // streamId → owning session + target assistant message
   const streamsRef = useRef<Map<string, { sessionId: string; msgId: string }>>(new Map());
@@ -85,9 +90,25 @@ export default function AgentPage() {
   const settingsBaseURL = useSettingsStore((s) => s.aiBaseURL);
   const settingsApiKey = useSettingsStore((s) => s.aiApiKey);
   const settingsModel = useSettingsStore((s) => s.aiModel);
+  const channels = useSettingsStore((s) => s.channels);
+  const activeChannelId = useSettingsStore((s) => s.activeChannelId);
+  const selectChannel = useSettingsStore((s) => s.selectChannel);
+  const openModal = useUIStore((s) => s.openModal);
   const effectiveProvider = selectedProvider || settingsProvider;
   const effectiveProviderOption = providerOptions.find((provider) => provider.id === effectiveProvider);
   const effectiveModel = selectedModel || effectiveProviderOption?.model || settingsModel;
+  const activeChannel = channels.find((c) => c.id === activeChannelId);
+  const shortlist = !selectedProvider ? activeChannel?.models ?? [] : [];
+  const needsModelSetup = !!activeChannel && !!activeChannel.apiKey.trim() && shortlist.length === 0;
+  const shownModels = useMemo(() => {
+    if (!shortlist.length) return [];
+    const allowed = new Set(shortlist);
+    const filtered = models.filter((m) => allowed.has(m));
+    const base = filtered.length ? filtered : shortlist;
+    if (effectiveModel && !base.includes(effectiveModel)) return [effectiveModel, ...base];
+    return base;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [models, shortlist.join('|'), effectiveModel]);
   const messages = (activeSessionId && messagesBySession[activeSessionId]) || [];
   const isLoading = !!activeSessionId && busySessions.has(activeSessionId);
 
@@ -361,7 +382,7 @@ export default function AgentPage() {
         streamsRef.current.delete(payload.streamId);
         setBusy(sid, false);
         const message = typeof payload.event.message === 'string' ? payload.event.message : t('globalAgentError');
-        toast.error(t('globalAgentError'), { description: message.slice(0, 180) });
+        logError(t('globalAgentError'), message);
       }
     }).then((un) => {
       if (cancelled) {
@@ -395,7 +416,7 @@ export default function AgentPage() {
     return () => el.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const agg = useMemo(() => aggregateJournal(byResume), [byResume]);
+  const agg = useMemo(() => aggregateJournal(applications, mocks), [applications, mocks]);
   const resumeSummaries = useMemo(
     () =>
       resumes.map((resume) => ({
@@ -408,8 +429,8 @@ export default function AgentPage() {
     [resumes]
   );
   const activityEntries = useMemo(
-    () => Object.values(byResume).flat().sort((a, b) => b.createdAt - a.createdAt),
-    [byResume]
+    () => Object.values(applications).flat().sort((a, b) => b.updatedAt - a.updatedAt),
+    [applications]
   );
   const closedCount = agg.offerCount + agg.rejectCount;
   const successLabel = closedCount > 0 ? `${Math.round(agg.successRate * 100)}%` : '—';
@@ -421,21 +442,30 @@ export default function AgentPage() {
           .map((c) => `${c.channel}：投${c.total}/进面${c.reachedInterview}/offer${c.offers}`)
           .join('；')
       : '暂无渠道数据';
+    // Recent mock-interview archives (with interviewer feedback) — lets the Agent
+    // diagnose interview readiness and tune the interview assistant.
+    const allMocks = Object.values(mocks).flat().sort((a, b) => b.createdAt - a.createdAt);
+    const mockSummary = allMocks.length
+      ? allMocks
+          .slice(0, 6)
+          .map((m) => `${[m.company, m.role].filter(Boolean).join('·') || '未命名'}：${(m.feedback || '').replace(/\s+/g, ' ').slice(0, 220)}`)
+          .join('\n')
+      : '暂无模拟面试';
     return [
-      '你是 Resumer 的全局 AI Agent，不局限于单份简历。',
-      '你的职责：跨简历分析求职数据、发现漏斗问题、给出优化建议，并可以提出如何改进简历 AI 系统提示词的建议。',
-      '当前不要声称已经直接修改简历或系统提示词；如果需要修改，先给出明确方案和风险。',
+      '你是 Resumer 的 AI Agent，不局限于单份简历。',
+      '你的职责：跨简历分析求职数据、发现漏斗问题、给出优化建议；你可以直接调优简历 AI 助手与面试助手（改其提示词/技能库）。',
       '',
       `简历数量：${resumes.length}`,
       `版本快照：${versions.length}`,
-      `投递：${agg.totalApplications}，面试：${agg.totalInterviews}，Offer：${agg.offerCount}，被拒：${agg.rejectCount}，待跟进：${agg.pendingCount}，Offer率：${successLabel}`,
+      `投递：${agg.totalApplications}，面试轮次：${agg.totalInterviews}，进面投递：${agg.interviewedApplications}，Offer：${agg.offerCount}，被拒：${agg.rejectCount}，待跟进：${agg.pendingCount}，Offer率：${successLabel}`,
       `热门公司：${topCompanies}`,
       `渠道分布：${channelStats}`,
       `逾期待跟进：${agg.overdueFollowUps} 条`,
-      `最近动态数：${activityEntries.length}`,
+      `模拟面试存档：${agg.mockInterviewCount} 次`,
+      `模拟面试反馈（面试助手数据）：\n${mockSummary}`,
       `简历概览：${JSON.stringify(resumeSummaries.slice(0, 20))}`,
     ].join('\n');
-  }, [activityEntries.length, agg, resumeSummaries, resumes.length, successLabel, versions.length]);
+  }, [agg, mocks, resumeSummaries, resumes.length, successLabel, versions.length]);
 
   async function sendGlobalMessage(text: string) {
     if (!isHydrated) {
@@ -489,6 +519,7 @@ export default function AgentPage() {
         sessionId: sid,
         selectedProvider,
         selectedModel,
+        webSearchMode,
       })) as unknown as { text?: string; userMessageId?: string; assistantMessageId?: string } | string | null;
 
       // Remap temp ids to DB ids so rollback/edit target real rows.
@@ -517,7 +548,7 @@ export default function AgentPage() {
       }
     } catch (err: any) {
       const message = err?.message || String(err);
-      toast.error(t('globalAgentError'), { description: message.slice(0, 180) });
+      logError(t('globalAgentError'), message);
       updateSessionMessages(sid, (prev) =>
         prev.map((m) =>
           m.id === assistantMsg.id && !m.content
@@ -718,17 +749,20 @@ export default function AgentPage() {
           onChange={(e) => setInput(e.target.value)}
           onSubmit={handleSubmit}
           isLoading={isLoading}
-          models={models}
-          providers={providerOptions}
-          selectedProvider={selectedProvider}
-          effectiveProvider={effectiveProvider as AIProviderId}
-          onProviderChange={(provider) => {
-            setSelectedProvider(provider);
+          models={shownModels}
+          channels={channels}
+          activeChannelId={activeChannelId}
+          needsModelSetup={needsModelSetup}
+          onSelectChannel={(id) => {
+            selectChannel(id);
             setSelectedModel(undefined);
           }}
+          onOpenSettings={() => openModal('settings')}
           selectedModel={selectedModel}
           effectiveModel={effectiveModel}
           onModelChange={setSelectedModel}
+          webSearchMode={webSearchMode}
+          onWebSearchModeChange={setWebSearchMode}
           onStop={handleStop}
         />
       </section>

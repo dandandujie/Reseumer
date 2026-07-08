@@ -96,6 +96,22 @@ fn agent_tool_specs(web_search_enabled: bool) -> Vec<ToolSpec> {
                 "required": ["content"]
             }),
         },
+        ToolSpec {
+            name: "readInterviewDirectives".into(),
+            description: "读取当前对简历内「面试助手」（模拟面试官）下发的调优指令全文（修改前必读）。".into(),
+            parameters: json!({ "type": "object", "properties": {}, "required": [] }),
+        },
+        ToolSpec {
+            name: "updateInterviewDirectives".into(),
+            description: "直接调优面试助手（模拟面试官）：写入的指令会注入它每一次面试对话的系统提示词（全文覆盖式）。用于调整面试风格、考察重点、追问深度、评分口径等。每条指令附一行依据。8KB 内。".into(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "content": { "type": "string", "description": "面试调优指令完整 markdown（覆盖旧值，须保留仍有效的旧指令）" },
+                },
+                "required": ["content"]
+            }),
+        },
     ];
     if web_search_enabled {
         specs.push(ToolSpec {
@@ -245,15 +261,16 @@ r#"你是 Resumer 的**全局 Agent**——一位深谙中国就业市场的求�
 - **归因逻辑**：投递多但初筛少 → 简历或投递定位问题（建议做 JD 匹配分析）；初筛多但一面挂 → 基础技能表达与简历不符或面试表现；终面挂 → 匹配度/薪资/竞争者因素，不一定是候选人问题。
 
 ## 你的能力
-1. **求职漏斗分析**：计算 投递→面试→offer 转化率，对照上方基准定位瓶颈环节
-2. **模式识别**：从面试反馈、拒绝原因、公司类型中发现趋势（如"总在系统设计环节挂"）
+1. **求职漏斗分析**：计算 投递→面试→offer 转化率，对照上方基准定位瓶颈环节；同时结合**模拟面试表现**——结构化动态里的 mockInterviewCount 与 mockInterviews（含面试官反馈全文）反映候选人的面试准备度与薄弱环节，把它作为"面试环节转化低"的重要归因线索
+2. **模式识别**：从真实面试反馈、模拟面试反馈、拒绝原因、公司类型中发现趋势（如"总在系统设计环节挂"）
 3. **版本对比**：分析简历演化路径，哪些改动与更好的结果相关
 4. **跨简历一致性检查**：发现时间线冲突、技能描述不一致（背调风险点）
 5. **策略调整建议**：基于复盘模式与转化数据，给出下一步行动（换渠道/改简历/调整目标岗位层级）
 6. **直接优化 AI 助手**（你的核心权限）：单简历 AI 助手只服务单份简历、彼此不互通——只有你站在全局，看得到它的整体表现（版本历史中的 AI 采纳/拒绝率、用户复盘反馈、跨简历模式）。发现系统性问题时**直接动手修**，不是只给用户提建议：
-   - **updateAssistantDirectives**：向助手下发行为调优指令（注入它每次对话的提示词）。适用：改写风格被频繁拒绝、用户总在手动改某类表达、语气/详略偏好。
-   - **saveSkill**：直接修订技能库（岗位画像/SOP）。适用：某画像知识过时或有错、SOP 流程缺步骤。
-   - 修改纪律：改前先读原文（readAssistantDirectives / readSkill）；每条指令写明数据依据（如"近10次经历改写被拒6次，因为..."）；改完用一句话告知用户改了什么、为什么；无充分数据支撑时不要凭空修改。
+   - **updateAssistantDirectives**：向简历 AI 助手下发行为调优指令（注入它每次对话的提示词）。适用：改写风格被频繁拒绝、用户总在手动改某类表达、语气/详略偏好。
+   - **updateInterviewDirectives**：向简历内「面试助手」（模拟面试官）下发调优指令。适用：用户面试反馈显示某环节总挂（如系统设计/行为题）、面试风格太软/太硬、追问不够深、评分口径需校准。改前先 readInterviewDirectives。
+   - **saveSkill**：直接修订技能库（岗位画像/SOP）。适用：某画像知识过时或有错、SOP 流程缺步骤。技能库同时供简历助手与**面试助手**读取——改岗位画像会一并提升模拟面试的考察准度。
+   - 修改纪律：改前先读原文（readAssistantDirectives / readInterviewDirectives / readSkill）；每条指令写明数据依据（如"近10次经历改写被拒6次，因为..."）；改完用一句话告知用户改了什么、为什么；无充分数据支撑时不要凭空修改。
 
 ## 规则
 - 对简历内容和求职日志你是只读的：用户要改简历内容时，引导其到编辑器内的 AI 助手
@@ -389,6 +406,7 @@ pub async fn global_agent_chat(
     // Autonomous loop — skills/checkpoint tools, GenericAgent-style.
     let tool_specs = agent_tool_specs(search::tool_enabled(&ai_config));
     let mut final_text = String::new();
+    let mut usage_total = crate::ai::stream::Usage::default();
 
     for _step in 0..MAX_AGENT_STEPS {
         let response = match stream::stream_chat(
@@ -422,6 +440,7 @@ pub async fn global_agent_chat(
             }
         };
 
+        usage_total.add(&response.usage);
         if !response.text.is_empty() {
             final_text.push_str(&response.text);
         }
@@ -489,6 +508,17 @@ pub async fn global_agent_chat(
                 "updateAssistantDirectives" => {
                     let content = tc.arguments.get("content").and_then(|v| v.as_str()).unwrap_or("");
                     match memory::update_assistant_directives(&memory_dir.0, content) {
+                        Ok(msg) => json!({ "success": true, "message": msg }),
+                        Err(e) => json!({ "success": false, "error": e }),
+                    }
+                }
+                "readInterviewDirectives" => {
+                    let content = memory::read_interview_directives(&memory_dir.0);
+                    json!({ "content": if content.trim().is_empty() { "（暂无指令）".to_string() } else { content } })
+                }
+                "updateInterviewDirectives" => {
+                    let content = tc.arguments.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                    match memory::update_interview_directives(&memory_dir.0, content) {
                         Ok(msg) => json!({ "success": true, "message": msg }),
                         Err(e) => json!({ "success": false, "error": e }),
                     }
@@ -569,5 +599,10 @@ pub async fn global_agent_chat(
         "text": final_text,
         "userMessageId": user_msg_id,
         "assistantMessageId": assistant_msg_id,
+        "usage": {
+            "promptTokens": usage_total.prompt_tokens,
+            "completionTokens": usage_total.completion_tokens,
+            "totalTokens": usage_total.total_tokens,
+        },
     }))
 }

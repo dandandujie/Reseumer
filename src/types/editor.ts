@@ -1,4 +1,4 @@
-import type { ResumeSection } from './resume';
+import type { ResumeSection, ThemeConfig } from './resume';
 
 export interface EditorState {
   selectedSectionId: string | null;
@@ -10,6 +10,9 @@ export interface EditorState {
 
 export interface ResumeSnapshot {
   sections: ResumeSection[];
+  // Captured alongside sections so visual-only operations (e.g. smart layout,
+  // which only mutates the theme) can be undone/redone too.
+  themeConfig?: ThemeConfig;
   timestamp: number;
 }
 
