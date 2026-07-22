@@ -9,6 +9,7 @@ import { EditableDate } from '../fields/editable-date';
 import { EditableRichText } from '../fields/editable-rich-text';
 import { EditableList } from '../fields/editable-list';
 import { FieldWrapper } from '../fields/field-wrapper';
+import { createListEditor } from '@/lib/list-editor';
 import { generateId } from '@/lib/utils';
 import type { ResumeSection, ProjectsContent, ProjectItem } from '@/types/resume';
 
@@ -22,25 +23,17 @@ export function ProjectsSection({ section, onUpdate }: Props) {
   const content = section.content as ProjectsContent;
   const items = content.items || [];
 
-  const addItem = () => {
-    const newItem: ProjectItem = {
+  const { addItem, updateItem, removeItem } = createListEditor<ProjectItem>(
+    items,
+    (updated) => onUpdate({ items: updated }),
+    () => ({
       id: generateId(),
       name: '',
       description: '',
       technologies: [],
       highlights: [],
-    };
-    onUpdate({ items: [...items, newItem] } as any);
-  };
-
-  const updateItem = (index: number, data: Partial<ProjectItem>) => {
-    const updated = items.map((item, i) => (i === index ? { ...item, ...data } : item));
-    onUpdate({ items: updated } as any);
-  };
-
-  const removeItem = (index: number) => {
-    onUpdate({ items: items.filter((_, i) => i !== index) } as any);
-  };
+    }),
+  );
 
   return (
     <div className="space-y-4">

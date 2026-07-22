@@ -26,6 +26,19 @@ function normalizeUrl(url: string): string {
   return `https://${trimmed}`;
 }
 
+export function isValidQrUrl(value: string): boolean {
+  if (!value.trim()) return false;
+  try {
+    const url = new URL(value.startsWith('http') ? value : `https://${value}`);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+    return url.hostname === 'localhost'
+      || /\.\w{2,}$/.test(url.hostname)
+      || /^\d{1,3}(\.\d{1,3}){3}$/.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 /** Auto-detect QR-worthy URLs from all resume sections */
 export function extractUrlsFromResume(sections: ResumeSection[]): QrCodeItem[] {
   const items: QrCodeItem[] = [];

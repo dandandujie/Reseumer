@@ -9,6 +9,7 @@ import { EditableDate } from '../fields/editable-date';
 import { EditableRichText } from '../fields/editable-rich-text';
 import { EditableList } from '../fields/editable-list';
 import { FieldWrapper } from '../fields/field-wrapper';
+import { createListEditor } from '@/lib/list-editor';
 import { generateId } from '@/lib/utils';
 import type { ResumeSection, WorkExperienceContent, WorkExperienceItem } from '@/types/resume';
 
@@ -22,8 +23,10 @@ export function WorkExperienceSection({ section, onUpdate }: Props) {
   const content = section.content as WorkExperienceContent;
   const items = content.items || [];
 
-  const addItem = () => {
-    const newItem: WorkExperienceItem = {
+  const { addItem, updateItem, removeItem } = createListEditor<WorkExperienceItem>(
+    items,
+    (updated) => onUpdate({ items: updated }),
+    () => ({
       id: generateId(),
       company: '',
       position: '',
@@ -34,18 +37,8 @@ export function WorkExperienceSection({ section, onUpdate }: Props) {
       description: '',
       technologies: [],
       highlights: [],
-    };
-    onUpdate({ items: [...items, newItem] } as any);
-  };
-
-  const updateItem = (index: number, data: Partial<WorkExperienceItem>) => {
-    const updated = items.map((item, i) => (i === index ? { ...item, ...data } : item));
-    onUpdate({ items: updated } as any);
-  };
-
-  const removeItem = (index: number) => {
-    onUpdate({ items: items.filter((_, i) => i !== index) } as any);
-  };
+    }),
+  );
 
   return (
     <div className="space-y-4">

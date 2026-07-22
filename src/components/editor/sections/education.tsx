@@ -8,6 +8,7 @@ import { EditableText } from '../fields/editable-text';
 import { EditableDate } from '../fields/editable-date';
 import { EditableList } from '../fields/editable-list';
 import { FieldWrapper } from '../fields/field-wrapper';
+import { createListEditor } from '@/lib/list-editor';
 import { generateId } from '@/lib/utils';
 import type { ResumeSection, EducationContent, EducationItem } from '@/types/resume';
 
@@ -21,8 +22,10 @@ export function EducationSection({ section, onUpdate }: Props) {
   const content = section.content as EducationContent;
   const items = content.items || [];
 
-  const addItem = () => {
-    const newItem: EducationItem = {
+  const { addItem, updateItem, removeItem } = createListEditor<EducationItem>(
+    items,
+    (updated) => onUpdate({ items: updated }),
+    () => ({
       id: generateId(),
       institution: '',
       degree: '',
@@ -30,18 +33,8 @@ export function EducationSection({ section, onUpdate }: Props) {
       startDate: '',
       endDate: '',
       highlights: [],
-    };
-    onUpdate({ items: [...items, newItem] } as any);
-  };
-
-  const updateItem = (index: number, data: Partial<EducationItem>) => {
-    const updated = items.map((item, i) => (i === index ? { ...item, ...data } : item));
-    onUpdate({ items: updated } as any);
-  };
-
-  const removeItem = (index: number) => {
-    onUpdate({ items: items.filter((_, i) => i !== index) } as any);
-  };
+    }),
+  );
 
   return (
     <div className="space-y-4">

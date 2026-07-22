@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { EditableText } from '../fields/editable-text';
 import { EditableRichText } from '../fields/editable-rich-text';
 import { FieldWrapper } from '../fields/field-wrapper';
+import { createListEditor } from '@/lib/list-editor';
 import { generateId } from '@/lib/utils';
 import type { ResumeSection, CustomContent, CustomItem } from '@/types/resume';
 
@@ -20,19 +21,11 @@ export function CustomSection({ section, onUpdate }: Props) {
   const content = section.content as CustomContent;
   const items = content.items || [];
 
-  const addItem = () => {
-    const newItem: CustomItem = { id: generateId(), title: '', description: '' };
-    onUpdate({ items: [...items, newItem] } as any);
-  };
-
-  const updateItem = (index: number, data: Partial<CustomItem>) => {
-    const updated = items.map((item, i) => (i === index ? { ...item, ...data } : item));
-    onUpdate({ items: updated } as any);
-  };
-
-  const removeItem = (index: number) => {
-    onUpdate({ items: items.filter((_, i) => i !== index) } as any);
-  };
+  const { addItem, updateItem, removeItem } = createListEditor<CustomItem>(
+    items,
+    (updated) => onUpdate({ items: updated }),
+    () => ({ id: generateId(), title: '', description: '' }),
+  );
 
   return (
     <div className="space-y-4">

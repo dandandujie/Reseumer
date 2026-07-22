@@ -4,22 +4,10 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { X, Sparkles, Plus } from 'lucide-react';
 import { useResumeStore } from '@/stores/resume-store';
-import { extractUrlsFromResume } from '@/lib/qrcode';
+import { createListEditor } from '@/lib/list-editor';
+import { extractUrlsFromResume, isValidQrUrl } from '@/lib/qrcode';
+import { generateId } from '@/lib/utils';
 import type { ResumeSection, QrCodesContent, QrCodeItem } from '@/types/resume';
-
-function isValidUrl(str: string): boolean {
-  if (!str.trim()) return true; // empty is ok
-  try {
-    const raw = str.startsWith('http') ? str : `https://${str}`;
-    const url = new URL(raw);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
-    // hostname must contain a dot (e.g. example.com) or be localhost/IP
-    const host = url.hostname;
-    return host === 'localhost' || /\.\w{2,}$/.test(host) || /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
-  } catch {
-    return false;
-  }
-}
 
 interface Props {
   section: ResumeSection;
@@ -32,6 +20,11 @@ export function QrCodesSection({ section, onUpdate }: Props) {
   const items = content.items || [];
   const { currentResume } = useResumeStore();
   const [invalidIds, setInvalidIds] = useState<Set<string>>(new Set());
+  const { addItem, updateItem, removeItem } = createListEditor<QrCodeItem>(
+    items,
+    (updated) => onUpdate({ items: updated }),
+    () => ({ id: generateId(), label: '', url: '' }),
+  );
 
   return (
     <div className="space-y-2">
@@ -63,9 +56,7 @@ export function QrCodesSection({ section, onUpdate }: Props) {
             value={qr.label}
             placeholder={t('qrLabel')}
             onChange={(e) => {
-              const updated = [...items];
-              updated[idx] = { ...updated[idx], label: e.target.value };
-              onUpdate({ items: updated });
+              updateItem(idx, { label: e.target.value });
             }}
             className="h-7 w-20 shrink-0 rounded border border-border bg-transparent px-2 text-xs outline-none focus:border-[var(--whale-ink-soft)]"
           />
@@ -75,15 +66,13 @@ export function QrCodesSection({ section, onUpdate }: Props) {
             placeholder={t('qrUrl')}
             title={invalidIds.has(qr.id) ? t('qrUrlInvalid') : undefined}
             onChange={(e) => {
-              const updated = [...items];
-              updated[idx] = { ...updated[idx], url: e.target.value };
-              onUpdate({ items: updated });
-              if (invalidIds.has(qr.id) && isValidUrl(e.target.value)) {
+              updateItem(idx, { url: e.target.value });
+              if (invalidIds.has(qr.id) && (!e.target.value.trim() || isValidQrUrl(e.target.value))) {
                 setInvalidIds((prev) => { const next = new Set(prev); next.delete(qr.id); return next; });
               }
             }}
             onBlur={() => {
-              if (!isValidUrl(qr.url)) {
+              if (qr.url.trim() && !isValidQrUrl(qr.url)) {
                 setInvalidIds((prev) => new Set(prev).add(qr.id));
               } else {
                 setInvalidIds((prev) => { const next = new Set(prev); next.delete(qr.id); return next; });
@@ -93,10 +82,7 @@ export function QrCodesSection({ section, onUpdate }: Props) {
           />
           <button
             type="button"
-            onClick={() => {
-              const updated = items.filter((_, i) => i !== idx);
-              onUpdate({ items: updated });
-            }}
+            onClick={() => removeItem(idx)}
             className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
@@ -106,10 +92,7 @@ export function QrCodesSection({ section, onUpdate }: Props) {
 
       <button
         type="button"
-        onClick={() => {
-          const newItem: QrCodeItem = { id: `qr-${Date.now()}`, label: '', url: '' };
-          onUpdate({ items: [...items, newItem] });
-        }}
+        onClick={addItem}
         className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         <Plus className="h-3 w-3" />

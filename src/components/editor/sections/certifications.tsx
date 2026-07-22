@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { EditableText } from '../fields/editable-text';
 import { FieldWrapper } from '../fields/field-wrapper';
+import { createListEditor } from '@/lib/list-editor';
 import { generateId } from '@/lib/utils';
 import type { ResumeSection, CertificationsContent, CertificationItem } from '@/types/resume';
 
@@ -19,19 +20,11 @@ export function CertificationsSection({ section, onUpdate }: Props) {
   const content = section.content as CertificationsContent;
   const items = content.items || [];
 
-  const addItem = () => {
-    const newItem: CertificationItem = { id: generateId(), name: '', issuer: '', date: '' };
-    onUpdate({ items: [...items, newItem] } as any);
-  };
-
-  const updateItem = (index: number, data: Partial<CertificationItem>) => {
-    const updated = items.map((item, i) => (i === index ? { ...item, ...data } : item));
-    onUpdate({ items: updated } as any);
-  };
-
-  const removeItem = (index: number) => {
-    onUpdate({ items: items.filter((_, i) => i !== index) } as any);
-  };
+  const { addItem, updateItem, removeItem } = createListEditor<CertificationItem>(
+    items,
+    (updated) => onUpdate({ items: updated }),
+    () => ({ id: generateId(), name: '', issuer: '', date: '' }),
+  );
 
   return (
     <div className="space-y-4">

@@ -1,21 +1,8 @@
 import { esc, buildExportThemeCSS, DEFAULT_THEME, type ResumeWithSections } from './utils';
 import { WEBFONT_STYLESHEETS } from '@/lib/theme-config';
 import { EXPORT_TAILWIND_CSS } from '@/lib/pdf/export-tailwind-css';
-import { generateQrSvg } from '@/lib/qrcode';
+import { generateQrSvg, isValidQrUrl } from '@/lib/qrcode';
 import { buildClassicHtml } from './templates/classic';
-
-function isValidQrUrl(str: string): boolean {
-  if (!str?.trim()) return false;
-  try {
-    const raw = str.startsWith('http') ? str : `https://${str}`;
-    const url = new URL(raw);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
-    const host = url.hostname;
-    return host === 'localhost' || /\.\w{2,}$/.test(host) || /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
-  } catch {
-    return false;
-  }
-}
 
 /** Pre-generate QR code SVGs and attach to qr_codes section content
  *  so sync template builders can render them inline. */
